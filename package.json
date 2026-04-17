@@ -22,6 +22,7 @@
     "@sveltejs/kit": "^2.57.1",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tauri-apps/cli": "^2",
+    "sass-embedded": "^1.99.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "typescript": "~6.0.2",
