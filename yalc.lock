@@ -2,7 +2,8 @@
   "version": "v1",
   "packages": {
     "@the_dissidents/svelte-ui": {
-      "signature": "aea8b27e5b9af3585b42125275568d7e"
+      "signature": "a676ff3c6b19f356412eed61cd0aae0b",
+      "replaced": "^0.0.5"
     }
   }
 }

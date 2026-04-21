@@ -4,37 +4,32 @@
   import { Resizer } from '@the_dissidents/svelte-ui';
   import text from '../data/kleist.txt?raw';
 
-  const doc = DocumentState.fromSourceStrings(text.split('\n\n'));
+  let doc = DocumentState.fromSourceStrings(text.split('\n\n'));
 
   let rightPane: HTMLElement | undefined = $state();
+
+  let view: DocumentView | undefined = $state(undefined);
 </script>
 
 <div class="container">
   <header id="titlebar" data-tauri-drag-region>
   </header>
   <main class="page">
-    <DocumentView document={doc} />
+    <DocumentView document={doc} bind:this={view} />
     <Resizer first={rightPane!} reverse vertical useViewportFraction/>
-    <div bind:this={rightPane} style:width="33vw">
+    <div bind:this={rightPane} style:width="25vw">
       right panel
     </div>
   </main>
   <footer>
-    haha
+    {#if view?.selection()}
+    {@const sel = view.selection()!}
+      {sel.from.block.id}.{sel.from.pos}-{sel.to.block.id}.{sel.to.pos} {sel.ongoing ? 'ongoing' : 'ok'}
+    {/if}
   </footer>
 </div>
 
 <style lang="scss">
-@use "../../node_modules/@the_dissidents/svelte-ui/dist/main";
-
-@include main.configure(
-
-);
-
-:root {
-  margin: 0;
-  padding: 0;
-}
 
 #titlebar {
   min-height: 30px;

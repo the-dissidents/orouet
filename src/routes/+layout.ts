@@ -4,4 +4,4 @@
 // See: https://v2.tauri.app/start/frontend/sveltekit/ for more info
 export const ssr = false;
 
-import '../styles.css';
+import '../styles.scss';
