@@ -4,7 +4,15 @@
   import { Resizer } from '@the_dissidents/svelte-ui';
   import text from '../data/kleist.txt?raw';
 
-  let doc = DocumentState.fromSourceStrings(text.split('\n\n'));
+  let doc = DocumentState.fromSourceStrings(`
+Aus einem elenden Zustand sich zu erheben, muß selbst mit gewollter Energie leicht sein. Ich reiße mich vom Sessel los, umlaufe den Tisch, mache Kopf und Hals beweglich, bringe Feuer in die Augen, spanne die Muskeln um sie herum. Arbeite jedem Gefühl entgegen, begrüße A. stürmisch, wenn er jetzt kommen wird, dulde B. freundlich in meinem Zimmer, ziehe bei C. alles, was gesagt wird, trotz Schmerz und Mühe mit langen Zügen in mich hinein.
+
+Aber selbst wenn es so geht, wird mit jedem Fehler, der nicht ausbleiben kann, das Ganze, das Leichte und das Schwere, stocken, und ich werde mich im Kreise zurückdrehen müssen.
+
+Deshalb bleibt doch der beste Rat, alles hinzunehmen, als schwere Masse sich verhalten, und fühle man sich selbst fortgeblasen, keinen unnötigen Schritt sich ablocken lassen, den anderen mit Tierblick anschaun, keine Reue fühlen, kurz, das, was vom Leben als Gespenst noch übrig ist, mit eigener Hand niederdrücken, das heißt, die letzte grabmäßige Ruhe noch vermehren und nichts außer ihr mehr bestehen lassen.
+
+Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kleinen Fingers über die Augenbrauen.
+`.trim().split('\n\n'));
 
   let rightPane: HTMLElement | undefined = $state();
 

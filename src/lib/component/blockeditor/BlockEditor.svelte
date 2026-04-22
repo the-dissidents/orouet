@@ -1,12 +1,12 @@
 <script lang="ts">
   import { BlockSchema } from "$lib/BlockSchema";
   import type { TextBlock } from "$lib/Document.svelte";
-  import { chainCommands, deleteSelection, joinBackward, selectNodeBackward, joinForward, selectNodeForward, newlineInCode, selectAll, toggleMark } from "prosemirror-commands";
+  import { deleteSelection, joinBackward, selectNodeBackward, newlineInCode, selectAll, toggleMark } from "prosemirror-commands";
   import { history, redo, undo } from "prosemirror-history";
   import { keymap } from "prosemirror-keymap";
   import { EditorState, Plugin, TextSelection, type Command } from "prosemirror-state";
   import { EditorView } from "prosemirror-view";
-  import { onDestroy, onMount } from "svelte";
+  import { onMount } from "svelte";
   import { placeholder } from "./Placeholder";
   import { virtualSelection } from "./VirtualSelection";
   import { EventHost } from "@the_dissidents/svelte-ui";
@@ -49,8 +49,9 @@
            : -1 as never;
     }
 
-    view.dispatch(view.state.tr.setSelection(
-      TextSelection.create(view.state.doc, idx(s.from), idx(s.to))));
+    const selection = TextSelection.create(view.state.doc, idx(s.from), idx(s.to));
+    if (!view.state.selection.eq(selection))
+      view.dispatch(view.state.tr.setSelection(selection));
   }
 
   const userDeleteSelection: Command = () => {
@@ -60,7 +61,7 @@
   };
 
   const userBackspace: Command = (s, d, v) => {
-    if (mySelection) {
+    if (currentSelection) {
       userDeleteSelection(s, d, v);
       return true;
     }
@@ -72,14 +73,12 @@
   const bold = toggleMark(BlockSchema.marks.bold);
   const italic = toggleMark(BlockSchema.marks.italic);
   const underline = toggleMark(BlockSchema.marks.underline);
-  const backspace = chainCommands(userDeleteSelection, joinBackward, selectNodeBackward);
-  const del = chainCommands(deleteSelection, joinForward, selectNodeForward);
 
   let context: DocumentViewContext;
-  let mySelection: ViewSelection | undefined = $state();
+  let currentSelection: ViewSelection | undefined = $state();
 
   let mouseDown = false;
-  let manualSelection = false;
+  let manualSelection = false, passivelyUpdatedSelection = false;
   let showSelection = $state(true);
 
   const me = {};
@@ -89,15 +88,15 @@
 
     context.onSelectionChange.bind(me, (s) => {
       if (selectionOverlaps(s)) {
-        showSelection = s.to.block.id !== block.id;
+        currentSelection = s;
+        showSelection = true; // s.to.block.id !== block.id;
 
-        if (s !== mySelection) {
-          mySelection = s;
-          updateSelection(s);
-        }
+        passivelyUpdatedSelection = true;
+        updateSelection(s);
+        passivelyUpdatedSelection = false;
       } else {
         showSelection = false;
-        mySelection = undefined;
+        currentSelection = undefined;
       }
     });
 
@@ -119,13 +118,13 @@
         const sel = transactions.findLast((x) => x.selectionSet)?.selection;
         if (!sel) return null;
 
-        if (!manualSelection) {
+        if (!manualSelection && !passivelyUpdatedSelection) {
           const s = $state({
-            from: { block, pos: sel.from },
-            to: { block, pos: sel.to },
+            from: { block, pos: sel.anchor },
+            to: { block, pos: sel.head },
             ongoing: mouseDown,
           });
-          mySelection = s;
+          currentSelection = s;
           context.selection = s;
           context.onSelectionChange.dispatch(s);
         }
@@ -139,8 +138,8 @@
             manualSelection = false;
             document.addEventListener('mouseup', () => {
               mouseDown = false;
-              if (mySelection) {
-                mySelection.ongoing = false;
+              if (currentSelection) {
+                currentSelection.ongoing = false;
                 manualSelection = false;
               }
             }, { once: true });
@@ -166,7 +165,7 @@
             showSelection = true;
             manualSelection = true;
             sel.to = { block, pos: pos.pos };
-            mySelection = sel;
+            currentSelection = sel;
             context.onSelectionChange.dispatch(sel);
             updateSelection(sel);
           }
@@ -185,11 +184,11 @@
           history(),
           keymap({
             "Shift-Enter": newlineInCode,
-            "Backspace": backspace,
-            "Mod-Backspace": backspace,
-            "Shift-Backspace": backspace,
-            "Delete": del,
-            "Mod-Delete": del,
+            "Backspace": userBackspace,
+            // "Mod-Backspace": userBackspace,
+            // "Shift-Backspace": userBackspace,
+            // "Delete": del,
+            // "Mod-Delete": del,
             "Mod-a": selectAll,
 
             "Mod-z": undo,
@@ -203,17 +202,11 @@
       }),
     });
 
-    // if (context.selection && selectionOverlaps(context.selection)) {
-    //   updateSelection(context.selection);
-    // }
-  });
-
-  onDestroy(() => {
-    EventHost.unbind(me);
+    return () => EventHost.unbind(me);
   });
 </script>
 
-<div bind:this={editorContainer} class={{outer: true, showsel: showSelection}}>
+<div bind:this={editorContainer} class={{outer: true, showsel: true}}>
 </div>
 
 <style>
