@@ -1,7 +1,8 @@
 @use "../node_modules/@the_dissidents/svelte-ui/dist/main";
+@use "../node_modules/@the_dissidents/svelte-ui/dist/uchu";
 
 @include main.configure(
-
+  // $page-background-dark: uchu.$yin-9,
 );
 
 :root {

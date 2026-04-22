@@ -1,5 +1,6 @@
 import type { Node } from "prosemirror-model";
 import { BlockSchema } from "./BlockSchema";
+import { Debug } from "./details/Util";
 
 export type TextBlock = {
     // id
@@ -55,6 +56,23 @@ export class DocumentState {
     //         const prevCluster = this.#clusters[i-1][type].at(-1)!;
     //     }
     // }
+
+    previousBlock(b: TextBlock, type: 'source' | 'target') {
+        const [i, j] = this.findBlockIndex(b, type)!;
+        if (j == 0 && i == 0) return null;
+        return j == 0
+            ? this.#clusters[i-1][type].at(-1)!
+            : this.clusters[i][type][j-1];
+    }
+
+    nextBlock(b: TextBlock, type: 'source' | 'target') {
+        const [i, j] = this.findBlockIndex(b, type)!;
+        const lastCluster = this.#clusters.at(-1)![type];
+        if (j == this.#clusters.length - 1 && i == lastCluster.length - 1) return null;
+        return j == this.#clusters[i][type].length - 1
+            ? this.#clusters[i+1][type][0]
+            : this.clusters[i][type][j+1];
+    }
 
     #updateIndices() {
         let i = 0, j = 0;

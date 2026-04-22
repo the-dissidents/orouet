@@ -3,6 +3,8 @@
   import { DocumentState } from '$lib/Document.svelte';
   import { Resizer } from '@the_dissidents/svelte-ui';
   import text from '../data/kleist.txt?raw';
+  import { Node } from 'prosemirror-model';
+  import { BlockSchema } from '$lib/BlockSchema';
 
   let doc = DocumentState.fromSourceStrings(`
 Aus einem elenden Zustand sich zu erheben, muß selbst mit gewollter Energie leicht sein. Ich reiße mich vom Sessel los, umlaufe den Tisch, mache Kopf und Hals beweglich, bringe Feuer in die Augen, spanne die Muskeln um sie herum. Arbeite jedem Gefühl entgegen, begrüße A. stürmisch, wenn er jetzt kommen wird, dulde B. freundlich in meinem Zimmer, ziehe bei C. alles, was gesagt wird, trotz Schmerz und Mühe mit langen Zügen in mich hinein.
@@ -26,7 +28,10 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
     <DocumentView document={doc} bind:this={view} />
     <Resizer first={rightPane!} reverse vertical useViewportFraction/>
     <div bind:this={rightPane} style:width="25vw">
-      right panel
+      <button onclick={() => {
+        doc.clusters[1].source[0].content =
+          BlockSchema.nodes.block.create(null, [BlockSchema.text('1235413652476538625461')]);
+      }}>replace p2</button>
     </div>
   </main>
   <footer>
@@ -72,6 +77,10 @@ footer {
   display: flex;
   flex-direction: row;
   background-color: uchu.$pink-2;
+
+  @media (prefers-color-scheme: dark) {
+    background-color: uchu.$pink-9;
+  }
 
   div {
     padding: 2px 10px;

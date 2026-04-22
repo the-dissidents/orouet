@@ -15,6 +15,10 @@ export interface ViewSelection {
 export class DocumentViewContext {
     onSelectionChange = new EventHost<[selection: ViewSelection]>;
     onDeleteSelection = new EventHost<[selection: ViewSelection]>;
+    onCursorMoveAcrossBoundary = new EventHost<[to: TextBlock, side: 'start' | 'end', h?: number]>;
+
+    onUndo = new EventHost;
+    onRedo = new EventHost;
 
     activeBlock?: TextCluster = $state();
     selection?: ViewSelection = $state();

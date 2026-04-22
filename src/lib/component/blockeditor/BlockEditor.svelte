@@ -6,13 +6,14 @@
   import { keymap } from "prosemirror-keymap";
   import { EditorState, Plugin, TextSelection, type Command } from "prosemirror-state";
   import { EditorView } from "prosemirror-view";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { placeholder } from "./Placeholder";
   import { virtualSelection } from "./VirtualSelection";
   import { EventHost } from "@the_dissidents/svelte-ui";
   import { Debug } from "$lib/details/Util";
   import { getDocumentViewContext } from "../documentview/DocumentView.svelte";
   import type { ViewSelection, SelectionPoint, DocumentViewContext } from "../documentview/ViewContext.svelte";
+  import { Slice } from "prosemirror-model";
 
   interface Props {
     block: TextBlock,
@@ -54,9 +55,27 @@
       view.dispatch(view.state.tr.setSelection(selection));
   }
 
-  const userDeleteSelection: Command = () => {
-    Debug.assert(!!context.selection);
-    context.onDeleteSelection.dispatch(context.selection);
+  const userDeleteSelection: Command = (s, d, v) => {-
+    Debug.assert(!!currentSelection);
+    const from = currentSelection!.from;
+    const to = currentSelection!.to;
+
+    if (from.block.id == to.block.id) {
+      return deleteSelection(s, d, v);
+    }
+
+    const [a, b] = from.block.index! < to.block.index! ? [from, to] : [to, from];
+    a.block.content =
+      a.block.content.replace(a.pos, a.block.content.textContent.length, Slice.empty);
+    b.block.content =
+      b.block.content.replace(0, b.pos, Slice.empty);
+
+    let current = context.document.previousBlock(b.block, type);
+    while (current && current.id !== a.block.id) {
+      context.document.removeBlock(current, type);
+      current = context.document.previousBlock(current, type);
+    }
+
     return true;
   };
 
@@ -68,7 +87,33 @@
     joinBackward(s, d, v);
     selectNodeBackward(s, d, v);
     return true;
-  }
+  };
+
+  type Direction = 'up' | 'down' | 'left' | 'right';
+
+  const userMoveCursor: (d: Direction) => Command = (d) => () => {
+    if (!currentSelection
+      || currentSelection.from.block.id !== currentSelection.to.block.id
+      || currentSelection.from.pos !== currentSelection.to.pos
+      || !view.endOfTextblock(d)
+    ) return false;
+
+    console.log('111');
+
+    // move to previous block
+    const side = (d == 'left' || d == 'up') ? 'end' : 'start';
+    const to = side == 'end'
+      ? context.document.previousBlock(block, type)
+      : context.document.nextBlock(block, type);
+    if (!to) return false;
+
+    const h = (d == 'up' || d == 'down')
+      ? view.coordsAtPos(currentSelection.from.pos).left
+      : undefined;
+    currentSelection = undefined;
+    context.onCursorMoveAcrossBoundary.dispatch(to, side, h);
+    return true;
+  };
 
   const bold = toggleMark(BlockSchema.marks.bold);
   const italic = toggleMark(BlockSchema.marks.italic);
@@ -83,13 +128,25 @@
 
   const me = {};
 
+  $effect(() => {
+    block.content;
+
+    untrack(() => {
+      console.log(block.id, block.content);
+      if (view)
+        view.dispatch(view.state.tr
+          .replaceWith(0, view.state.doc.content.size, block.content.content));
+    });
+  })
+
   onMount(() => {
     context = getDocumentViewContext(type);
 
     context.onSelectionChange.bind(me, (s) => {
       if (selectionOverlaps(s)) {
         currentSelection = s;
-        showSelection = true; // s.to.block.id !== block.id;
+        if (s.to.block.id != block.id)
+          showSelection = true;
 
         passivelyUpdatedSelection = true;
         updateSelection(s);
@@ -100,17 +157,47 @@
       }
     });
 
-    context.onDeleteSelection.bind(me, (s) => {
-      if (selectionOverlaps(s)) {
-        const a = s.from.block.index!;
-        const b = s.to.block.index!;
-        const x = block.index!;
-        if (Math.min(a, b) < x && Math.max(a, b) > x) {
-          // delete whole block
+    // context.onDeleteSelection.bind(me, (s) => {
+    //   if (selectionOverlaps(s)) {
+    //     const a = s.from.block.index!;
+    //     const b = s.to.block.index!;
+    //     const x = block.index!;
+    //     if (Math.min(a, b) < x && Math.max(a, b) > x) {
+    //       // delete whole block
+    //       context.document.removeBlock(block, type);
+    //     } else {
+    //       deleteSelection(view.state, view.dispatch);
+    //     }
+    //   }
+    // });
+
+    context.onCursorMoveAcrossBoundary.bind(me, (to, side, h) => {
+      if (to.id !== block.id) return;
+      view.focus();
+
+      const rect = view.dom.getBoundingClientRect();
+      let pos: number;
+      if (h !== undefined) {
+        if (side == 'start') {
+          const result = view.posAtCoords({ left: h, top: rect.top + 25 });
+          Debug.assert(!!result);
+          pos = result.pos;
         } else {
-          deleteSelection(view.state, view.dispatch);
+          const result = view.posAtCoords({ left: h, top: rect.bottom - 25 });
+          Debug.assert(!!result);
+          pos = result.pos;
         }
+      } else {
+        pos = side == 'start' ? 0 : block.content.textContent.length;
       }
+
+      context.selection = {
+        from: { block, pos },
+        to: { block, pos },
+        ongoing: false
+      };
+      currentSelection = context.selection;
+      context.onSelectionChange.dispatch(context.selection);
     });
 
     const trackSelection = new Plugin({
@@ -166,6 +253,7 @@
             manualSelection = true;
             sel.to = { block, pos: pos.pos };
             currentSelection = sel;
+
             context.onSelectionChange.dispatch(sel);
             updateSelection(sel);
           }
@@ -183,6 +271,11 @@
           virtualSelection,
           history(),
           keymap({
+            "ArrowLeft": userMoveCursor('left'),
+            "ArrowRight": userMoveCursor('right'),
+            "ArrowUp": userMoveCursor('up'),
+            "ArrowDown": userMoveCursor('down'),
+
             "Shift-Enter": newlineInCode,
             "Backspace": userBackspace,
             // "Mod-Backspace": userBackspace,
@@ -206,17 +299,19 @@
   });
 </script>
 
-<div bind:this={editorContainer} class={{outer: true, showsel: true}}>
+<div bind:this={editorContainer} class={{outer: true, showsel: showSelection}}>
 </div>
 
-<style>
+<style lang='scss'>
+  @use "../../../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
+
   .outer {
     margin: 0 0 5px 0;
     /* padding: 10px;
     border-radius: 3px; */
   }
 
-  :global(div.ProseMirror) {
+  :global div.ProseMirror {
     font-family: serif;
     font-size: 125%;
 
@@ -230,10 +325,13 @@
 
     &:focus {
       background-color: #fff;
-      border: 1px solid transparent;
+
+      @media (prefers-color-scheme: dark) {
+        background-color: uchu.$yin-8;
+      }
     }
 
-    &:hover {
+    &:hover, &:focus {
       border: 1px solid var(--accent1-border-light);
     }
 
@@ -245,11 +343,19 @@
 
     & .virtual-selection::selection {
       background-color: rgb(255, 218, 224);
+
+      @media (prefers-color-scheme: dark) {
+        background-color: rgb(93, 43, 51);
+      }
     }
   }
 
   .showsel :global(.virtual-selection) {
     background-color: rgb(255, 218, 224);
     height: 1lh;
+
+    @media (prefers-color-scheme: dark) {
+      background-color: rgb(93, 43, 51);
+    }
   }
 </style>
