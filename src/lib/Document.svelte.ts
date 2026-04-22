@@ -44,8 +44,17 @@ export class DocumentState {
     }
 
     insertBlock(b: TextBlock, type: 'source' | 'target', i: number, j: number) {
-
+        this.#clusters[i][type].splice(j, 0, b);
+        this.#updateIndices();
     }
+
+    // mergeBlockWithPrevious(type: 'source' | 'target', i: number, j: number) {
+    //     const block = this.#clusters[i][type][j];
+    //     if (j == 0) {
+    //         assert(i > 0);
+    //         const prevCluster = this.#clusters[i-1][type].at(-1)!;
+    //     }
+    // }
 
     #updateIndices() {
         let i = 0, j = 0;

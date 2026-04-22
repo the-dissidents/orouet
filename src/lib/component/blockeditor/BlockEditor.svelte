@@ -9,9 +9,10 @@
   import { onDestroy, onMount } from "svelte";
   import { placeholder } from "./Placeholder";
   import { virtualSelection } from "./VirtualSelection";
-  import { getDocumentViewContext, type DocumentViewContext, type SelectionPoint, type ViewSelection } from "../DocumentView.svelte";
   import { EventHost } from "@the_dissidents/svelte-ui";
-  import { assert } from "$lib/details/Util";
+  import { Debug } from "$lib/details/Util";
+  import { getDocumentViewContext } from "../documentview/DocumentView.svelte";
+  import type { ViewSelection, SelectionPoint, DocumentViewContext } from "../documentview/ViewContext.svelte";
 
   interface Props {
     block: TextBlock,
@@ -35,14 +36,14 @@
   }
 
   function updateSelection(s: ViewSelection) {
-    assert(selectionOverlaps(s));
+    Debug.assert(selectionOverlaps(s));
     const ix = block.index;
 
     function idx(sp: SelectionPoint) {
       const i = sp.block.index;
-      assert(i !== undefined);
-      assert(ix !== undefined);
-      return i === ix ? s.from.pos
+      Debug.assert(i !== undefined);
+      Debug.assert(ix !== undefined);
+      return i == ix ? sp.pos
            : i < ix ? 0
            : i > ix ? view.state.doc.textContent.length
            : -1 as never;
@@ -53,10 +54,20 @@
   }
 
   const userDeleteSelection: Command = () => {
-    assert(!!context.selection);
+    Debug.assert(!!context.selection);
     context.onDeleteSelection.dispatch(context.selection);
     return true;
   };
+
+  const userBackspace: Command = (s, d, v) => {
+    if (mySelection) {
+      userDeleteSelection(s, d, v);
+      return true;
+    }
+    joinBackward(s, d, v);
+    selectNodeBackward(s, d, v);
+    return true;
+  }
 
   const bold = toggleMark(BlockSchema.marks.bold);
   const italic = toggleMark(BlockSchema.marks.italic);
@@ -74,26 +85,32 @@
   const me = {};
 
   onMount(() => {
-    context = getDocumentViewContext();
+    context = getDocumentViewContext(type);
 
     context.onSelectionChange.bind(me, (s) => {
-      if (s !== mySelection) {
-        if (selectionOverlaps(s)) {
-          showSelection = true;
+      if (selectionOverlaps(s)) {
+        showSelection = s.to.block.id !== block.id;
+
+        if (s !== mySelection) {
           mySelection = s;
           updateSelection(s);
-        } else {
-          showSelection = false;
-          mySelection = undefined;
         }
-      } else if (s.to.block.id !== block.id) {
-        showSelection = true;
+      } else {
+        showSelection = false;
+        mySelection = undefined;
       }
     });
 
     context.onDeleteSelection.bind(me, (s) => {
-      if (s === mySelection) {
-        deleteSelection(view.state, view.dispatch);
+      if (selectionOverlaps(s)) {
+        const a = s.from.block.index!;
+        const b = s.to.block.index!;
+        const x = block.index!;
+        if (Math.min(a, b) < x && Math.max(a, b) > x) {
+          // delete whole block
+        } else {
+          deleteSelection(view.state, view.dispatch);
+        }
       }
     });
 
@@ -103,13 +120,14 @@
         if (!sel) return null;
 
         if (!manualSelection) {
-          mySelection = {
+          const s = $state({
             from: { block, pos: sel.from },
             to: { block, pos: sel.to },
             ongoing: mouseDown,
-          }
-          context.selection = mySelection;
-          context.onSelectionChange.dispatch(mySelection);
+          });
+          mySelection = s;
+          context.selection = s;
+          context.onSelectionChange.dispatch(s);
         }
 
         return null;
@@ -133,11 +151,11 @@
 
             const pos = view.posAtCoords({ left: ev.clientX, top: ev.clientY });
             if (pos === null) return;
-            // if (!view.hasFocus()) view.focus();
+            if (!view.hasFocus()) view.focus();
 
             const i1 = sel.from.block.index;
             const i2 = block.index;
-            assert(i1 !== undefined && i2 !== undefined);
+            Debug.assert(i1 !== undefined && i2 !== undefined);
 
             if (i1 == i2) {
               showSelection = false;
@@ -145,10 +163,10 @@
               return;
             }
 
-            mySelection = sel;
             showSelection = true;
             manualSelection = true;
             sel.to = { block, pos: pos.pos };
+            mySelection = sel;
             context.onSelectionChange.dispatch(sel);
             updateSelection(sel);
           }
@@ -185,9 +203,9 @@
       }),
     });
 
-    if (context.selection && selectionOverlaps(context.selection)) {
-      updateSelection(context.selection);
-    }
+    // if (context.selection && selectionOverlaps(context.selection)) {
+    //   updateSelection(context.selection);
+    // }
   });
 
   onDestroy(() => {

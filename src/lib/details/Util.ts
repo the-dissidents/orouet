@@ -7,6 +7,10 @@ export function unwrap<T>(x: Wrapped<T>) {
     return typeof x === 'function' ? x() : x;
 }
 
-export function assert(x: boolean): asserts x {
-    if (!!!x) throw new Error('assertion failed');
-}
+export const Debug: {
+    assert(x: boolean, file?: string, line?: number): asserts x
+} = {
+    assert(x: boolean, file?: string, line?: number): asserts x {
+        if (!!!x) throw new Error('assertion failed ' + file ? `[${file}@${line}]` : '[?]');
+    }
+};

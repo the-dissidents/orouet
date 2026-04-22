@@ -1,38 +1,26 @@
 <script lang="ts" module>
-  export interface SelectionPoint {
-    block: TextBlock,
-    pos: number
-  }
-
-  export interface ViewSelection {
-    from: SelectionPoint,
-    to: SelectionPoint,
-    ongoing: boolean
-  }
-
-  export interface DocumentViewContext {
-    document: DocumentState,
-    onSelectionChange: EventHost<[selection: ViewSelection]>,
-    onDeleteSelection: EventHost<[selection: ViewSelection]>,
-    activeBlock?: TextCluster,
-    selection?: ViewSelection,
+  interface Context {
+    source: DocumentViewContext,
+    target: DocumentViewContext
   }
 
   const key = Symbol('DocumentViewContext');
 
-  export function getDocumentViewContext() {
-    const ctx = getContext<DocumentViewContext>(key);
-    assert(!!ctx);
-    return ctx;
+  export function getDocumentViewContext(type: 'source' | 'target') {
+    const ctx = getContext<Context>(key);
+    Debug.assert(!!ctx);
+    return ctx[type];
   }
 </script>
 
+<!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
-  import { DocumentState, type TextBlock, type TextCluster } from "$lib/Document.svelte";
-  import { EventHost, Resizer } from "@the_dissidents/svelte-ui";
-  import BlockEditor from "./blockeditor/BlockEditor.svelte";
-  import { getContext, onMount, setContext } from "svelte";
-  import { assert } from "$lib/details/Util";
+  import { DocumentState } from "$lib/Document.svelte";
+  import { Resizer } from "@the_dissidents/svelte-ui";
+  import BlockEditor from "../blockeditor/BlockEditor.svelte";
+  import { getContext, setContext } from "svelte";
+  import { Debug } from "$lib/details/Util";
+  import { DocumentViewContext } from "./ViewContext.svelte";
 
   interface Props {
     document: DocumentState;
@@ -42,22 +30,14 @@
 
   let leftPane: HTMLElement | undefined = $state();
 
-  let context: DocumentViewContext = $state({
-    get document() {
-      return document;
-    },
-    onSelectionChange: new EventHost(),
-    onDeleteSelection: new EventHost(),
-  });
+  const context: Context = {
+    source: new DocumentViewContext(document, 'source'),
+    target: new DocumentViewContext(document, 'target'),
+  };
+  setContext<Context>(key, context);
 
-  setContext<DocumentViewContext>(key, context);
-
-  export function activeBlock() {
-    return context.activeBlock;
-  }
-
-  export function selection(): Readonly<DocumentViewContext['selection']> {
-    return context.selection;
+  export function selection(type: 'source' | 'target') {
+    return context![type].selection;
   }
 </script>
 
