@@ -1,6 +1,6 @@
 import { Schema } from "prosemirror-model";
 
-export const BlockSchema = new Schema({
+export const DocumentSchema = new Schema({
     topNode: 'block',
     nodes: {
         text: {
@@ -10,7 +10,26 @@ export const BlockSchema = new Schema({
         block: {
             code: true,
             content: "text*",
-            marks: "_"
+            marks: "_",
+            toDOM: () => ['div', {'class': 'block'}, 0]
+        },
+        source: {
+            content: "block*",
+            toDOM: () => ['div', {'class': 'source'}, 0]
+        },
+        target: {
+            content: "block*",
+            toDOM: () => ['div', {'class': 'target'}, 0]
+        },
+        cluster: {
+            content: "source target",
+            attrs: {
+                index: { validate: 'number' }
+            },
+            toDOM: () => ['div', {'class': 'cluster'}, 0]
+        },
+        doc: {
+            content: "cluster*"
         }
     },
     marks: {

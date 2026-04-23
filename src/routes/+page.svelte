@@ -1,12 +1,21 @@
 <script lang="ts">
-  import DocumentView from '$lib/component/documentview/DocumentView.svelte';
-  import { DocumentState } from '$lib/Document.svelte';
   import { Resizer } from '@the_dissidents/svelte-ui';
-  import text from '../data/kleist.txt?raw';
-  import { Node } from 'prosemirror-model';
-  import { BlockSchema } from '$lib/BlockSchema';
+  import { DocumentSchema } from '$lib/Schema';
+  import DocView from '$lib/component/documentview/DocView.svelte';
 
-  let doc = DocumentState.fromSourceStrings(`
+  function makeDoc(s: string[]) {
+    return DocumentSchema.topNodeType.create({},
+      s.map((p, index) => DocumentSchema.nodes.cluster.create({ index }, [
+        DocumentSchema.nodes.source.create({},
+          DocumentSchema.nodes.block.create({}, DocumentSchema.text(p))),
+
+        DocumentSchema.nodes.target.create({},
+          DocumentSchema.nodes.block.create({}, [])),
+      ]))
+    );
+  }
+
+  let doc = $state(makeDoc(`
 Aus einem elenden Zustand sich zu erheben, muß selbst mit gewollter Energie leicht sein. Ich reiße mich vom Sessel los, umlaufe den Tisch, mache Kopf und Hals beweglich, bringe Feuer in die Augen, spanne die Muskeln um sie herum. Arbeite jedem Gefühl entgegen, begrüße A. stürmisch, wenn er jetzt kommen wird, dulde B. freundlich in meinem Zimmer, ziehe bei C. alles, was gesagt wird, trotz Schmerz und Mühe mit langen Zügen in mich hinein.
 
 Aber selbst wenn es so geht, wird mit jedem Fehler, der nicht ausbleiben kann, das Ganze, das Leichte und das Schwere, stocken, und ich werde mich im Kreise zurückdrehen müssen.
@@ -14,29 +23,29 @@ Aber selbst wenn es so geht, wird mit jedem Fehler, der nicht ausbleiben kann, d
 Deshalb bleibt doch der beste Rat, alles hinzunehmen, als schwere Masse sich verhalten, und fühle man sich selbst fortgeblasen, keinen unnötigen Schritt sich ablocken lassen, den anderen mit Tierblick anschaun, keine Reue fühlen, kurz, das, was vom Leben als Gespenst noch übrig ist, mit eigener Hand niederdrücken, das heißt, die letzte grabmäßige Ruhe noch vermehren und nichts außer ihr mehr bestehen lassen.
 
 Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kleinen Fingers über die Augenbrauen.
-`.trim().split('\n\n'));
+`.trim().split('\n\n')));
 
   let rightPane: HTMLElement | undefined = $state();
-
-  let view: DocumentView | undefined = $state(undefined);
 </script>
 
 <div class="container">
   <header id="titlebar" data-tauri-drag-region>
   </header>
   <main class="page">
-    <DocumentView document={doc} bind:this={view} />
+
+    <DocView bind:doc/>
+
     <Resizer first={rightPane!} reverse vertical useViewportFraction/>
     <div bind:this={rightPane} style:width="25vw">
-      <button onclick={() => {
+      <!-- <button onclick={() => {
         doc.clusters[1].source[0].content =
           BlockSchema.nodes.block.create(null, [BlockSchema.text('1235413652476538625461')]);
-      }}>replace p2</button>
+      }}>replace p2</button> -->
     </div>
   </main>
   <footer>
     <div class="grow">ok</div>
-    <div>
+    <!-- <div>
       {#if view?.selection('source')}
       {@const sel = view.selection('source')!}
       {@const e = `${sel.from.block.id}.${sel.from.pos}-${sel.to.block.id}.${sel.to.pos}`}
@@ -57,7 +66,7 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
           {e}
         {/if}
       {/if}
-    </div>
+    </div> -->
   </footer>
 </div>
 
