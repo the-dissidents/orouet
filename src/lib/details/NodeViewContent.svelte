@@ -1,19 +1,21 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import type { SvelteHTMLElements } from "svelte/elements";
 
-  const { children }: {
-    children?: Snippet
-  } = $props();
+  const { children, contentsOnly = true, ...rest }: {
+    children?: Snippet,
+    contentsOnly?: boolean
+  } & SvelteHTMLElements['div'] = $props();
 </script>
 
-<div data-node-view-content>
+<div data-node-view-content class:contents={contentsOnly} {...rest}>
   {#if children}
     {@render children()}
   {/if}
 </div>
 
 <style>
-  div {
+  .contents {
     display: contents;
   }
 </style>

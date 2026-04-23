@@ -1,31 +1,24 @@
 <script lang="ts">
-  import { DocumentSchema } from "$lib/Schema";
+  import { PaneSchema } from "$lib/Schema";
   import type { NodeViewProps } from "$lib/details/NodeView.svelte";
   import NodeViewContent from "$lib/details/NodeViewContent.svelte";
   import { Debug } from "$lib/details/Util";
 
   const { node, view: _ }: NodeViewProps = $props();
-  $effect(() => Debug.assert(node.type == DocumentSchema.nodes.block));
+  $effect(() => Debug.assert(node.type == PaneSchema.nodes.block));
 
-  let content: HTMLElement | undefined = $state();
-
-  export function contentDOM() {
-    return content;
-  }
+  $inspect(node).with((t, v) => console.log(t, v));
 </script>
 
-<div class="block">
-  {#if node.textContent.length == 0}
-    <div class="placeholder">enter text here</div>
-  {/if}
-  <NodeViewContent>
-  </NodeViewContent>
-</div>
+<NodeViewContent data-block contentsOnly={false}>
+</NodeViewContent>
 
 <style lang="scss">
   @use "../../../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
 
-  .block {
+  :global([data-block]) {
+    display: block;
+
     font-family: serif;
     line-height: normal;
 
@@ -44,14 +37,6 @@
 
     &:hover {
       border: 1px solid var(--accent1-border-light);
-    }
-
-    & .placeholder {
-      position: absolute;
-      top: 0;
-      pointer-events: none;
-      font-family: var(--ui-font-family);
-      color: gray;
     }
   }
 </style>

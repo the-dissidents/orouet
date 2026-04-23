@@ -41,9 +41,9 @@ export function createNodeView<
 
         // setSelection?: ((anchor: number, head: number, root: Document | ShadowRoot) => void) | undefined;
 
-        destroy() {
-            unmount(component, { outro: true });
-        }
+        // destroy() {
+        //     unmount(component);
+        // }
     }
     return (node, view, getPos) => new N(node, view, getPos);
 }
