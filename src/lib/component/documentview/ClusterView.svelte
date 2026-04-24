@@ -11,9 +11,3 @@
 <div class="cluster">
   <NodeViewContent />
 </div>
-
-<style lang="scss">
-  @use "../../../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
-
-
-</style>

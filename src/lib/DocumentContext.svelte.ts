@@ -25,7 +25,7 @@ export class DocumentContext {
                     PaneSchema.nodes.block.createChecked({}, PaneSchema.text(x.trim()))))),
             PaneSchema.nodes.doc.createChecked({}, s.map((x, index) =>
                 PaneSchema.nodes.cluster.createChecked({ index },
-                    PaneSchema.nodes.block.createChecked({}, PaneSchema.text('?')))))
+                    PaneSchema.nodes.block.createChecked({}, []))))
         );
     }
 }

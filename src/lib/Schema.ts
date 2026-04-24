@@ -17,7 +17,7 @@ export const PaneSchema = new Schema({
             toDOM: () => ['div', {'class': 'block'}, 0],
         },
         cluster: {
-            content: "block*",
+            content: "block+",
             attrs: {
                 id: { default: -1, validate: 'number' },
                 index: { validate: 'number' },

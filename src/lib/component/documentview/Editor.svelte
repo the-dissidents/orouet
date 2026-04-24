@@ -13,7 +13,7 @@
   let content: HTMLElement | undefined = $state();
 </script>
 
-<div class="container" bind:this={content}>
+<div class="container" bind:this={content} style="grid-template-rows: min-content repeat({context.source.childCount}, min-content) auto;">
   <div class="dummy-row">
     <div class="dummy-left" bind:this={leftPane} style:width="33vw"></div>
   </div>
@@ -43,15 +43,19 @@
   .container {
     display: grid;
     grid-template-columns: auto min-content min-content 1fr;
-    grid-template-rows: repeat(auto-fit, min-content) auto;
+    // grid-auto-rows: min-content;
     grid-auto-flow: column;
     overflow-y: auto;
 
     flex-grow: 1;
     white-space: pre-wrap;
+
+    row-gap: 5px;
   }
 
   .dummy-row {
+    height: 1px;
+
     display: grid;
     grid-template-columns: subgrid;
     grid-row: 1;
@@ -67,7 +71,7 @@
   }
 
   .number {
-    padding: 5px 10px 0 0;
+    padding: 5px 5px 0 5px;
     color: gray;
     position: sticky;
     align-self: start;
@@ -84,16 +88,22 @@
     z-index: 10;
   }
 
+  :global(.ProseMirror) {
+    display: grid;
+    grid-row: 2 / -1;
+    grid-template-rows: subgrid;
+  }
+
   .left {
     display: contents;
-    & :global(.cluster) {
+    & :global(.ProseMirror) {
       grid-column: 2;
     }
   }
 
   .right {
     display: contents;
-    & :global(.cluster) {
+    & :global(.ProseMirror) {
       grid-column: 4;
     }
   }
