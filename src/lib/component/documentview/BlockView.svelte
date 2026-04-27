@@ -20,7 +20,11 @@
   });
 </script>
 
-<NodeViewContent data-block data-selected={selected} contentsOnly={false}>
+<NodeViewContent data-block
+  style="
+    text-align: {context.opts?.justify ? 'justify' : 'start'};
+  "
+  data-selected={selected} contentsOnly={false}>
 </NodeViewContent>
 
 <style lang="scss">
@@ -32,10 +36,7 @@
 
     font-family: 'Text', 'Text-Chinese', 'Times New Roman', serif;
     font-weight: 400;
-    font-variant-numeric: lining-nums;
     text-autospace: normal;
-    text-align: justify;
-
     line-height: normal;
 
     background-color: transparent;

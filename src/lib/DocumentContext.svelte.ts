@@ -5,6 +5,7 @@ import { PaneSchema } from "./Schema";
 export type TextOptions = {
     numericStyle: 'lining' | 'oldstyle' | 'tabular';
     justify: boolean;
+    hyphenation: boolean;
     sizeAdjustment: number;
     ligatures: {
         common?: boolean,
@@ -18,12 +19,14 @@ export const DefaultOptions: Record<string, TextOptions> = {
     'en': {
         numericStyle: 'oldstyle',
         justify: false,
+        hyphenation: false,
         sizeAdjustment: 1,
         ligatures: { common: true }
     },
     'zh': {
         numericStyle: 'lining',
         justify: true,
+        hyphenation: false,
         sizeAdjustment: 1,
         ligatures: { common: true }
     }

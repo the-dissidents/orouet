@@ -3,16 +3,21 @@
   import DocView from '$lib/component/documentview/DocView.svelte';
   import { DocumentContext } from '$lib/DocumentContext.svelte';
   import Editor from '$lib/component/documentview/Editor.svelte';
+  import DisplayOptions from '$lib/component/DisplayOptions.svelte';
 
-  let cxt = $state(DocumentContext.fromTestClusters(`
-Aus einem elenden Zustand sich zu erheben, muß selbst mit gewollter Energie leicht sein. Ich reiße mich vom Sessel los, umlaufe den Tisch, mache Kopf und Hals beweglich, bringe Feuer in die Augen, spanne die Muskeln um sie herum. Arbeite jedem Gefühl entgegen, begrüße A. stürmisch, wenn er jetzt kommen wird, dulde B. freundlich in meinem Zimmer, ziehe bei C. alles, was gesagt wird, trotz Schmerz und Mühe mit langen Zügen in mich hinein.
+  import kleist from '../data/kleist.txt?raw';
 
-Aber selbst wenn es so geht, wird mit jedem Fehler, der nicht ausbleiben kann, das Ganze, das Leichte und das Schwere, stocken, und ich werde mich im Kreise zurückdrehen müssen.
+//   let cxt = $state(DocumentContext.fromTestClusters(`
+// Aus einem elenden Zustand sich zu erheben, muß selbst mit gewollter Energie leicht sein. Ich reiße mich vom Sessel los, umlaufe den Tisch, mache Kopf und Hals beweglich, bringe Feuer in die Augen, spanne die Muskeln um sie herum. Arbeite jedem Gefühl entgegen, begrüße A. stürmisch, wenn er jetzt kommen wird, dulde B. freundlich in meinem Zimmer, ziehe bei C. alles, was gesagt wird, trotz Schmerz und Mühe mit langen Zügen in mich hinein.
 
-Deshalb bleibt doch der beste Rat, alles hinzunehmen, als schwere Masse sich verhalten, und fühle man sich selbst fortgeblasen, keinen unnötigen Schritt sich ablocken lassen, den anderen mit Tierblick anschaun, keine Reue fühlen, kurz, das, was vom Leben als Gespenst noch übrig ist, mit eigener Hand niederdrücken, das heißt, die letzte grabmäßige Ruhe noch vermehren und nichts außer ihr mehr bestehen lassen.
+// Aber selbst wenn es so geht, wird mit jedem Fehler, der nicht ausbleiben kann, das Ganze, das Leichte und das Schwere, stocken, und ich werde mich im Kreise zurückdrehen müssen.
 
-Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kleinen Fingers über die Augenbrauen.
-`.trim().split('\n\n')));
+// Deshalb bleibt doch der beste Rat, alles hinzunehmen, als schwere Masse sich verhalten, und fühle man sich selbst fortgeblasen, keinen unnötigen Schritt sich ablocken lassen, den anderen mit Tierblick anschaun, keine Reue fühlen, kurz, das, was vom Leben als Gespenst noch übrig ist, mit eigener Hand niederdrücken, das heißt, die letzte grabmäßige Ruhe noch vermehren und nichts außer ihr mehr bestehen lassen.
+
+// Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kleinen Fingers über die Augenbrauen.
+// `.trim().split('\n\n')));
+
+  let cxt = $state(DocumentContext.fromTestClusters(kleist.trim().split('\n\n')));
 
   let rightPane: HTMLElement | undefined = $state();
 </script>
@@ -21,14 +26,11 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
   <header id="titlebar" data-tauri-drag-region>
   </header>
   <main class="page">
-
     <Editor context={cxt} />
-
     <Resizer first={rightPane!} reverse vertical useViewportFraction/>
     <div bind:this={rightPane} style:width="25vw">
-      <button onclick={() => {
-        console.log(cxt.target);
-      }}>replace p2</button>
+      <DisplayOptions bind:value={cxt.source.options} />
+      <DisplayOptions bind:value={cxt.target.options} />
     </div>
   </main>
   <footer>

@@ -1,0 +1,12 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"numericStyle_lining": "平齐",
+	"numericStyle_oldstyle": "旧式",
+	"numericStyle_tabular": "等宽",
+	"numericStyle": "数字形态",
+	"displayOptions": "显示设置",
+	"justify": "两端对齐",
+	"sizeAdjustment": "字号调整",
+	"ligatures": "连笔",
+	"hyphenate": "自动断词"
+}

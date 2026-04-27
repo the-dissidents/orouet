@@ -1,0 +1,12 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"numericStyle_lining": "lining",
+	"numericStyle_oldstyle": "old style",
+	"numericStyle_tabular": "tabular",
+	"numericStyle": "numeric style",
+	"displayOptions": "display options",
+	"justify": "justify",
+	"sizeAdjustment": "size adjustment",
+	"ligatures": "ligatures",
+	"hyphenate": "hyphenate"
+}

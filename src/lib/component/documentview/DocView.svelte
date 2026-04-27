@@ -1,6 +1,7 @@
 <script lang="ts" module>
   export class PaneContext {
     selection?: Selection = $state();
+    opts?: TextOptions = $state();
     focused = $state(false);
   }
 </script>
@@ -75,10 +76,21 @@
     });
     context.selection = view.state.selection;
     context.focused = view.hasFocus();
+    context.opts = opts;
   })
 </script>
 
-<div class="container" bind:this={content} {...rest}>
+<div class="container"
+  style="
+    font-variant-numeric: {opts.numericStyle}-nums;
+    font-variant-ligatures:
+      {opts.ligatures.common ? '' : 'no-'}common-ligatures
+      {opts.ligatures.contextual ? '' : 'no-'}contextual
+      {opts.ligatures.discretionary ? '' : 'no-'}discretionary-ligatures
+      {opts.ligatures.historical ? '' : 'no-'}historical-ligatures;
+    hyphens: {opts.hyphenation ? 'auto' : 'manual'};
+  "
+  bind:this={content} {...rest}>
 </div>
 
 <style lang="scss">
@@ -101,6 +113,10 @@
 
     * {
       font-size: 20px;
+    }
+
+    [data-block] {
+
     }
   }
 </style>
