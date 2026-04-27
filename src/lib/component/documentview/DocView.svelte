@@ -20,12 +20,14 @@
   import ClusterView from "./ClusterView.svelte";
   import type { SvelteHTMLElements } from "svelte/elements";
   import { placeholder } from "./Placeholder";
+  import type { TextOptions } from "$lib/DocumentContext.svelte";
 
   interface Props {
-    doc: Node
+    doc: Node,
+    opts: TextOptions
   }
 
-  let { doc = $bindable(), ...rest }: Props & SvelteHTMLElements['div'] = $props();
+  let { doc = $bindable(), opts, ...rest }: Props & SvelteHTMLElements['div'] = $props();
   $effect(() => Debug.assert(doc.type == PaneSchema.topNodeType));
 
   let content: HTMLElement | undefined = $state();

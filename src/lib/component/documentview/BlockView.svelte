@@ -30,7 +30,12 @@
     position: relative;
     display: block;
 
-    font-family: 'EB Garamond', 'Times New Roman', Times, serif;
+    font-family: 'Text', 'Text-Chinese', 'Times New Roman', serif;
+    font-weight: 400;
+    font-variant-numeric: lining-nums;
+    text-autospace: normal;
+    text-align: justify;
+
     line-height: normal;
 
     background-color: transparent;
@@ -39,10 +44,13 @@
     border-radius: 4px;
     padding: 5px 10px;
 
-    transition: border 0.1s;
-
     &[data-selected=true] {
-      border: 1px solid var(--accent1-border-light);
+      border-color: var(--accent1-border-light);
+    }
+
+    u {
+      text-decoration-thickness: 1.5px;
+      text-underline-offset: 0.2em;
     }
   }
 

@@ -4,25 +4,29 @@
   import DocView from "./DocView.svelte";
 
   interface Props {
-    context: DocumentContext
+    context: DocumentContext,
   }
 
   let { context }: Props = $props();
 
   let leftPane: HTMLElement | undefined = $state();
+  // let rightPane: HTMLElement | undefined = $state();
   let content: HTMLElement | undefined = $state();
 </script>
 
-<div class="container" bind:this={content} style="grid-template-rows: min-content repeat({context.source.childCount}, min-content) auto;">
+<div class="container">
+
+<div class="grid" bind:this={content} style="grid-template-rows: min-content repeat({context.source.content.childCount}, min-content) auto;">
   <div class="dummy-row">
     <div class="dummy-left" bind:this={leftPane} style:width="33vw"></div>
+    <!-- <div class="dummy-right" bind:this={rightPane} style:width="33vw"></div> -->
   </div>
 
   <div class="resizer">
     <Resizer first={leftPane} vertical useViewportFraction/>
   </div>
 
-  {#each context.source.children as _, i}
+  {#each context.source.content.children as _, i}
     <div class="number-container">
       <div class="number" contenteditable="false">
         {i}
@@ -31,21 +35,26 @@
   {/each}
 
   <div class="left">
-    <DocView bind:doc={context.source} />
+    <DocView bind:doc={context.source.content} opts={context.source.options} />
   </div>
 
   <div class="right">
-    <DocView bind:doc={context.target} />
+    <DocView bind:doc={context.target.content} opts={context.target.options} />
   </div>
+</div>
+
 </div>
 
 <style lang="scss">
   .container {
-    display: grid;
-    grid-template-columns: auto min-content min-content 1fr;
-    // grid-auto-rows: min-content;
-    grid-auto-flow: column;
+    width: 100%;
     overflow-y: auto;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: min-content min-content min-content minmax(0, 1fr);
+    grid-auto-flow: column;
 
     flex-grow: 1;
     white-space: pre-wrap;
@@ -71,7 +80,7 @@
   }
 
   .number {
-    padding: 5px 5px 0 5px;
+    padding: 7px 5px 0 5px;
     color: gray;
     position: sticky;
     align-self: start;

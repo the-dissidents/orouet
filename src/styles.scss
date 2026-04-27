@@ -24,3 +24,25 @@ html, body {
 .grow {
   flex-grow: 1;
 }
+
+@font-face {
+  font-family: 'Text';
+  font-style: normal;
+  src: url('./Baskervville.ttf');
+}
+
+@font-face {
+  font-family: 'Text-Chinese';
+  src: url('./FangZhengShuSongJianTi.ttf');
+}
+
+@font-face {
+  font-family: 'Text-Fallback';
+  src: url('./HanaMinA.ttf');
+}
+
+@font-face {
+  font-family: 'Text';
+  font-style: italic;
+  src: url('./Baskervville-Italic.ttf');
+}
