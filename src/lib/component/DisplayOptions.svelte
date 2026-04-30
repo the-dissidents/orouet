@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { TextOptions } from "$lib/DocumentContext.svelte";
   import { m } from "$lib/paraglide/messages.js";
-  import { Collapsible, NumberInput } from "@the_dissidents/svelte-ui";
+  import { Collapsible, ConfigRow, ConfigTable, NumberInput } from "@the_dissidents/svelte-ui";
 
   interface Props {
     value: TextOptions
@@ -12,57 +12,43 @@
 
 <h5>{m.displayOptions()}</h5>
 
-<div class="content">
-  <label>
-    {m.numericStyle()}
+<ConfigTable>
+  <ConfigRow name={m.numericStyle()}>
     <select bind:value={value.numericStyle}>
       <option value="lining">{m.numericStyle_lining()}</option>
       <option value="oldstyle">{m.numericStyle_oldstyle()}</option>
       <option value="tabular">{m.numericStyle_tabular()}</option>
     </select>
-  </label>
+  </ConfigRow>
 
-  <label>
-    {m.justify()}
+  <ConfigRow name={m.justify()}>
     <input type='checkbox' bind:checked={value.justify}>
-  </label>
+  </ConfigRow>
 
-  <label>
-    {m.hyphenate()}
+  <ConfigRow name={m.hyphenate()}>
     <input type='checkbox' bind:checked={value.hyphenation}>
-  </label>
+  </ConfigRow>
 
-  <label>
-    {m.sizeAdjustment()}
-    <NumberInput bind:value={value.sizeAdjustment} width='4em' />
-  </label>
+  <ConfigRow name={m.sizeAdjustment()}>
+    <NumberInput bind:value={value.sizeAdjustment} width='4em' step='0.02' min='0.5' max='2' />
+  </ConfigRow>
 
-  <Collapsible header={m.ligatures()} active>
-  <div class="content">
+  <ConfigRow name={m.ligatures()}>
     <label>
-      common
-      <input type='checkbox' bind:checked={value.ligatures.common}>
+      {m.ligatures_common()}
+      <input type='checkbox' class="button" bind:checked={value.ligatures.common}>
     </label>
     <label>
-      discretionary
-      <input type='checkbox' bind:checked={value.ligatures.discretionary}>
+      {m.ligatures_discretionary()}
+      <input type='checkbox' class="button" bind:checked={value.ligatures.discretionary}>
     </label>
     <label>
-      historical
-      <input type='checkbox' bind:checked={value.ligatures.historical}>
+      {m.ligatures_historical()}
+      <input type='checkbox' class="button" bind:checked={value.ligatures.historical}>
     </label>
     <label>
-      contextual
-      <input type='checkbox' bind:checked={value.ligatures.contextual}>
+      {m.ligatures_contextual()}
+      <input type='checkbox' class="button" bind:checked={value.ligatures.contextual}>
     </label>
-  </div>
-  </Collapsible>
-</div>
-
-<style lang="scss">
-  .content {
-    display: flex;
-    flex-direction: column;
-    margin: 5px;
-  }
-</style>
+  </ConfigRow>
+</ConfigTable>

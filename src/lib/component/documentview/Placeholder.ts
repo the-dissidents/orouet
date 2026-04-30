@@ -1,4 +1,3 @@
-import { type Wrapped, unwrap } from "$lib/details/Util";
 import type { NodeType } from "prosemirror-model";
 import { Plugin } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";

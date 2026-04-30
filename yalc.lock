@@ -2,7 +2,7 @@
   "version": "v1",
   "packages": {
     "@the_dissidents/svelte-ui": {
-      "signature": "70fb0a553a2ee9c20a744229bf440e20",
+      "signature": "b525f237fcf58ab7c62b159cfea5210a",
       "replaced": "^0.0.5"
     }
   }

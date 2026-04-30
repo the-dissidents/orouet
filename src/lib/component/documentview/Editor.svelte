@@ -2,6 +2,8 @@
   import { Resizer } from "@the_dissidents/svelte-ui";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import DocView from "./DocView.svelte";
+  import { Memorized } from "$lib/details/Memorized.svelte";
+  import * as z from "zod/v4-mini";
 
   interface Props {
     context: DocumentContext,
@@ -10,8 +12,9 @@
   let { context }: Props = $props();
 
   let leftPane: HTMLElement | undefined = $state();
-  // let rightPane: HTMLElement | undefined = $state();
   let content: HTMLElement | undefined = $state();
+
+  const leftSize = Memorized.$('left-size', z.string(), '33vw');
 </script>
 
 <div class="container">
@@ -23,7 +26,7 @@
   </div>
 
   <div class="resizer">
-    <Resizer first={leftPane} vertical useViewportFraction/>
+    <Resizer first={leftPane} bind:value={$leftSize} vertical useViewportFraction/>
   </div>
 
   {#each context.source.content.children as _, i}

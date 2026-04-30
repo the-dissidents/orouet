@@ -1,5 +1,5 @@
 import type { Node } from "prosemirror-model";
-import type { Decoration, DecorationSource, EditorView, NodeView, NodeViewConstructor, ViewMutationRecord } from "prosemirror-view";
+import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { mount, unmount } from "svelte";
 
 export type NodeViewProps = {
@@ -38,8 +38,6 @@ export function createNodeView<
             this.$props.node = node;
             return true;
         }
-
-        // setSelection?: ((anchor: number, head: number, root: Document | ShadowRoot) => void) | undefined;
 
         // destroy() {
         //     unmount(component);

@@ -8,5 +8,9 @@
 	"justify": "justify",
 	"sizeAdjustment": "size adjustment",
 	"ligatures": "ligatures",
-	"hyphenate": "hyphenate"
+	"hyphenate": "hyphenate",
+	"ligatures_common": "common",
+	"ligatures_discretionary": "discretionary",
+	"ligatures_historical": "historical",
+	"ligatures_contextual": "contextual"
 }

@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { Resizer } from '@the_dissidents/svelte-ui';
-  import DocView from '$lib/component/documentview/DocView.svelte';
+  import { ButtonStrip, Resizer, StripRadioItem } from '@the_dissidents/svelte-ui';
   import { DocumentContext } from '$lib/DocumentContext.svelte';
   import Editor from '$lib/component/documentview/Editor.svelte';
   import DisplayOptions from '$lib/component/DisplayOptions.svelte';
 
-  import kleist from '../data/kleist.txt?raw';
+  import text from '../data/hölderlin.txt?raw';
+  import { Memorized } from '$lib/details/Memorized.svelte';
+  import * as z from "zod/v4-mini";
 
 //   let cxt = $state(DocumentContext.fromTestClusters(`
 // Aus einem elenden Zustand sich zu erheben, muß selbst mit gewollter Energie leicht sein. Ich reiße mich vom Sessel los, umlaufe den Tisch, mache Kopf und Hals beweglich, bringe Feuer in die Augen, spanne die Muskeln um sie herum. Arbeite jedem Gefühl entgegen, begrüße A. stürmisch, wenn er jetzt kommen wird, dulde B. freundlich in meinem Zimmer, ziehe bei C. alles, was gesagt wird, trotz Schmerz und Mühe mit langen Zügen in mich hinein.
@@ -17,9 +18,13 @@
 // Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kleinen Fingers über die Augenbrauen.
 // `.trim().split('\n\n')));
 
-  let cxt = $state(DocumentContext.fromTestClusters(kleist.trim().split('\n\n')));
-
+  let cxt = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
   let rightPane: HTMLElement | undefined = $state();
+  let chosen: 'source' | 'target' = $state('source');
+
+  const rightSize = Memorized.$('right-size', z.string(), '33vw');
+
+  Memorized.init();
 </script>
 
 <div class="container">
@@ -27,10 +32,13 @@
   </header>
   <main class="page">
     <Editor context={cxt} />
-    <Resizer first={rightPane!} reverse vertical useViewportFraction/>
-    <div bind:this={rightPane} style:width="25vw">
-      <DisplayOptions bind:value={cxt.source.options} />
-      <DisplayOptions bind:value={cxt.target.options} />
+    <Resizer first={rightPane!} bind:value={$rightSize} reverse vertical useViewportFraction/>
+    <div class="pane" bind:this={rightPane}>
+      <ButtonStrip bind:selectValue={chosen}>
+        <StripRadioItem value='source'>source</StripRadioItem>
+        <StripRadioItem value='target'>target</StripRadioItem>
+      </ButtonStrip>
+      <DisplayOptions bind:value={cxt[chosen].options} />
     </div>
   </main>
   <footer>
@@ -70,6 +78,11 @@
 header, footer {
   padding: 0;
   flex: 0 0 auto;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
 }
 
 footer {

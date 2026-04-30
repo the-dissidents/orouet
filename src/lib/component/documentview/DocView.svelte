@@ -14,7 +14,7 @@
   import { undo, redo, history } from "prosemirror-history";
   import { keymap } from "prosemirror-keymap";
   import type { Node } from "prosemirror-model";
-  import { EditorState, Plugin, Selection } from "prosemirror-state";
+  import { EditorState, Selection } from "prosemirror-state";
   import { EditorView } from "prosemirror-view";
   import { onMount } from "svelte";
   import BlockView from "./BlockView.svelte";
@@ -113,10 +113,6 @@
 
     * {
       font-size: 20px;
-    }
-
-    [data-block] {
-
     }
   }
 </style>
