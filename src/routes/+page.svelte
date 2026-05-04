@@ -7,6 +7,10 @@
   import text from '../data/hölderlin.txt?raw';
   import { Memorized } from '$lib/details/Memorized.svelte';
   import * as z from "zod/v4-mini";
+  import { setLocale } from '$lib/paraglide/runtime';
+  import { m } from "$lib/paraglide/messages.js";
+
+  setLocale('zh');
 
 //   let cxt = $state(DocumentContext.fromTestClusters(`
 // Aus einem elenden Zustand sich zu erheben, muß selbst mit gewollter Energie leicht sein. Ich reiße mich vom Sessel los, umlaufe den Tisch, mache Kopf und Hals beweglich, bringe Feuer in die Augen, spanne die Muskeln um sie herum. Arbeite jedem Gefühl entgegen, begrüße A. stürmisch, wenn er jetzt kommen wird, dulde B. freundlich in meinem Zimmer, ziehe bei C. alles, was gesagt wird, trotz Schmerz und Mühe mit langen Zügen in mich hinein.
@@ -35,10 +39,12 @@
     <Resizer first={rightPane!} bind:value={$rightSize} reverse vertical useViewportFraction/>
     <div class="pane" bind:this={rightPane}>
       <ButtonStrip bind:selectValue={chosen}>
-        <StripRadioItem value='source'>source</StripRadioItem>
-        <StripRadioItem value='target'>target</StripRadioItem>
+        <StripRadioItem value='source'>{m.source()}</StripRadioItem>
+        <StripRadioItem value='target'>{m.target()}</StripRadioItem>
       </ButtonStrip>
       <DisplayOptions bind:value={cxt[chosen].options} />
+      <textarea readonly class="code"
+        >{JSON.stringify(cxt[chosen].content.toJSON(), undefined, 2)}</textarea>
     </div>
   </main>
   <footer>
@@ -121,6 +127,12 @@ main {
   height: 100vh;
   max-height: 100vh;
   box-sizing: border-box;
+}
+
+textarea.code {
+  flex-grow: 1;
+  font-family: var(--mono-font-family);
+  font-size: 90%;
 }
 </style>
 

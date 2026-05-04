@@ -48,16 +48,14 @@
     &[data-selected=true] {
       border-color: var(--accent1-border-light);
     }
-
-    u {
-      text-decoration-thickness: 1.5px;
-      text-underline-offset: 0.2em;
-    }
   }
 
-  :global .placeholder [data-block]::before {
+  :global [data-placeholder-text]::before {
+    padding: 9px 10px;
+    line-height: normal;
+
     position: absolute;
-    content: 'enter text here';
+    content: attr(data-placeholder-text);
     color: gray;
     font-family: var(--ui-font-family);
   }

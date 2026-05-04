@@ -5,7 +5,7 @@ import { Debug } from "./Util.js";
 import * as fs from "@tauri-apps/plugin-fs";
 import * as z from "zod/v4-mini";
 
-const configPath = 'memorized.json';
+const configPath = 'orouet.json';
 const memorizedData: Record<string, Memorized<unknown, unknown>> = {};
 let initialized = false;
 const onInitCallbacks: (() => void)[] = [];

@@ -1,10 +1,44 @@
-import { Schema } from "prosemirror-model";
+import { Fragment, Node, Schema } from "prosemirror-model";
+import type { TypedNode } from "./details/TypedNode";
+
+export type IdBaseType = string;
+export type Id = IdBaseType & { __brand: 'id' };
+
+export type Block = TypedNode<Node, { id: Id, index?: number }>;
+export type Cluster = TypedNode<Block, { id: Id, index?: number }>;
+export type Doc = TypedNode<Cluster>;
+
+export function id(base: IdBaseType = crypto.randomUUID()) {
+    return base as Id;
+}
+
+export function makeBlock(id: Id, content: Fragment | Node | readonly Node[]) {
+    return PaneSchema.nodes.block.createChecked({ id }, content) as Block;
+}
+
+export function makeCluster(id: Id, content: Block[]) {
+    return PaneSchema.nodes.cluster.createChecked({ id }, content) as Cluster;
+}
+
+export function makeDoc(content: Cluster[]) {
+    const doc = PaneSchema.nodes.doc.createChecked({}, content) as Doc;
+    updateDocIndex(doc);
+    return doc;
+}
+
+export function updateDocIndex(doc: Doc) {
+    let block_i = 0;
+    doc.forEach((n, _, i) => {
+        n.attrs.index = i;
+        n.forEach((n) => n.attrs.index = block_i++);
+    });
+}
 
 export const PaneSchema = new Schema({
     nodes: {
         text: {
             code: true,
-            inline: true
+            inline: true,
         },
         block: {
             code: true,
@@ -20,7 +54,7 @@ export const PaneSchema = new Schema({
             content: "block+",
             attrs: {
                 id: { default: -1, validate: 'number' },
-                index: { validate: 'number' },
+                index: { default: undefined, validate: 'number' },
             },
             toDOM: () => ['div', {'class': 'cluster'}, 0],
         },
@@ -29,21 +63,13 @@ export const PaneSchema = new Schema({
         }
     },
     marks: {
-        bold: {
-            parseDOM: [{ tag: 'b' }],
-            toDOM: () => ['b', 0]
-        },
-        italic: {
+        emphasis: {
             parseDOM: [{ tag: 'i' }, { tag: 'em' }],
-            toDOM: () => ['i', 0]
+            toDOM: () => ['em', 0]
         },
-        underline: {
-            parseDOM: [{ tag: 'u' }],
-            toDOM: () => ['u', 0]
-        },
-        strikethrough: {
-            parseDOM: [{ tag: 's' }],
-            toDOM: () => ['s', 0]
+        keyword: {
+            parseDOM: [{ tag: 'b' }, { tag: 'strong' }],
+            toDOM: () => ['strong', 0]
         },
     }
 });

@@ -8,5 +8,20 @@
 	"justify": "两端对齐",
 	"sizeAdjustment": "字号调整",
 	"ligatures": "连笔",
-	"hyphenate": "自动断词"
+	"hyphenate": "自动断词",
+	"ligatures_common": "常见",
+	"ligatures_discretionary": "特殊",
+	"ligatures_historical": "历史",
+	"ligatures_contextual": "上下文特定",
+	"emphasisStyle": "着重样式",
+	"keywordStyle": "关键词样式",
+	"italic": "斜体",
+	"bold": "粗体",
+	"smallCaps": "小型大写字符",
+	"underline": "下划线",
+	"emphasisMark": "着重号",
+	"sperrsatz": "Sperrsatz",
+	"source": "原文",
+	"target": "译文",
+    "placeholderText": "在此输入文字"
 }

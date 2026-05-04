@@ -21,6 +21,28 @@
     </select>
   </ConfigRow>
 
+  <ConfigRow name={m.emphasisStyle()}>
+    <select bind:value={value.emphasisStyle}>
+      <option value="italic">{m.italic()}</option>
+      <option value="bold">{m.bold()}</option>
+      <option value="smallcaps">{m.smallCaps()}</option>
+      <option value="underline">{m.underline()}</option>
+      <option value="mark">{m.emphasisMark()}</option>
+      <option value="gesperrt">{m.sperrsatz()}</option>
+    </select>
+  </ConfigRow>
+
+  <ConfigRow name={m.keywordStyle()}>
+    <select bind:value={value.keywordStyle}>
+      <option value="italic">{m.italic()}</option>
+      <option value="bold">{m.bold()}</option>
+      <option value="smallcaps">{m.smallCaps()}</option>
+      <option value="underline">{m.underline()}</option>
+      <option value="mark">{m.emphasisMark()}</option>
+      <option value="gesperrt">{m.sperrsatz()}</option>
+    </select>
+  </ConfigRow>
+
   <ConfigRow name={m.justify()}>
     <input type='checkbox' bind:checked={value.justify}>
   </ConfigRow>

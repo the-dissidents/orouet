@@ -95,7 +95,7 @@
 
   .resizer {
     grid-column: 3;
-    grid-row: 1 / 10;
+    grid-row: 1 / -1;
     cursor: col-resize;
     z-index: 10;
   }

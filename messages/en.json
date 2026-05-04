@@ -12,5 +12,16 @@
 	"ligatures_common": "common",
 	"ligatures_discretionary": "discretionary",
 	"ligatures_historical": "historical",
-	"ligatures_contextual": "contextual"
+	"ligatures_contextual": "contextual",
+	"emphasisStyle": "emphasis style",
+	"keywordStyle": "keyword style",
+	"italic": "italic",
+	"bold": "bold",
+	"smallCaps": "small caps",
+	"underline": "underline",
+	"emphasisMark": "emphasis mark",
+	"sperrsatz": "Sperrsatz",
+	"source": "source",
+	"target": "target",
+    "placeholderText": "enter text here"
 }

@@ -33,7 +33,7 @@
     "@inlang/paraglide-js": "^2.15.2",
     "@sveltejs/adapter-static": "^3.0.6",
     "@sveltejs/kit": "^2.57.1",
-    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "@tauri-apps/cli": "^2",
     "@types/babel__core": "^7.20.5",
     "@types/babel__helper-plugin-utils": "^7.10.3",
@@ -42,7 +42,8 @@
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "typescript": "~6.0.2",
-    "vite": "^8.0.8",
+    "vite": "^7.0.0",
+    "vite-plugin-inspect": "^11.3.3",
     "zimmerframe": "^1.1.4"
   }
 }

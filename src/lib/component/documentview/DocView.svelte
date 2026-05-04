@@ -22,6 +22,7 @@
   import type { SvelteHTMLElements } from "svelte/elements";
   import { placeholder } from "./Placeholder";
   import type { TextOptions } from "$lib/DocumentContext.svelte";
+  import { m } from "$lib/paraglide/messages.js";
 
   interface Props {
     doc: Node,
@@ -34,9 +35,8 @@
   let content: HTMLElement | undefined = $state();
   let view: EditorView;
 
-  const bold = toggleMark(PaneSchema.marks.bold);
-  const italic = toggleMark(PaneSchema.marks.italic);
-  const underline = toggleMark(PaneSchema.marks.underline);
+  const emphasis = toggleMark(PaneSchema.marks.emphasis);
+  const keyword = toggleMark(PaneSchema.marks.keyword);
 
   const context = new PaneContext();
 
@@ -52,11 +52,10 @@
             "Mod-a": selectAll,
             "Mod-z": undo,
             "Mod-y": redo,
-            "Mod-b": bold,
-            "Mod-i": italic,
-            "Mod-u": underline,
+            "Mod-i": emphasis,
+            "Mod-b": keyword,
           }),
-          placeholder(PaneSchema.nodes.block),
+          placeholder(PaneSchema.nodes.block, m.placeholderText),
         ]
       }),
       dispatchTransaction(tr) {
@@ -90,12 +89,55 @@
       {opts.ligatures.historical ? '' : 'no-'}historical-ligatures;
     hyphens: {opts.hyphenation ? 'auto' : 'manual'};
   "
+  data-em={opts.emphasisStyle}
+  data-strong={opts.keywordStyle}
   bind:this={content} {...rest}>
 </div>
 
 <style lang="scss">
+  @mixin emphasisStyle($attr, $tag) {
+    #{$tag} {
+      font-style: normal;
+      font-weight: normal;
+    }
+
+    &[#{$attr}=italic] {
+      #{$tag} { font-style: italic; }
+    }
+    &[#{$attr}=bold] {
+      #{$tag} { font-weight: bold; }
+    }
+    &[#{$attr}=smallcaps] {
+      #{$tag} { font-variant: small-caps; }
+    }
+    &[#{$attr}=underline] {
+      #{$tag} {
+        text-decoration: underline;
+        text-decoration-thickness: 1.5px;
+        text-underline-offset: 0.2em;
+      }
+    }
+    &[#{$attr}=mark] {
+      #{$tag} {
+        text-emphasis: filled dot;
+        text-emphasis-position: under;
+      }
+    }
+    &[#{$attr}=gesperrt] {
+      #{$tag} {
+        letter-spacing: 0.3em;
+        padding-left: 0.3em;
+      }
+    }
+  }
+
   .container {
     display: contents;
+
+    :global {
+      @include emphasisStyle(data-em, em);
+      @include emphasisStyle(data-strong, strong);
+    }
   }
 
   :global .ProseMirror.ProseMirror.ProseMirror {

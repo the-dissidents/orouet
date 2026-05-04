@@ -1,9 +1,13 @@
 import type { Node } from "prosemirror-model";
 import { Debug } from "./details/Util";
-import { PaneSchema } from "./Schema";
+import { id, makeBlock, makeCluster, makeDoc, PaneSchema, type Doc } from "./Schema";
+
+export type EmphasisStyle = 'italic' | 'bold' | 'smallcaps' | 'underline' | 'mark' | 'gesperrt';
 
 export type TextOptions = {
     numericStyle: 'lining' | 'oldstyle' | 'tabular';
+    emphasisStyle: EmphasisStyle;
+    keywordStyle: EmphasisStyle;
     justify: boolean;
     hyphenation: boolean;
     sizeAdjustment: number;
@@ -18,6 +22,8 @@ export type TextOptions = {
 export const DefaultOptions: Record<string, TextOptions> = {
     'en': {
         numericStyle: 'oldstyle',
+        emphasisStyle: 'italic',
+        keywordStyle: 'bold',
         justify: false,
         hyphenation: false,
         sizeAdjustment: 1,
@@ -25,6 +31,8 @@ export const DefaultOptions: Record<string, TextOptions> = {
     },
     'zh': {
         numericStyle: 'lining',
+        emphasisStyle: 'mark',
+        keywordStyle: 'bold',
         justify: true,
         hyphenation: false,
         sizeAdjustment: 1,
@@ -33,7 +41,7 @@ export const DefaultOptions: Record<string, TextOptions> = {
 };
 
 export type Text = {
-    content: Node,
+    content: Doc,
     options: TextOptions
 };
 
@@ -56,15 +64,13 @@ export class DocumentContext {
     static fromTestClusters(s: string[]) {
         return new DocumentContext(
             {
-                content: PaneSchema.nodes.doc.createChecked({}, s.map((x, index) =>
-                    PaneSchema.nodes.cluster.createChecked({ index },
-                        PaneSchema.nodes.block.createChecked({}, PaneSchema.text(x.trim()))))),
+                content: makeDoc(s.map((x) =>
+                    makeCluster(id(), [makeBlock(id(), PaneSchema.text(x.trim()))]))),
                 options: DefaultOptions.en
             },
             {
-                content: PaneSchema.nodes.doc.createChecked({}, s.map((x, index) =>
-                    PaneSchema.nodes.cluster.createChecked({ index },
-                        PaneSchema.nodes.block.createChecked({}, [])))),
+                content: makeDoc(s.map(() =>
+                    makeCluster(id(), [makeBlock(id(), [])]))),
                 options: DefaultOptions.zh
             }
         );
