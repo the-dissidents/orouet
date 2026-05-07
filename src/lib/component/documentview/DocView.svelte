@@ -23,6 +23,7 @@
   import { placeholder } from "./Placeholder";
   import type { TextOptions } from "$lib/DocumentContext.svelte";
   import { m } from "$lib/paraglide/messages.js";
+  import { pasteHandler, userEnter } from "./Commands";
 
   interface Props {
     doc: Node,
@@ -49,6 +50,7 @@
           history(),
           keymap({
             "Shift-Enter": newlineInCode,
+            // "Enter": userEnter,
             "Mod-a": selectAll,
             "Mod-z": undo,
             "Mod-y": redo,
@@ -56,6 +58,7 @@
             "Mod-b": keyword,
           }),
           placeholder(PaneSchema.nodes.block, m.placeholderText),
+          pasteHandler,
         ]
       }),
       dispatchTransaction(tr) {
@@ -71,7 +74,10 @@
       handleDOMEvents: {
         focus: () => context.focused = true,
         blur: () => context.focused = false,
-      }
+      },
+      handlePaste(view, event, slice) {
+
+      },
     });
     context.selection = view.state.selection;
     context.focused = view.hasFocus();

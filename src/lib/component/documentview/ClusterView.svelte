@@ -11,3 +11,9 @@
 <div class="cluster">
   <NodeViewContent />
 </div>
+
+<style>
+  .cluster {
+    position: relative;
+  }
+</style>

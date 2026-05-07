@@ -1,4 +1,4 @@
-import { Fragment, Node, Schema } from "prosemirror-model";
+import { DOMParser, Fragment, Node, Schema } from "prosemirror-model";
 import type { TypedNode } from "./details/TypedNode";
 
 export type IdBaseType = string;
@@ -48,6 +48,7 @@ export const PaneSchema = new Schema({
                 id: { default: -1, validate: 'number' },
                 // index: { validate: 'number' },
             },
+            parseDOM: [{ tag: 'div.block' }, { tag: 'p' }],
             toDOM: () => ['div', {'class': 'block'}, 0],
         },
         cluster: {
@@ -56,6 +57,7 @@ export const PaneSchema = new Schema({
                 id: { default: -1, validate: 'number' },
                 index: { default: undefined, validate: 'number' },
             },
+            parseDOM: [{ tag: 'div.cluster' }],
             toDOM: () => ['div', {'class': 'cluster'}, 0],
         },
         doc: {
@@ -73,3 +75,5 @@ export const PaneSchema = new Schema({
         },
     }
 });
+
+export const SchemaDOMParser = DOMParser.fromSchema(PaneSchema);

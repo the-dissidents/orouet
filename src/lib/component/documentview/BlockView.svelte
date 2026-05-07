@@ -31,7 +31,6 @@
   @use "../../../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
 
   :global [data-block] {
-    position: relative;
     display: block;
 
     font-family: 'Text', 'Text-Chinese', 'Times New Roman', serif;

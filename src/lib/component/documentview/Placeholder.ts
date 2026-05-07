@@ -21,3 +21,11 @@ export const placeholder = (forType: NodeType, text: Wrapped<string>) => new Plu
         },
     }
 });
+
+export const handleParagraphs = new Plugin({
+    props: {
+        handlePaste(view, event, slice) {
+
+        },
+    }
+})
