@@ -57,5 +57,6 @@
     content: attr(data-placeholder-text);
     color: gray;
     font-family: var(--ui-font-family);
+    pointer-events: none;
   }
 </style>

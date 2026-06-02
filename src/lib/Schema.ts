@@ -4,9 +4,21 @@ import type { TypedNode } from "./details/TypedNode";
 export type IdBaseType = string;
 export type Id = IdBaseType & { __brand: 'id' };
 
-export type Block = TypedNode<Node, { id: Id, index?: number }>;
-export type Cluster = TypedNode<Block, { id: Id, index?: number }>;
+export type Block = TypedNode<Node, { id: Id,  }>;
+export type Cluster = TypedNode<Block, { id: Id,  }>;
 export type Doc = TypedNode<Cluster>;
+
+export function isBlock(x: Node): x is Block {
+    return x.type === PaneSchema.nodes.block;
+}
+
+export function isCluster(x: Node): x is Cluster {
+    return x.type === PaneSchema.nodes.cluster;
+}
+
+export function isDoc(x: Node): x is Doc {
+    return x.type === PaneSchema.topNodeType;
+}
 
 export function id(base: IdBaseType = crypto.randomUUID()) {
     return base as Id;
@@ -27,11 +39,11 @@ export function makeDoc(content: Cluster[]) {
 }
 
 export function updateDocIndex(doc: Doc) {
-    let block_i = 0;
-    doc.forEach((n, _, i) => {
-        n.attrs.index = i;
-        n.forEach((n) => n.attrs.index = block_i++);
-    });
+    // let block_i = 0;
+    // doc.forEach((n, _, i) => {
+    //     n.attrs.index = i;
+    //     n.forEach((n) => n.attrs.index = block_i++);
+    // });
 }
 
 export const PaneSchema = new Schema({

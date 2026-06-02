@@ -10,7 +10,7 @@
   import { PaneSchema } from "$lib/Schema";
   import { createNodeView } from "$lib/details/NodeView.svelte";
   import { Debug } from "$lib/details/Util";
-  import { toggleMark, newlineInCode, selectAll } from "prosemirror-commands";
+  import { toggleMark, newlineInCode, selectAll, chainCommands, deleteSelection } from "prosemirror-commands";
   import { undo, redo, history } from "prosemirror-history";
   import { keymap } from "prosemirror-keymap";
   import type { Node } from "prosemirror-model";
@@ -23,7 +23,7 @@
   import { placeholder } from "./Placeholder";
   import type { TextOptions } from "$lib/DocumentContext.svelte";
   import { m } from "$lib/paraglide/messages.js";
-  import { pasteHandler, userEnter } from "./Commands";
+  import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, pasteHandler, splitBlock, testCommand } from "./Commands";
 
   interface Props {
     doc: Node,
@@ -49,8 +49,15 @@
         plugins: [
           history(),
           keymap({
+            "Enter": chainCommands(deleteSelection, gotoNextBlockIfAtEnd),
+            "Control-Enter": chainCommands(deleteSelection, splitBlock),
+            "Control-Backspace": chainCommands(deleteSelection, mergeBlockUpIfAtStart),
             "Shift-Enter": newlineInCode,
-            // "Enter": userEnter,
+
+            "ArrowLeft": gotoPrevBlockIfAtStart,
+            "ArrowRight": gotoNextBlockIfAtEnd,
+            "Mod-e": testCommand,
+
             "Mod-a": selectAll,
             "Mod-z": undo,
             "Mod-y": redo,
@@ -64,7 +71,7 @@
       dispatchTransaction(tr) {
         const newState = view.state.apply(tr)
         if (tr.docChanged) doc = tr.doc;
-        if (tr.selectionSet) context.selection = tr.selection;
+        context.selection = tr.selection;
         view.updateState(newState);
       },
       nodeViews: {
@@ -74,9 +81,6 @@
       handleDOMEvents: {
         focus: () => context.focused = true,
         blur: () => context.focused = false,
-      },
-      handlePaste(view, event, slice) {
-
       },
     });
     context.selection = view.state.selection;
