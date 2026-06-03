@@ -1,6 +1,7 @@
-import type { Node } from "prosemirror-model";
 import { Debug } from "./details/Util";
-import { id, makeBlock, makeCluster, makeDoc, PaneSchema, type Doc } from "./Schema";
+import { id, makeBlock, makeCluster, makeDoc, PaneSchema, type Doc, type Id } from "./Schema";
+import { serializeStep, VersionControl, type Commit, type DeltaCommit, type ReadonlyVersionControl } from "./VersionControl";
+import type { Step } from "prosemirror-transform";
 
 export type EmphasisStyle = 'italic' | 'bold' | 'smallcaps' | 'underline' | 'mark' | 'gesperrt';
 
@@ -46,12 +47,24 @@ export type Text = {
 };
 
 export class DocumentContext {
-    source: Text;
-    target: Text;
+    readonly source: Text;
+    readonly target: Text;
+
+    #currentCommit: Id<Commit>;
+    #vc: VersionControl;
+
+    get currentCommitId() {
+        return this.#currentCommit;
+    }
+
+    get versionControl(): ReadonlyVersionControl {
+        return this.#vc;
+    }
 
     private constructor(
         source: Text,
-        target: Text
+        target: Text,
+        initialCommit: Id<Commit> = id()
     ) {
         Debug.assert(source.content.type === PaneSchema.topNodeType);
         Debug.assert(target.content.type === PaneSchema.topNodeType);
@@ -59,6 +72,25 @@ export class DocumentContext {
 
         this.source = $state(source);
         this.target = $state(target);
+
+        this.#vc = new VersionControl(initialCommit);
+        this.#currentCommit = initialCommit;
+    }
+
+    addSteps(where: 'source' | 'target', steps: Step[], cid: Id<DeltaCommit> = id()) {
+        Debug.assert(steps.length > 0);
+        this.#vc.add({
+            type: 'delta',
+            where, id: cid,
+            timestamp: Date.now(),
+            steps: {
+                list: steps.map((x) => serializeStep(x)),
+                parent: cid
+            },
+            parent: this.#currentCommit
+        });
+        console.log(`created commit ${cid} with ${steps.length} steps`);
+        this.#currentCommit = cid;
     }
 
     static fromTestClusters(s: string[]) {

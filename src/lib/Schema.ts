@@ -2,10 +2,10 @@ import { DOMParser, Fragment, Node, Schema } from "prosemirror-model";
 import type { TypedNode } from "./details/TypedNode";
 
 export type IdBaseType = string;
-export type Id = IdBaseType & { __brand: 'id' };
+export type Id<T> = IdBaseType & { __brand: 'id', __for: T };
 
-export type Block = TypedNode<Node, { id: Id,  }>;
-export type Cluster = TypedNode<Block, { id: Id,  }>;
+export type Block = TypedNode<Node, { id: Id<Block>,  }>;
+export type Cluster = TypedNode<Block, { id: Id<Cluster>,  }>;
 export type Doc = TypedNode<Cluster>;
 
 export function isBlock(x: Node): x is Block {
@@ -20,15 +20,15 @@ export function isDoc(x: Node): x is Doc {
     return x.type === PaneSchema.topNodeType;
 }
 
-export function id(base: IdBaseType = crypto.randomUUID()) {
-    return base as Id;
+export function id<T>(base: IdBaseType = crypto.randomUUID()) {
+    return base as Id<T>;
 }
 
-export function makeBlock(id: Id, content: Fragment | Node | readonly Node[]) {
+export function makeBlock(id: Id<Block>, content: Fragment | Node | readonly Node[]) {
     return PaneSchema.nodes.block.createChecked({ id }, content) as Block;
 }
 
-export function makeCluster(id: Id, content: Block[]) {
+export function makeCluster(id: Id<Cluster>, content: Block[]) {
     return PaneSchema.nodes.cluster.createChecked({ id }, content) as Cluster;
 }
 

@@ -7,13 +7,11 @@
 </script>
 
 <script lang="ts">
-  import { PaneSchema } from "$lib/Schema";
+  import { PaneSchema, type Doc } from "$lib/Schema";
   import { createNodeView } from "$lib/details/NodeView.svelte";
   import { Debug } from "$lib/details/Util";
   import { toggleMark, newlineInCode, selectAll, chainCommands, deleteSelection } from "prosemirror-commands";
-  import { undo, redo, history } from "prosemirror-history";
   import { keymap } from "prosemirror-keymap";
-  import type { Node } from "prosemirror-model";
   import { EditorState, Selection } from "prosemirror-state";
   import { EditorView } from "prosemirror-view";
   import { onMount } from "svelte";
@@ -21,17 +19,17 @@
   import ClusterView from "./ClusterView.svelte";
   import type { SvelteHTMLElements } from "svelte/elements";
   import { placeholder } from "./Placeholder";
-  import type { TextOptions } from "$lib/DocumentContext.svelte";
+  import type { DocumentContext, TextOptions } from "$lib/DocumentContext.svelte";
   import { m } from "$lib/paraglide/messages.js";
   import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, pasteHandler, splitBlock, testCommand } from "./Commands";
 
   interface Props {
-    doc: Node,
-    opts: TextOptions
+    role: 'source' | 'target',
+    dc: DocumentContext,
   }
 
-  let { doc = $bindable(), opts, ...rest }: Props & SvelteHTMLElements['div'] = $props();
-  $effect(() => Debug.assert(doc.type == PaneSchema.topNodeType));
+  let { role, dc, ...rest }: Props & SvelteHTMLElements['div'] = $props();
+  $effect(() => Debug.assert(dc[role].content.type == PaneSchema.topNodeType));
 
   let content: HTMLElement | undefined = $state();
   let view: EditorView;
@@ -39,15 +37,16 @@
   const emphasis = toggleMark(PaneSchema.marks.emphasis);
   const keyword = toggleMark(PaneSchema.marks.keyword);
 
+  const opts = $derived(dc[role].options);
   const context = new PaneContext();
 
   onMount(() => {
     Debug.assert(!!content);
     view = new EditorView(content, {
       state: EditorState.create({
-        schema: PaneSchema, doc,
+        schema: PaneSchema,
+        doc: dc[role].content,
         plugins: [
-          history(),
           keymap({
             "Enter": chainCommands(deleteSelection, gotoNextBlockIfAtEnd),
             "Control-Enter": chainCommands(deleteSelection, splitBlock),
@@ -59,8 +58,8 @@
             "Mod-e": testCommand,
 
             "Mod-a": selectAll,
-            "Mod-z": undo,
-            "Mod-y": redo,
+            // "Mod-z": undo,
+            // "Mod-y": redo,
             "Mod-i": emphasis,
             "Mod-b": keyword,
           }),
@@ -70,8 +69,12 @@
       }),
       dispatchTransaction(tr) {
         const newState = view.state.apply(tr)
-        if (tr.docChanged) doc = tr.doc;
+        if (tr.docChanged) {
+          dc[role].content = tr.doc as Doc;
+          dc.addSteps(role, tr.steps);
+        }
         context.selection = tr.selection;
+
         view.updateState(newState);
       },
       nodeViews: {

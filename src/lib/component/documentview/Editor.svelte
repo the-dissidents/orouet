@@ -38,11 +38,11 @@
   {/each}
 
   <div class="left">
-    <DocView bind:doc={context.source.content} opts={context.source.options} />
+    <DocView role='source' dc={context} />
   </div>
 
   <div class="right">
-    <DocView bind:doc={context.target.content} opts={context.target.options} />
+    <DocView role='target' dc={context} />
   </div>
 </div>
 
