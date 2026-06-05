@@ -1,6 +1,7 @@
+import { EventHost } from "@the_dissidents/svelte-ui";
 import { Debug } from "./details/Util";
 import { id, makeBlock, makeCluster, makeDoc, PaneSchema, type Doc, type Id } from "./Schema";
-import { serializeStep, VersionControl, type Commit, type DeltaCommit, type ReadonlyVersionControl } from "./VersionControl";
+import { serializeStep, VersionControl, type Commit, type DeltaCommit, type ReadonlyVersionControl, type Transforms } from "./VersionControl.svelte";
 import type { Step } from "prosemirror-transform";
 
 export type EmphasisStyle = 'italic' | 'bold' | 'smallcaps' | 'underline' | 'mark' | 'gesperrt';
@@ -53,6 +54,8 @@ export class DocumentContext {
     #currentCommit: Id<Commit>;
     #vc: VersionControl;
 
+    readonly onRevert = new EventHost<[cid: Id<Commit>, ts: Transforms]>();
+
     get currentCommitId() {
         return this.#currentCommit;
     }
@@ -74,15 +77,16 @@ export class DocumentContext {
         this.target = $state(target);
 
         this.#vc = new VersionControl(initialCommit);
-        this.#currentCommit = initialCommit;
+        this.#currentCommit = $state(initialCommit);
     }
 
     addSteps(where: 'source' | 'target', steps: Step[], cid: Id<DeltaCommit> = id()) {
         Debug.assert(steps.length > 0);
         this.#vc.add({
-            type: 'delta',
-            where, id: cid,
-            timestamp: Date.now(),
+            type: 'delta', where, id: cid,
+            attrs: {
+                timestamp: Date.now(),
+            },
             steps: {
                 list: steps.map((x) => serializeStep(x)),
                 parent: cid
@@ -90,6 +94,16 @@ export class DocumentContext {
             parent: this.#currentCommit
         });
         console.log(`created commit ${cid} with ${steps.length} steps`);
+        this.#currentCommit = cid;
+    }
+
+    revertTo(cid: Id<Commit>) {
+        const result = this.#vc.transform({
+            source: this.source.content,
+            target: this.target.content
+        }, this.#currentCommit, cid);
+        Debug.assert(!!result);
+        this.onRevert.dispatch(cid, result);
         this.#currentCommit = cid;
     }
 

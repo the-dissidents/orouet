@@ -73,6 +73,7 @@
           dc[role].content = tr.doc as Doc;
           dc.addSteps(role, tr.steps);
         }
+
         context.selection = tr.selection;
 
         view.updateState(newState);

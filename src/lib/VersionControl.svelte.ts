@@ -1,17 +1,26 @@
 import { Step, Transform } from "prosemirror-transform";
-import { id, PaneSchema, type Doc, type Id } from "./Schema";
+import { id, PaneSchema, type Block, type Cluster, type Doc, type Id } from "./Schema";
 import { Debug } from "./details/Util";
 import { Node } from "prosemirror-model";
+import { SvelteMap } from "svelte/reactivity";
 
 export type Steps = {
     list: SerializedStep[],
     parent: Id<DeltaCommit>, // delta
 };
 
-type CommitBase = {
-    where: 'source' | 'target',
+export type CommitAttributes = {
     timestamp: number,
     label?: string,
+    focusedBlock?: Id<Block>,
+    focusedCluster?: Id<Cluster>,
+    fileSaved?: boolean,
+    selectionSet?: boolean,
+};
+
+type CommitBase = {
+    where: 'source' | 'target',
+    attrs: CommitAttributes,
 };
 
 export type SnapshotCommit = CommitBase & {
@@ -56,13 +65,16 @@ type Docs = {
     target: Doc
 };
 
-type Transforms = {
+export type Transforms = {
     source: Transform,
     target: Transform
 };
 
 export interface ReadonlyVersionControl {
     readonly initialCommit: Id<Commit>;
+    readonly latestCommit: Id<Commit>;
+    readonly sortedCommits: readonly Id<Commit>[];
+
     get<C extends Commit>(id: Id<C>): C | undefined;
     forwardLinks(id: Id<Commit>): Id<Commit>[];
 
@@ -70,10 +82,22 @@ export interface ReadonlyVersionControl {
 }
 
 export class VersionControl implements ReadonlyVersionControl {
-    #commits = new Map<Id<Commit>, Commit>();
-    #forwardEdges = new Map<Id<Commit>, Id<DeltaCommit>[]>();
+    #commits = new SvelteMap<Id<Commit>, Commit>();
+    #forwardEdges = new SvelteMap<Id<Commit>, Id<DeltaCommit>[]>();
 
-    constructor(readonly initialCommit: Id<Commit>) {}
+    #sorted: Id<Commit>[];
+
+    constructor(readonly initialCommit: Id<Commit>) {
+        this.#sorted = $state([initialCommit]);
+    }
+
+    get latestCommit() {
+        return this.#sorted.at(-1)!;
+    }
+
+    get sortedCommits() {
+        return this.#sorted;
+    }
 
     get<C extends Commit>(id: Id<C>): C | undefined {
         return this.#commits.get(id) as C | undefined;
@@ -89,8 +113,11 @@ export class VersionControl implements ReadonlyVersionControl {
     }
 
     add(c: Commit) {
+        const latest = this.get(this.latestCommit);
+        Debug.assert(!latest || c.attrs.timestamp > latest.attrs.timestamp);
         Debug.assert(!this.#commits.has(c.id));
         this.#commits.set(c.id, c);
+        this.#sorted.push(c.id);
 
         switch (c.type) {
             case "snapshot": break;

@@ -1,14 +1,18 @@
 <script lang="ts">
+  import TextInitialIcon from '@lucide/svelte/icons/text-initial';
+  import GitGraphIcon from '@lucide/svelte/icons/git-graph';
+  import MessagesSquareIcon from '@lucide/svelte/icons/messages-square';
+
   import { ButtonStrip, Resizer, StripRadioItem } from '@the_dissidents/svelte-ui';
   import { DocumentContext } from '$lib/DocumentContext.svelte';
   import Editor from '$lib/component/documentview/Editor.svelte';
   import DisplayOptions from '$lib/component/DisplayOptions.svelte';
 
-  import text from '../data/hölderlin.txt?raw';
   import { Memorized } from '$lib/details/Memorized.svelte';
   import * as z from "zod/v4-mini";
   import { setLocale } from '$lib/paraglide/runtime';
   import { m } from "$lib/paraglide/messages.js";
+  import CommitGraph from '$lib/component/graph/CommitGraph.svelte';
 
   setLocale('zh');
 
@@ -24,6 +28,8 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
 
   // let cxt = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
   let rightPane: HTMLElement | undefined = $state();
+  let page: 'format' | 'graph' | 'chat' = $state('format');
+
   let chosen: 'source' | 'target' = $state('source');
 
   const rightSize = Memorized.$('right-size', z.string(), '33vw');
@@ -38,13 +44,24 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
     <Editor context={cxt} />
     <Resizer first={rightPane!} bind:value={$rightSize} reverse vertical useViewportFraction/>
     <div class="pane" bind:this={rightPane}>
-      <ButtonStrip bind:selectValue={chosen}>
-        <StripRadioItem value='source'>{m.source()}</StripRadioItem>
-        <StripRadioItem value='target'>{m.target()}</StripRadioItem>
+      <ButtonStrip bind:selectValue={page} id='pageselector'>
+        <StripRadioItem value='chat'><MessagesSquareIcon /></StripRadioItem>
+        <StripRadioItem value='graph'><GitGraphIcon /></StripRadioItem>
+        <StripRadioItem value='format'><TextInitialIcon /></StripRadioItem>
       </ButtonStrip>
-      <DisplayOptions bind:value={cxt[chosen].options} />
-      <textarea readonly class="code"
-        >{JSON.stringify(cxt[chosen].content.toJSON(), undefined, 2)}</textarea>
+
+      {#if page == 'format'}
+        <ButtonStrip bind:selectValue={chosen}>
+          <StripRadioItem value='source'>{m.source()}</StripRadioItem>
+          <StripRadioItem value='target'>{m.target()}</StripRadioItem>
+        </ButtonStrip>
+        <DisplayOptions bind:value={cxt[chosen].options} />
+        <textarea readonly class="code"
+          >{JSON.stringify(cxt[chosen].content.toJSON(), undefined, 2)}</textarea>
+      {/if}
+      {#if page == 'graph'}
+        <CommitGraph context={cxt}/>
+      {/if}
     </div>
   </main>
   <footer>
@@ -127,6 +144,17 @@ main {
   height: 100vh;
   max-height: 100vh;
   box-sizing: border-box;
+}
+
+:global #pageselector {
+  margin: 0 0 0.5em 0;
+
+  label {
+    .lucide {
+      width: 2.5em;
+      height: 2.5em;
+    }
+  }
 }
 
 textarea.code {
