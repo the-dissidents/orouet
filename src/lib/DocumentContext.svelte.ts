@@ -2,45 +2,8 @@ import { EventHost } from "@the_dissidents/svelte-ui";
 import { Debug } from "./details/Util";
 import { id, makeBlock, makeCluster, makeDoc, PaneSchema, type Doc, type Id } from "./Schema";
 import { serializeStep, VersionControl, type Commit, type DeltaCommit, type ReadonlyVersionControl, type Transforms } from "./VersionControl.svelte";
-import type { Step } from "prosemirror-transform";
-
-export type EmphasisStyle = 'italic' | 'bold' | 'smallcaps' | 'underline' | 'mark' | 'gesperrt';
-
-export type TextOptions = {
-    numericStyle: 'lining' | 'oldstyle' | 'tabular';
-    emphasisStyle: EmphasisStyle;
-    keywordStyle: EmphasisStyle;
-    justify: boolean;
-    hyphenation: boolean;
-    sizeAdjustment: number;
-    ligatures: {
-        common?: boolean,
-        discretionary?: boolean,
-        historical?: boolean,
-        contextual?: boolean
-    }
-};
-
-export const DefaultOptions: Record<string, TextOptions> = {
-    'en': {
-        numericStyle: 'oldstyle',
-        emphasisStyle: 'italic',
-        keywordStyle: 'bold',
-        justify: false,
-        hyphenation: false,
-        sizeAdjustment: 1,
-        ligatures: { common: true }
-    },
-    'zh': {
-        numericStyle: 'lining',
-        emphasisStyle: 'mark',
-        keywordStyle: 'bold',
-        justify: true,
-        hyphenation: false,
-        sizeAdjustment: 1,
-        ligatures: { common: true }
-    }
-};
+import type { Step, Transform } from "prosemirror-transform";
+import { DefaultOptions, type TextOptions } from "./TextOptions";
 
 export type Text = {
     content: Doc,
@@ -80,20 +43,18 @@ export class DocumentContext {
         this.#currentCommit = $state(initialCommit);
     }
 
-    addSteps(where: 'source' | 'target', steps: Step[], cid: Id<DeltaCommit> = id()) {
-        Debug.assert(steps.length > 0);
+    addTransform(where: 'source' | 'target', tr: Transform, cid: Id<DeltaCommit> = id()) {
+        Debug.assert(tr.steps.length > 0);
         this.#vc.add({
             type: 'delta', where, id: cid,
             attrs: {
                 timestamp: Date.now(),
             },
-            steps: {
-                list: steps.map((x) => serializeStep(x)),
-                parent: cid
-            },
+            steps: tr.steps,
+            invertedSteps: tr.steps.map((s, i) => s.invert(tr.docs[i])).reverse(),
             parent: this.#currentCommit
         });
-        console.log(`created commit ${cid} with ${steps.length} steps`);
+        console.log(`created commit ${cid} with ${tr.steps.length} steps`);
         this.#currentCommit = cid;
     }
 

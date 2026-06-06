@@ -19,9 +19,10 @@
   import ClusterView from "./ClusterView.svelte";
   import type { SvelteHTMLElements } from "svelte/elements";
   import { placeholder } from "./Placeholder";
-  import type { DocumentContext, TextOptions } from "$lib/DocumentContext.svelte";
+  import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { m } from "$lib/paraglide/messages.js";
   import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, pasteHandler, splitBlock, testCommand } from "./Commands";
+  import type { TextOptions } from "$lib/TextOptions";
 
   interface Props {
     role: 'source' | 'target',
@@ -40,7 +41,16 @@
   const opts = $derived(dc[role].options);
   const context = new PaneContext();
 
+  const me = {};
+
   onMount(() => {
+    dc.onRevert.bind(me, (_, ts) => {
+      const tr = view.state.tr.setMeta('is_revert', true);
+      for (const step of ts[role].steps)
+        tr.step(step);
+      view.dispatch(tr);
+    });
+
     Debug.assert(!!content);
     view = new EditorView(content, {
       state: EditorState.create({
@@ -71,11 +81,10 @@
         const newState = view.state.apply(tr)
         if (tr.docChanged) {
           dc[role].content = tr.doc as Doc;
-          dc.addSteps(role, tr.steps);
+          if (!tr.getMeta('is_revert'))
+            dc.addTransform(role, tr);
         }
-
         context.selection = tr.selection;
-
         view.updateState(newState);
       },
       nodeViews: {

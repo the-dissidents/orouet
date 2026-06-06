@@ -21,8 +21,8 @@ importers:
         specifier: ^2
         version: 2.5.3
       '@the_dissidents/svelte-ui':
-        specifier: 0.0.13
-        version: 0.0.13(svelte@5.55.4)
+        specifier: 0.0.15
+        version: 0.0.15(svelte@5.55.4)
       prosemirror-commands:
         specifier: ^1.7.1
         version: 1.7.1
@@ -720,8 +720,8 @@ packages:
   '@tauri-apps/plugin-opener@2.5.3':
     resolution: {integrity: sha512-CCcUltXMOfUEArbf3db3kCE7Ggy1ExBEBl51Ko2ODJ6GDYHRp1nSNlQm5uNCFY5k7/ufaK5Ib3Du/Zir19IYQQ==}
 
-  '@the_dissidents/svelte-ui@0.0.13':
-    resolution: {integrity: sha512-9h7oic6LfBSzsnZcjqgHa33XsWOEYJ9T/KawRcl4pyjQmK4J667zMhZkZfIPSxvNvZnLa353s50VUq+5EBw82A==}
+  '@the_dissidents/svelte-ui@0.0.15':
+    resolution: {integrity: sha512-NPtfU087fJeaxT7zVi5qyLtfWaFQLckluP3pltTHq2t72BcOP0HHKqnMaAFmyY1wU1SnSO/cwxcjsFgeas5tZg==}
     peerDependencies:
       svelte: ^5.0.0
 
@@ -1928,7 +1928,7 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.10.1
 
-  '@the_dissidents/svelte-ui@0.0.13(svelte@5.55.4)':
+  '@the_dissidents/svelte-ui@0.0.15(svelte@5.55.4)':
     dependencies:
       '@lucide/svelte': 1.8.0(svelte@5.55.4)
       colorjs.io: 0.6.1

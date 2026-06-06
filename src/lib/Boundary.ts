@@ -1,13 +1,16 @@
 import type { Id } from "$lib/Schema";
 import type { Commit, ReadonlyVersionControl } from "$lib/VersionControl.svelte";
+import * as z from "zod/v4-mini";
 
-type BoundaryCondition = {
-    delay?: number,
-    selectionSet?: boolean,
-    focusedBlockChange?: boolean,
-    focusedClusterChange?: boolean,
-    fileSaved?: boolean,
-};
+export const BoundaryCondition = z.object({
+  delay: z.optional(z.number()),
+  selectionSet: z.optional(z.boolean()),
+  focusedBlockChange: z.optional(z.boolean()),
+  focusedClusterChange: z.optional(z.boolean()),
+  fileSaved: z.optional(z.boolean()),
+});
+
+export type BoundaryCondition = z.infer<typeof BoundaryCondition>;
 
 export function isBoundary(
     vc: ReadonlyVersionControl, current: Id<Commit>,
@@ -34,7 +37,7 @@ export function isBoundary(
     if (condition.fileSaved && next.attrs.fileSaved) return true;
     if (condition.selectionSet && next.attrs.selectionSet) return true;
 
-    if (condition.delay
+    if (condition.delay !== undefined
      && Math.abs(from.attrs.timestamp - next.attrs.timestamp) > condition.delay) return true;
     if (condition.focusedBlockChange
      && next.attrs.focusedBlock !== from.attrs.focusedBlock) return true;

@@ -1,7 +1,6 @@
 import { Step, Transform } from "prosemirror-transform";
-import { id, PaneSchema, type Block, type Cluster, type Doc, type Id } from "./Schema";
+import { type Block, type Cluster, type Doc, type Id } from "./Schema";
 import { Debug } from "./details/Util";
-import { Node } from "prosemirror-model";
 import { SvelteMap } from "svelte/reactivity";
 
 export type Steps = {
@@ -32,7 +31,8 @@ export type SnapshotCommit = CommitBase & {
 export type DeltaCommit = CommitBase & {
     type: 'delta',
     id: Id<DeltaCommit>,
-    steps: Steps,
+    steps: Step[],
+    invertedSteps: Step[],
     parent: Id<Commit>
 };
 
@@ -54,9 +54,10 @@ export function serializeStep(d: Step): SerializedStep {
     return d.toJSON() as SerializedStep;
 }
 
-type PathStep = {
-    direction: 'forward' | 'backward';
-    from?: PathStep;
+type PathSegment = {
+    from?: PathSegment;
+    steps?: Step[];
+    where?: 'source' | 'target';
     to: Id<Commit>;
 };
 
@@ -109,7 +110,7 @@ export class VersionControl implements ReadonlyVersionControl {
     }
 
     isDelta(id: Id<Commit>): id is Id<DeltaCommit> {
-        return this.get(id)!.type == 'delta';
+        return this.get(id)?.type == 'delta';
     }
 
     add(c: Commit) {
@@ -131,40 +132,15 @@ export class VersionControl implements ReadonlyVersionControl {
         }
     }
 
-    #apply(trs: Transforms, step: PathStep): Transforms {
-        Debug.assert(!!step.from);
-        const from = this.#commits.get(step.from.to);
-        Debug.assert(!!from);
-
-        let tr = trs[from.where];
-        switch (from.type) {
-            case "snapshot":
-                tr = new Transform(Node.fromJSON(PaneSchema, from.content));
-                break;
-            case "delta":
-                const steps = from.steps.list.map((x) => Step.fromJSON(PaneSchema, x));
-                if (step.direction == 'forward') {
-                    for (const s of steps)
-                        tr = tr.step(s);
-                } else {
-                    let doc = tr.doc;
-                    for (const s of steps.reverse()) {
-                        const inverted = s.invert(doc);
-                        const result = inverted.apply(doc).doc;
-                        Debug.assert(!!result);
-                        doc = result;
-                        tr = tr.step(inverted);
-                    }
-                }
-                break;
-            default:
-                from satisfies never;
-        }
-        return { ...trs, [from.where]: tr };
+    #apply(trs: Transforms, seg: PathSegment): Transforms {
+        Debug.assert(!!seg.steps && !!seg.where)
+        let tr = trs[seg.where];
+        for (const s of seg.steps) tr = tr.step(s);
+        return { ...trs, [seg.where]: tr };
     }
 
     transform(docs: Docs, from: Id<Commit>, to: Id<Commit>): Transforms | null {
-        const queue: PathStep[] = [{ direction: 'forward', to: from }];
+        const queue: PathSegment[] = [{ to: from }];
         const visited = new Set<Id<Commit>>();
 
         while (queue.length > 0) {
@@ -174,29 +150,35 @@ export class VersionControl implements ReadonlyVersionControl {
             visited.add(currentTo);
 
             if (currentTo === to) {
+                let currentStep = step, segs: PathSegment[] = [];
+                while (currentStep.to !== from) {
+                    Debug.assert(!!currentStep.from && !!currentStep.steps);
+                    segs.unshift(currentStep); // reverse order
+                    currentStep = currentStep.from;
+                }
+
                 let result: Transforms = {
                     source: new Transform(docs.source),
                     target: new Transform(docs.target)
                 };
-                let currentStep = step;
-                while (currentStep.to !== from) {
-                    Debug.assert(!!currentStep.from);
-                    result = this.#apply(result, currentStep);
-                    currentStep = currentStep.from;
-                }
+                segs.forEach((s) => result = this.#apply(result, s));
                 return result;
             }
 
             const forward = this.#forwardEdges.get(currentTo);
             if (forward) queue.push(...forward.map(
-                (to) => ({ direction: 'forward' as const, from: step, to })));
+                (to) => {
+                    const t = this.get(to);
+                    Debug.assert(!!t);
+                    return { from: step, to, steps: t.steps, where: t.where }
+                }));
 
             if (currentTo == this.initialCommit) continue;
             const c = this.#commits.get(currentTo);
             Debug.assert(!!c);
 
             if (c.type == 'delta') queue.push(
-                { direction: 'backward', from: step, to: c.parent });
+                { from: step, to: c.parent, steps: c.invertedSteps, where: c.where });
         }
 
         return null;

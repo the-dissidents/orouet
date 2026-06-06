@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { TextOptions } from "$lib/DocumentContext.svelte";
+  import type { TextOptions } from "$lib/TextOptions";
   import { m } from "$lib/paraglide/messages.js";
   import { Collapsible, ConfigRow, ConfigTable, NumberInput } from "@the_dissidents/svelte-ui";
 

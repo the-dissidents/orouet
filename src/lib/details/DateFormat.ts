@@ -12,3 +12,14 @@ export function formatAbsoluteDate(d: Date) {
     const second = d.getSeconds().toString().padStart(2, '0');
     return `${hour}:${minute}:${second}`;
 }
+
+export function formatFullDate(d: Date) {
+    const month = (d.getMonth()+1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+
+    const hour = d.getHours().toString().padStart(2, '0');
+    const minute = d.getMinutes().toString().padStart(2, '0');
+    const second = d.getSeconds().toString().padStart(2, '0');
+
+    return `${d.getFullYear()}/${month}/${day} ${hour}:${minute}:${second}`;
+}
