@@ -24,9 +24,9 @@
   let boundaryReactive = $state($boundary);
   const layout = $derived(graphLayout(context, boundaryReactive));
 
-  const X_STEP = 20; // Lane width
+  const X_STEP = 12; // Lane width
   const Y_STEP = 30; // Row height
-  const RADIUS = 6;
+  const RADIUS = 5;
   const PADDING = 20;
 
   let svgWidth = $derived(Math.max(0, ...layout.nodes.map(n => n.x)) * X_STEP + PADDING * 2);
@@ -43,8 +43,8 @@
     }
 
     // Add a smooth curve when jumping lanes
-    const midY = (startY + endY) / 2;
-    return `M ${startX} ${startY} C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${endY}`;
+    const midY = Math.max((startY + endY) / 2, startY - (endX - startX) / 2);
+    return `M ${startX} ${startY} C ${endX} ${startY}, ${endX} ${midY}, ${endX} ${endY}`;
   }
 
   async function onClickRow(id: Id<Commit>, c?: Commit) {

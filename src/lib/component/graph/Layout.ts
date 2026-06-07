@@ -1,8 +1,8 @@
 import { isBoundary, type BoundaryCondition } from "$lib/Boundary";
-import { Debug } from "$lib/details/Util";
+import { Debug, range } from "$lib/details/Util";
 import type { DocumentContext } from "$lib/DocumentContext.svelte";
 import type { Id } from "$lib/Schema";
-import type { Commit, ReadonlyVersionControl } from "$lib/VersionControl.svelte";
+import type { Commit } from "$lib/VersionControl.svelte";
 
 export type PositionedNode = {
     id: Id<Commit>,
@@ -10,83 +10,103 @@ export type PositionedNode = {
     maxX: number,
 };
 
+type Node = PositionedNode & {
+    widths: Record<number, number>,
+    topmostY: number,
+    deltaX: number,
+};
+
 export type GraphEdge = {
     from: PositionedNode,
     to: PositionedNode,
-    skipped: Id<Commit>[],
 };
 
 export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
     const vc = c.versionControl;
+
+    // recent on top
     const commits = vc.sortedCommits.toReversed();
+    const nodeMap = new Map<Id<Commit>, Node>();
+    const nodes: Node[] = [];
 
-    const nodes: PositionedNode[] = [];
-    const nodeMap = new Map<Id<Commit>, PositionedNode>();
-    const lanes: (Id<Commit> | null)[] = [];
+    const skipped = new Set<Id<Commit>>();
+    const realChildren = new Map<Id<Commit>, Id<Commit>[]>();
 
-    const skippedSet = new Set<Id<Commit>>();
-    const parentMap = new Map<Id<Commit>, Id<Commit>>();
-    const skippedMap = new Map<Id<Commit>, Id<Commit>[]>();
+    // process skipping
+    for (const id of commits) {
+        if (skipped.has(id) || !vc.isDelta(id)) continue;
+        const commit = vc.get(id)!;
+        let p = commit.parent;
+        while (!isBoundary(vc, p, 'forward', b) && p !== c.currentCommitId) {
+            skipped.add(p);
+            Debug.assert(vc.isDelta(p));
+            p = vc.get(p)!.parent;
+        }
+        const children = realChildren.get(p) ?? [];
+        children.push(id);
+        realChildren.set(p, children);
+    }
 
+    // helper
+    function getChildren(id: Id<Commit>) {
+        return (realChildren.get(id) ?? []).map((x) => {
+            Debug.assert(nodeMap.has(x));
+            return nodeMap.get(x)!;
+        });
+    }
+
+    // modified Reingold-Tilford with right contour only
     let y = 0;
-    commits.forEach((id) => {
-        if (skippedSet.has(id)) return;
+    for (const id of commits) {
+        if (skipped.has(id)) continue;
 
-        let x = lanes.indexOf(id);
-        if (x < 0) x = lanes.indexOf(null);
-        if (x < 0) {
-            x = lanes.length;
-            lanes.push(null);
-        }
-        const node: PositionedNode = {
-            id, x, y,
-            maxX: Math.max(x, lanes.findLastIndex((x) => x !== null))
-        };
-        nodes.push(node);
-        nodeMap.set(id, node);
+        // recent branches to the left
+        const children = getChildren(id).sort((a, b) => a.topmostY - b.topmostY);
+        const widths: Record<number, number> = { [y]: 0 };
 
-        const commit = vc.get(id);
-        if (commit?.type == 'delta') {
-            // skip nodes within boundary to find display-parent
-            let cur = commit, parent = commit.parent, skipped: Id<Commit>[] = [];
-            while (!isBoundary(vc, cur.id, 'backward', b) && parent !== c.currentCommitId) {
-                if (!vc.isDelta(parent)) break;
-                skippedSet.add(parent);
-                skipped.push(parent);
+        children.forEach((child, i) => {
+            const shift = i == 0 ? 0
+                : Math.max(0, ...range(child.topmostY, y).map((yx) => widths[yx] ?? 0)) + 1;
+            child.deltaX = shift;
 
-                cur = vc.get(parent)!;
-                Debug.assert(!!cur);
-                parent = cur.parent;
+            let lastWx = 0;
+            for (let yx = child.topmostY; yx <= y; yx++) {
+                // use last value to bridge gaps
+                const wx = child.widths[yx] ?? lastWx;
+                lastWx = wx;
+
+                if (yx in widths)
+                    widths[yx] = Math.max(widths[yx], wx + shift);
+                else
+                    widths[yx] = wx + shift;
             }
-            skippedMap.set(id, skipped);
-            parentMap.set(id, parent);
+        });
 
-            if (!lanes.includes(parent)) lanes[x] = parent;
-            else lanes[x] = null;
-
-            // process more parents for merge commits...
-        } else {
-            lanes[x] = null;
-        }
-
+        const topmostY = Math.min(y, ...children.map((x) => x.topmostY));
+        const node: Node = { id, x: 0, y, widths, topmostY, deltaX: 0, maxX: 0 };
+        nodeMap.set(id, node);
+        nodes.push(node);
         y++;
-    });
+    }
 
     const edges: GraphEdge[] = [];
-    commits.forEach((id) => {
-        if (skippedSet.has(id)) return;
+    function resolveX(id: Id<Commit>, currentX: number) {
+        const node = nodeMap.get(id);
+        Debug.assert(!!node);
+        node.x = currentX;
 
-        const commit = vc.get(id);
-        if (commit?.type == 'delta') {
-            const from = nodeMap.get(id);
-            const to = nodeMap.get(parentMap.get(id)!);
-            Debug.assert(!!from && !!to);
-            edges.push({
-                from, to,
-                skipped: skippedMap.get(id) ?? []
-            });
+        for (const child of getChildren(id)) {
+            resolveX(child.id, currentX + child.deltaX);
+            edges.push({ from: node, to: child });
         }
-    });
+    }
+    resolveX(vc.initialCommit, 0);
+
+    // maxX is just the global width at that Y level
+    const globalWidths = nodeMap.get(vc.initialCommit)?.widths;
+    Debug.assert(!!globalWidths);
+    for (const node of nodes)
+        node.maxX = globalWidths[node.y];
 
     return { nodes, edges };
 }

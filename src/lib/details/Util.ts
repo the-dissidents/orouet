@@ -14,3 +14,8 @@ export const Debug: {
         if (!!!x) throw new Error('assertion failed ' + file ? `[${file}@${line}]` : '[?]');
     }
 };
+
+export function* range(a: number, b: number, s = 1) {
+    for (let i = a; i < b; i += s)
+        yield i;
+}

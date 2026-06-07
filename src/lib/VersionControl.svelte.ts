@@ -105,7 +105,7 @@ export class VersionControl implements ReadonlyVersionControl {
     }
 
     forwardLinks(id: Id<Commit>): Id<Commit>[] {
-        Debug.assert(this.#commits.has(id));
+        Debug.assert(this.#commits.has(id) || id === this.initialCommit);
         return this.#forwardEdges.get(id) ?? [];
     }
 
