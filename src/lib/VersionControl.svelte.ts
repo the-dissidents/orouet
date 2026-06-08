@@ -1,33 +1,56 @@
 import { Step, Transform } from "prosemirror-transform";
-import { type Block, type Cluster, type Doc, type Id } from "./Schema";
+import { Id, PaneSchema, type Block, type Cluster, type Doc } from "./Schema";
 import { Debug } from "./details/Util";
 import { SvelteMap } from "svelte/reactivity";
+import * as z from "zod/v4-mini";
 
-export type Steps = {
-    list: SerializedStep[],
-    parent: Id<DeltaCommit>, // delta
-};
+const CommitBase = z.object({
+    where: z.enum(['source', 'target']),
+    attrs: z.object({
+        timestamp: z.number(),
+        label: z.optional(z.string()),
+        focusedBlock: z.optional(Id<Block>()),
+        focusedCluster: z.optional(Id<Cluster>()),
+        fileSaved: z.optional(z.boolean()),
+        selectionSet: z.optional(z.boolean()),
+    })
+});
 
-export type CommitAttributes = {
-    timestamp: number,
-    label?: string,
-    focusedBlock?: Id<Block>,
-    focusedCluster?: Id<Cluster>,
-    fileSaved?: boolean,
-    selectionSet?: boolean,
-};
+type CommitBase = z.infer<typeof CommitBase>;
 
-type CommitBase = {
-    where: 'source' | 'target',
-    attrs: CommitAttributes,
-};
+const ZStep = z.codec(z.any(), z.instanceof(Step), {
+    decode: (v, ctx) => {
+        try {
+            return Step.fromJSON(PaneSchema, v);
+        } catch (e: any) {
+            ctx.issues.push({
+                code: 'invalid_format',
+                format: 'ProseMirror Step',
+                input: v,
+                message: e.message
+            });
+            return z.NEVER;
+        }
+    },
+    encode: (v) => v.toJSON()
+});
 
-export type SnapshotCommit = CommitBase & {
-    type: 'snapshot',
-    id: Id<SnapshotCommit>,
-    content: SerializedDoc,
-};
+export const DeltaCommit = z.object({
+    ...CommitBase.shape,
+    id: Id<DeltaCommit>(),
+    steps: z.array(ZStep),
+    invertedSteps: z.array(ZStep),
+    parent: Id<Commit>(),
+});
 
+export const MergeCommit = z.object({
+    ...CommitBase.shape,
+    id: Id<MergeCommit>(),
+    // todo
+});
+
+// to avoid typing difficulties with circular reference,
+// we must write out the types again instead of using `z.infer`
 export type DeltaCommit = CommitBase & {
     type: 'delta',
     id: Id<DeltaCommit>,
@@ -36,8 +59,16 @@ export type DeltaCommit = CommitBase & {
     parent: Id<Commit>
 };
 
+export type MergeCommit = CommitBase & {
+    type: 'merge',
+    id: Id<MergeCommit>,
+    // todo
+};
+
+export const Commit = z.union([MergeCommit, DeltaCommit]);
+
 export type Commit =
-    | SnapshotCommit
+    | MergeCommit
     | DeltaCommit;
 
 declare const serializedDoc: unique symbol;
@@ -82,14 +113,38 @@ export interface ReadonlyVersionControl {
     isDelta(id: Id<Commit>): id is Id<DeltaCommit>;
 }
 
+export const SerializedVersionControl = z.object({
+    version: z.literal(1),
+    initialCommit: Id<Commit>(),
+    commits: z.array(Commit)
+});
+
+export type SerializedVersionControl = z.infer<typeof SerializedVersionControl>;
+
 export class VersionControl implements ReadonlyVersionControl {
     #commits = new SvelteMap<Id<Commit>, Commit>();
     #forwardEdges = new SvelteMap<Id<Commit>, Id<DeltaCommit>[]>();
 
+    // actually maps guarentee insertion order, but we need the initial commit in
+    // this array anyway and it's probably faster than using $derived from values
     #sorted: Id<Commit>[];
 
     constructor(readonly initialCommit: Id<Commit>) {
         this.#sorted = $state([initialCommit]);
+    }
+
+    serialize(): SerializedVersionControl {
+        return {
+            version: 1,
+            initialCommit: this.initialCommit,
+            commits: [...this.#commits.values()]
+        };
+    }
+
+    static deserialize(s: SerializedVersionControl) {
+        const vc = new VersionControl(s.initialCommit);
+        s.commits.forEach((c) => vc.add(c as Commit));
+        return vc;
     }
 
     get latestCommit() {
@@ -121,7 +176,7 @@ export class VersionControl implements ReadonlyVersionControl {
         this.#sorted.push(c.id);
 
         switch (c.type) {
-            case "snapshot": break;
+            case "merge": break;
             case "delta":
                 const list = this.#forwardEdges.get(c.parent) ?? [];
                 list.push(c.id);

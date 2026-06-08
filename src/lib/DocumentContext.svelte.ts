@@ -1,14 +1,27 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
 import { Debug } from "./details/Util";
-import { id, makeBlock, makeCluster, makeDoc, PaneSchema, type Doc, type Id } from "./Schema";
-import { serializeStep, VersionControl, type Commit, type DeltaCommit, type ReadonlyVersionControl, type Transforms } from "./VersionControl.svelte";
-import type { Step, Transform } from "prosemirror-transform";
-import { DefaultOptions, type TextOptions } from "./TextOptions";
+import { Doc, Id, id, makeBlock, makeCluster, makeDoc, PaneSchema } from "./Schema";
+import { Commit, SerializedVersionControl, VersionControl, type DeltaCommit, type ReadonlyVersionControl, type Transforms } from "./VersionControl.svelte";
+import type { Transform } from "prosemirror-transform";
+import { DefaultOptions, TextOptions } from "./TextOptions";
+import * as z from "zod/v4-mini";
 
-export type Text = {
+export const Text = z.object({
     content: Doc,
     options: TextOptions
-};
+});
+
+export type Text = z.infer<typeof Text>;
+
+export const SerializedDocumentContext = z.object({
+    version: z.literal(1),
+    source: Text,
+    target: Text,
+    currentCommit: Id<Commit>(),
+    vc: SerializedVersionControl
+});
+
+export type SerializedDocumentContext = z.input<typeof SerializedDocumentContext>;
 
 export class DocumentContext {
     readonly source: Text;
@@ -18,6 +31,24 @@ export class DocumentContext {
     #vc: VersionControl;
 
     readonly onRevert = new EventHost<[cid: Id<Commit>, ts: Transforms]>();
+
+    serialize(): SerializedDocumentContext {
+        return {
+            version: 1,
+            source: z.encode(Text, this.source),
+            target: z.encode(Text, this.target),
+            currentCommit: this.#currentCommit,
+            vc: this.#vc.serialize()
+        };
+    }
+
+    static deserialize(s: SerializedDocumentContext) {
+        const decoded = z.decode(SerializedDocumentContext, s);
+        const c = new DocumentContext(
+            decoded.source, decoded.target, VersionControl.deserialize(decoded.vc));
+        c.#currentCommit = decoded.currentCommit;
+        return c;
+    }
 
     get currentCommitId() {
         return this.#currentCommit;
@@ -30,7 +61,7 @@ export class DocumentContext {
     private constructor(
         source: Text,
         target: Text,
-        initialCommit: Id<Commit> = id()
+        vc = new VersionControl(id())
     ) {
         Debug.assert(source.content.type === PaneSchema.topNodeType);
         Debug.assert(target.content.type === PaneSchema.topNodeType);
@@ -39,8 +70,8 @@ export class DocumentContext {
         this.source = $state(source);
         this.target = $state(target);
 
-        this.#vc = new VersionControl(initialCommit);
-        this.#currentCommit = $state(initialCommit);
+        this.#vc = vc;
+        this.#currentCommit = $state(vc.initialCommit);
     }
 
     addTransform(where: 'source' | 'target', tr: Transform, cid: Id<DeltaCommit> = id()) {
@@ -72,12 +103,12 @@ export class DocumentContext {
         return new DocumentContext(
             {
                 content: makeDoc(s.map((x) =>
-                    makeCluster(id(), [makeBlock(id(), PaneSchema.text(x.trim()))]))),
+                    makeCluster([makeBlock(PaneSchema.text(x.trim()))]))),
                 options: DefaultOptions.en
             },
             {
                 content: makeDoc(s.map(() =>
-                    makeCluster(id(), [makeBlock(id(), [])]))),
+                    makeCluster([makeBlock([])]))),
                 options: DefaultOptions.zh
             }
         );

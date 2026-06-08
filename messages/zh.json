@@ -23,5 +23,8 @@
 	"sperrsatz": "Sperrsatz",
 	"source": "原文",
 	"target": "译文",
-    "placeholderText": "在此输入文字"
+	"placeholderText": "在此输入文字",
+	"boundary_delay": "时间间隔大于",
+	"seconds": "秒",
+	"boundary_fileSaved": "文件保存"
 }

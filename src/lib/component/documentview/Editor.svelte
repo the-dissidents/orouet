@@ -12,14 +12,26 @@
   let { context }: Props = $props();
 
   let leftPane: HTMLElement | undefined = $state();
-  let content: HTMLElement | undefined = $state();
+  let source = $state<DocView>(), target = $state<DocView>();
 
   const leftSize = Memorized.$('left-size', z.string(), '33vw');
+
+  export function selection(side: 'source' | 'target') {
+    source; target;
+    return side == 'source' ? source?.selection() : target?.selection();
+  }
+
+  export function activeSide(): 'source' | 'target' | null {
+    source; target;
+    return source?.focused() ? 'source'
+         : target?.focused() ? 'target'
+         : null;
+  }
 </script>
 
 <div class="container">
 
-<div class="grid" bind:this={content} style="grid-template-rows: min-content repeat({context.source.content.childCount}, min-content) auto;">
+<div class="grid" style="grid-template-rows: min-content repeat({context.source.content.childCount}, min-content) auto;">
   <div class="dummy-row">
     <div class="dummy-left" bind:this={leftPane} style:width="33vw"></div>
     <!-- <div class="dummy-right" bind:this={rightPane} style:width="33vw"></div> -->
@@ -32,17 +44,17 @@
   {#each context.source.content.children as _, i}
     <div class="number-container">
       <div class="number" contenteditable="false">
-        {i}
+        {i+1}
       </div>
     </div>
   {/each}
 
   <div class="left">
-    <DocView role='source' dc={context} />
+    <DocView role='source' dc={context} bind:this={source} />
   </div>
 
   <div class="right">
-    <DocView role='target' dc={context} />
+    <DocView role='target' dc={context} bind:this={target} />
   </div>
 </div>
 

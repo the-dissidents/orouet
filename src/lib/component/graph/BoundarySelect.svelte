@@ -2,6 +2,7 @@
   import type { BoundaryCondition } from "$lib/Boundary";
   import { ConfigRow, ConfigTable, NumberInput } from "@the_dissidents/svelte-ui";
   import { untrack } from "svelte";
+  import { m } from "$lib/paraglide/messages.js";
 
   const { c = $bindable(), onChange }:
     { c: BoundaryCondition, onChange?: (c: BoundaryCondition) => void } = $props();
@@ -10,30 +11,31 @@
     if (c) untrack(() => onChange?.(c));
   });
 
-  let placeholderDelay = c.delay ?? 500;
+  let delaySeconds = c.delay ?? 5;
 </script>
 
 <ConfigTable>
-  <ConfigRow name='时间间隔'>
+  <ConfigRow name={m.boundary_delay()}>
     <label>
       <input type='checkbox' checked={c.delay !== undefined}
-        onchange={(x) => x.currentTarget.checked ? c.delay = placeholderDelay : c.delay = undefined}>
+        onchange={(x) => x.currentTarget.checked
+          ? c.delay = delaySeconds * 1000 : c.delay = undefined}>
       <NumberInput bind:value={
-        () => c.delay ?? placeholderDelay,
-        (x) => { c.delay = x; placeholderDelay = x; }} min='0' max='10000' />
-      ms
+        () => c.delay ? c.delay / 1000 : delaySeconds,
+        (x) => { c.delay = x * 1000; delaySeconds = x; }} min='0' max='10000' step='0.1' />
+      {m.seconds()}
     </label>
   </ConfigRow>
 
-  <ConfigRow name='文件保存'>
+  <ConfigRow name={m.boundary_fileSaved()}>
     <input type='checkbox' bind:checked={c.fileSaved}>
   </ConfigRow>
 
-  <ConfigRow name='焦点段落变化'>
+  <ConfigRow name={m.boundary_focusedBlockChanged()}>
     <input type='checkbox' bind:checked={c.focusedBlockChange}>
   </ConfigRow>
 
-  <ConfigRow name='焦点段落组合变化'>
+  <ConfigRow name={m.boundary_focusedClusterChanged()}>
     <input type='checkbox' bind:checked={c.focusedClusterChange}>
   </ConfigRow>
 </ConfigTable>

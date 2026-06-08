@@ -7,7 +7,7 @@ export const splitBlock: Command = (s, d) => {
     const head = s.selection.$head;
     const tr = s.tr.split(head.pos, undefined, [{
         type: PaneSchema.nodes.block,
-        attrs: { id: id() }
+        attrs: { }
     }]);
     d?.(tr.scrollIntoView());
     return true;
@@ -84,11 +84,11 @@ function parseClipboard(data: DataTransfer) {
     if (doubleNewlines > 0) {
         const paras = text.split(/\n\n+/)
         return new Slice(Fragment.from(paras.map(
-            (x) => makeBlock(id(), PaneSchema.text(x.trim())))), 2, 2);
+            (x) => makeBlock(PaneSchema.text(x.trim())))), 2, 2);
     } else {
         const paras = text.split(/\n/)
         return new Slice(Fragment.from(paras.map(
-            (x) => makeBlock(id(), PaneSchema.text(x.trim())))), 2, 2);
+            (x) => makeBlock(PaneSchema.text(x.trim())))), 2, 2);
     }
 }
 

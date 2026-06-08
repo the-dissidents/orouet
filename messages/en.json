@@ -23,5 +23,10 @@
 	"sperrsatz": "Sperrsatz",
 	"source": "source",
 	"target": "target",
-    "placeholderText": "enter text here"
+	"placeholderText": "enter text here",
+	"boundary_delay": "delay",
+	"seconds": "s",
+	"boundary_fileSaved": "file saved",
+    "boundary_focusedBlockChanged": "focused block changed",
+    "boundary_focusedClusterChanged": "focused cluster changed"
 }

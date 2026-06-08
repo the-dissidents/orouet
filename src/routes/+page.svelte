@@ -13,6 +13,7 @@
   import { setLocale } from '$lib/paraglide/runtime';
   import { m } from "$lib/paraglide/messages.js";
   import CommitGraph from '$lib/component/graph/CommitGraph.svelte';
+  import { blockIndex, clusterIndex, clusterOf, columnPosition } from '$lib/Schema';
 
   setLocale('zh');
 
@@ -31,8 +32,12 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
   let page: 'format' | 'graph' | 'chat' = $state('format');
 
   let chosen: 'source' | 'target' = $state('source');
+  let editor = $state<Editor>();
 
   const rightSize = Memorized.$('right-size', z.string(), '33vw');
+
+  const activeSide = $derived(editor?.activeSide());
+  const selection = $derived(activeSide ? editor!.selection(activeSide) : undefined);
 
   Memorized.init();
 </script>
@@ -41,7 +46,7 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
   <header id="titlebar" data-tauri-drag-region>
   </header>
   <main class="page">
-    <Editor context={cxt} />
+    <Editor context={cxt} bind:this={editor} />
     <Resizer first={rightPane!} bind:value={$rightSize} reverse vertical useViewportFraction/>
     <div class="pane" bind:this={rightPane}>
       <ButtonStrip bind:selectValue={page} id='pageselector'>
@@ -66,28 +71,25 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
   </main>
   <footer>
     <div class="grow">ok</div>
-    <!-- <div>
-      {#if view?.selection('source')}
-      {@const sel = view.selection('source')!}
-      {@const e = `${sel.from.block.id}.${sel.from.pos}-${sel.to.block.id}.${sel.to.pos}`}
-        {#if sel.ongoing}
-          <b>{e}</b>
-        {:else}
-          {e}
-        {/if}
+    {#if selection}
+    {@const { $head: r, from, to } = selection}
+      <div class="border">
+        <span class="label">段落：</span>{clusterIndex(r)+1} / {r.node(0).childCount}
+      </div>
+      {#if clusterOf(r).childCount > 1}
+        <div class="border">
+          <span class="label">子段落：</span>{blockIndex(r)+1} / {clusterOf(r).childCount}
+        </div>
       {/if}
-    </div>
-    <div>
-      {#if view?.selection('target')}
-      {@const sel = view.selection('target')!}
-      {@const e = `${sel.from.block.id}.${sel.from.pos}-${sel.to.block.id}.${sel.to.pos}`}
-        {#if sel.ongoing}
-          <b>{e}</b>
-        {:else}
-          {e}
-        {/if}
+      <div class={{border: from !== to}}>
+        <span class="label">字符：</span>{columnPosition(r)}
+      </div>
+      {#if from !== to}
+        <div>
+          <span class="label">选中长度：</span>{r.doc.textBetween(from, to).length}
+        </div>
       {/if}
-    </div> -->
+    {/if}
   </footer>
 </div>
 
@@ -118,8 +120,18 @@ footer {
   }
 
   div {
-    padding: 2px 10px;
+    padding: 0 10px;
+    margin: 5px 0;
+    line-height: 1.5;
     font-family: monospace;
+
+    &.border {
+      border-right: 1px solid palevioletred;
+    }
+  }
+
+  span.label {
+    opacity: 0.5;
   }
 }
 

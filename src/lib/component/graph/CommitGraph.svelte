@@ -3,7 +3,6 @@
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { graphLayout } from "./Layout";
   import type { Commit } from "$lib/VersionControl.svelte";
-  import { Menu } from "@tauri-apps/api/menu";
   import { Collapsible } from "@the_dissidents/svelte-ui";
   import BoundarySelect from "./BoundarySelect.svelte";
   import { Memorized } from "$lib/details/Memorized.svelte";
@@ -29,7 +28,6 @@
   const RADIUS = 5;
   const PADDING = 20;
 
-  let svgWidth = $derived(Math.max(0, ...layout.nodes.map(n => n.x)) * X_STEP + PADDING * 2);
   let svgHeight = $derived(layout.nodes.length * Y_STEP + PADDING * 2);
 
   function generatePath(x1: number, y1: number, x2: number, y2: number): string {

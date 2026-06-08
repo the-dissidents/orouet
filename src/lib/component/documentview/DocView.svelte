@@ -41,6 +41,14 @@
   const opts = $derived(dc[role].options);
   const context = new PaneContext();
 
+  export function selection() {
+    return context.selection;
+  }
+
+  export function focused() {
+    return context.focused;
+  }
+
   const me = {};
 
   onMount(() => {
@@ -58,9 +66,9 @@
         doc: dc[role].content,
         plugins: [
           keymap({
-            "Enter": chainCommands(deleteSelection, gotoNextBlockIfAtEnd),
+            "Enter": chainCommands(deleteSelection, gotoNextBlockIfAtEnd, splitBlock),
             "Control-Enter": chainCommands(deleteSelection, splitBlock),
-            "Control-Backspace": chainCommands(deleteSelection, mergeBlockUpIfAtStart),
+            "Backspace": chainCommands(deleteSelection, mergeBlockUpIfAtStart),
             "Shift-Enter": newlineInCode,
 
             "ArrowLeft": gotoPrevBlockIfAtStart,
