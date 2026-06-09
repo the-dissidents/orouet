@@ -15,14 +15,14 @@ export type Block = TypedNode<Node, { }>;
 export type Cluster = TypedNode<Block, { }>;
 export type Doc = TypedNode<Cluster>;
 
-export const Doc = z.codec(z.any(), z.custom<Doc>(), {
+export const Doc = z.codec(z.unknown(), z.custom<Doc>(), {
     decode: (v, cxt) => {
         const n = Node.fromJSON(PaneSchema, v);
         if (isDoc(n)) return n;
         cxt.issues.push({
             code: 'invalid_format',
             format: 'ProseMirror Doc',
-            input: v
+            input: `...`
         });
         return z.NEVER;
     },
@@ -55,16 +55,7 @@ export function makeCluster(content: Block[]) {
 
 export function makeDoc(content: Cluster[]) {
     const doc = PaneSchema.nodes.doc.createChecked({ }, content) as Doc;
-    updateDocIndex(doc);
     return doc;
-}
-
-export function updateDocIndex(doc: Doc) {
-    // let block_i = 0;
-    // doc.forEach((n, _, i) => {
-    //     n.attrs.index = i;
-    //     n.forEach((n) => n.attrs.index = block_i++);
-    // });
 }
 
 export const PaneSchema = new Schema({
@@ -78,8 +69,6 @@ export const PaneSchema = new Schema({
             content: "text*",
             marks: "_",
             attrs: {
-                // id: { default: -1, validate: 'number' },
-                // index: { validate: 'number' },
             },
             parseDOM: [{ tag: 'p' }],
             toDOM: () => ['p', 0],
@@ -87,8 +76,6 @@ export const PaneSchema = new Schema({
         cluster: {
             content: "block+",
             attrs: {
-                // id: { default: -1, validate: 'number' },
-                index: { default: undefined, validate: 'number' },
             },
             parseDOM: [{ tag: 'div.cluster' }],
             toDOM: () => ['div', {'class': 'cluster'}, 0],

@@ -31,6 +31,7 @@
 
 <div class="container">
 
+{#key context}
 <div class="grid" style="grid-template-rows: min-content repeat({context.source.content.childCount}, min-content) auto;">
   <div class="dummy-row">
     <div class="dummy-left" bind:this={leftPane} style:width="33vw"></div>
@@ -57,6 +58,7 @@
     <DocView role='target' dc={context} bind:this={target} />
   </div>
 </div>
+{/key}
 
 </div>
 

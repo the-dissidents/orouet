@@ -2,18 +2,23 @@
   import TextInitialIcon from '@lucide/svelte/icons/text-initial';
   import GitGraphIcon from '@lucide/svelte/icons/git-graph';
   import MessagesSquareIcon from '@lucide/svelte/icons/messages-square';
-
   import { ButtonStrip, Resizer, StripRadioItem } from '@the_dissidents/svelte-ui';
+
   import { DocumentContext } from '$lib/DocumentContext.svelte';
+  import { blockIndex, clusterIndex, clusterOf, columnPosition } from '$lib/Schema';
+  import { Memorized } from '$lib/details/Memorized.svelte';
+
   import Editor from '$lib/component/documentview/Editor.svelte';
   import DisplayOptions from '$lib/component/DisplayOptions.svelte';
+  import CommitGraph from '$lib/component/graph/CommitGraph.svelte';
 
-  import { Memorized } from '$lib/details/Memorized.svelte';
-  import * as z from "zod/v4-mini";
   import { setLocale } from '$lib/paraglide/runtime';
   import { m } from "$lib/paraglide/messages.js";
-  import CommitGraph from '$lib/component/graph/CommitGraph.svelte';
-  import { blockIndex, clusterIndex, clusterOf, columnPosition } from '$lib/Schema';
+
+  import { basename } from '@tauri-apps/api/path';
+  import * as fs from '@tauri-apps/plugin-fs';
+  import * as dialog from '@tauri-apps/plugin-dialog';
+  import * as z from "zod/v4-mini";
 
   setLocale('zh');
 
@@ -35,15 +40,62 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
   let editor = $state<Editor>();
 
   const rightSize = Memorized.$('right-size', z.string(), '33vw');
-
   const activeSide = $derived(editor?.activeSide());
   const selection = $derived(activeSide ? editor!.selection(activeSide) : undefined);
 
+  let status = $state('ok');
+  let path = $state('');
+
   Memorized.init();
+
+  async function load() {
+    const filename = await dialog.open(
+      { filters: [{ name: 'orouet document', extensions: ['json'] }] });
+    if (!filename) return;
+
+    try {
+      const text = await fs.readTextFile(filename);
+      const data = JSON.parse(text);
+      cxt = DocumentContext.deserialize(data);
+      status = `已读取：${filename}`;
+      path = filename;
+    } catch (e) {
+      status = `读取存档出错：${e}`;
+      console.warn(e);
+    }
+  }
+
+  async function save() {
+    if (!path) saveAs();
+    const data = JSON.stringify(cxt.serialize());
+    await fs.writeTextFile(path, data);
+    status = `已保存：${path}`;
+  }
+
+  async function saveAs() {
+    const data = JSON.stringify(cxt.serialize());
+    const filename = await dialog.save(
+      { filters: [{ name: 'orouet document', extensions: ['json'] }] });
+    if (!filename) return;
+    await fs.writeTextFile(filename, data);
+    status = `已保存：${filename}`;
+    path = filename;
+  }
 </script>
 
 <div class="container">
-  <header id="titlebar" data-tauri-drag-region>
+  <header id="titlebar">
+    <div class="spacer" data-tauri-drag-region></div>
+    <button onclick={load}>open</button>
+    <button onclick={saveAs}>save</button>
+    <button onclick={() => console.log(cxt.serialize())}>test</button>
+    <button>import</button>
+
+    <span class="path" data-tauri-drag-region>
+      {path !== '' ? await basename(path) : '未命名文档'}
+    </span>
+    <div class="end" data-tauri-drag-region>
+    </div>
   </header>
   <main class="page">
     <Editor context={cxt} bind:this={editor} />
@@ -55,6 +107,7 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
         <StripRadioItem value='format'><TextInitialIcon /></StripRadioItem>
       </ButtonStrip>
 
+      {#key cxt}
       {#if page == 'format'}
         <ButtonStrip bind:selectValue={chosen}>
           <StripRadioItem value='source'>{m.source()}</StripRadioItem>
@@ -63,14 +116,14 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
         <DisplayOptions bind:value={cxt[chosen].options} />
         <textarea readonly class="code"
           >{JSON.stringify(cxt[chosen].content.toJSON(), undefined, 2)}</textarea>
-      {/if}
-      {#if page == 'graph'}
+      {:else if page == 'graph'}
         <CommitGraph context={cxt}/>
       {/if}
+      {/key}
     </div>
   </main>
   <footer>
-    <div class="grow">ok</div>
+    <div class="grow">{status}</div>
     {#if selection}
     {@const { $head: r, from, to } = selection}
       <div class="border">
@@ -97,7 +150,25 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
 @use "../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
 
 #titlebar {
-  min-height: 30px;
+  height: 1lh;
+  padding: 5px;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+
+  // border-bottom: 1px solid gray;
+
+  .spacer {
+    width: 150px;
+  }
+  .end {
+    flex-grow: 1;
+  }
+  .path {
+    margin-left: 10px;
+    font-weight: bold;
+    font-size: 90%;
+  }
 }
 
 header, footer {

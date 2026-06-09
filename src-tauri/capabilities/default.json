@@ -11,6 +11,7 @@
     "core:window:allow-start-dragging",
     "fs:default",
     "fs:allow-appconfig-read-recursive",
-    "fs:allow-appconfig-write-recursive"
+    "fs:allow-appconfig-write-recursive",
+    "dialog:default"
   ]
 }

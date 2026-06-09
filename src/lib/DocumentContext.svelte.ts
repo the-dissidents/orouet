@@ -13,7 +13,7 @@ export const Text = z.object({
 
 export type Text = z.infer<typeof Text>;
 
-export const SerializedDocumentContext = z.object({
+const SerializedDocumentContext = z.object({
     version: z.literal(1),
     source: Text,
     target: Text,
@@ -21,7 +21,7 @@ export const SerializedDocumentContext = z.object({
     vc: SerializedVersionControl
 });
 
-export type SerializedDocumentContext = z.input<typeof SerializedDocumentContext>;
+export type SerializedDocumentContextJSON = z.input<typeof SerializedDocumentContext>;
 
 export class DocumentContext {
     readonly source: Text;
@@ -32,17 +32,17 @@ export class DocumentContext {
 
     readonly onRevert = new EventHost<[cid: Id<Commit>, ts: Transforms]>();
 
-    serialize(): SerializedDocumentContext {
-        return {
+    serialize(): SerializedDocumentContextJSON {
+        return z.encode(SerializedDocumentContext, {
             version: 1,
-            source: z.encode(Text, this.source),
-            target: z.encode(Text, this.target),
+            source: this.source,
+            target: this.target,
             currentCommit: this.#currentCommit,
             vc: this.#vc.serialize()
-        };
+        });
     }
 
-    static deserialize(s: SerializedDocumentContext) {
+    static deserialize(s: SerializedDocumentContextJSON) {
         const decoded = z.decode(SerializedDocumentContext, s);
         const c = new DocumentContext(
             decoded.source, decoded.target, VersionControl.deserialize(decoded.vc));

@@ -18,7 +18,7 @@ const CommitBase = z.object({
 
 type CommitBase = z.infer<typeof CommitBase>;
 
-const ZStep = z.codec(z.any(), z.instanceof(Step), {
+const ZStep = z.codec(z.unknown(), z.instanceof(Step), {
     decode: (v, ctx) => {
         try {
             return Step.fromJSON(PaneSchema, v);
@@ -26,7 +26,7 @@ const ZStep = z.codec(z.any(), z.instanceof(Step), {
             ctx.issues.push({
                 code: 'invalid_format',
                 format: 'ProseMirror Step',
-                input: v,
+                input: `...`,
                 message: e.message
             });
             return z.NEVER;
@@ -37,6 +37,7 @@ const ZStep = z.codec(z.any(), z.instanceof(Step), {
 
 export const DeltaCommit = z.object({
     ...CommitBase.shape,
+    type: z.literal('delta'),
     id: Id<DeltaCommit>(),
     steps: z.array(ZStep),
     invertedSteps: z.array(ZStep),
@@ -45,6 +46,7 @@ export const DeltaCommit = z.object({
 
 export const MergeCommit = z.object({
     ...CommitBase.shape,
+    type: z.literal('merge'),
     id: Id<MergeCommit>(),
     // todo
 });
@@ -70,20 +72,6 @@ export const Commit = z.union([MergeCommit, DeltaCommit]);
 export type Commit =
     | MergeCommit
     | DeltaCommit;
-
-declare const serializedDoc: unique symbol;
-export type SerializedDoc = { [serializedDoc]: 'serializedDoc' };
-
-declare const serializedStep: unique symbol;
-export type SerializedStep = { [serializedStep]: 'serializedStep' };
-
-export function serializeDoc(d: Doc): SerializedDoc {
-    return d.toJSON() as SerializedDoc;
-}
-
-export function serializeStep(d: Step): SerializedStep {
-    return d.toJSON() as SerializedStep;
-}
 
 type PathSegment = {
     from?: PathSegment;
