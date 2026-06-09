@@ -41,6 +41,8 @@
     "@tauri-apps/cli": "^2",
     "@types/babel__core": "^7.20.5",
     "@types/babel__helper-plugin-utils": "^7.10.3",
+    "@types/node": "^25.9.2",
+    "cldr-core": "^48.2.0",
     "magic-string": "^0.30.21",
     "sass-embedded": "^1.99.0",
     "svelte": "^5.0.0",

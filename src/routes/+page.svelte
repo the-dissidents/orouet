@@ -19,6 +19,7 @@
   import * as dialog from '@tauri-apps/plugin-dialog';
   import * as z from "zod/v4-mini";
   import { Backend } from '$lib/Backend';
+  import LocaleSelect from '$lib/component/LocaleSelect.svelte';
 
   setLocale('zh');
 
@@ -50,7 +51,7 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
 
   async function load() {
     const filename = await dialog.open(
-      { filters: [{ name: 'compressed orouët document', extensions: ['orz'] }] });
+      { filters: [{ name: 'compressed orouët document', extensions: ['orz', 'oro'] }] });
     if (!filename) return;
 
     try {
@@ -119,6 +120,10 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
           <StripRadioItem value='source'>{m.source()}</StripRadioItem>
           <StripRadioItem value='target'>{m.target()}</StripRadioItem>
         </ButtonStrip>
+
+        <h5>语言</h5>
+        <LocaleSelect bind:locale={cxt[chosen].language} />
+
         <DisplayOptions bind:value={cxt[chosen].options} />
         <textarea readonly class="code"
           >{JSON.stringify(cxt[chosen].content.toJSON(), undefined, 2)}</textarea>

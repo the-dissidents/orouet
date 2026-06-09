@@ -5,9 +5,19 @@ import { Commit, SerializedVersionControl, VersionControl, type DeltaCommit, typ
 import type { Transform } from "prosemirror-transform";
 import { DefaultOptions, TextOptions } from "./TextOptions";
 import * as z from "zod/v4-mini";
+import { LanguageCodes, type LanguageCode } from "../data/LocaleData";
+
+export const LocaleId = z.tuple([
+    z.nullable(z.enum(Object.keys(LanguageCodes) as LanguageCode[])),
+    z.nullable(z.string()),
+    z.nullable(z.string()),
+]);
+
+export type LocaleId = z.infer<typeof LocaleId>;
 
 export const Text = z.object({
     content: Doc,
+    language: z._default(LocaleId, ['en', null, null]),
     options: TextOptions
 });
 
@@ -104,12 +114,14 @@ export class DocumentContext {
             {
                 content: makeDoc(s.map((x) =>
                     makeCluster([makeBlock(PaneSchema.text(x.trim()))]))),
-                options: DefaultOptions.en
+                options: DefaultOptions.en,
+                language: ['en', null, null]
             },
             {
                 content: makeDoc(s.map(() =>
                     makeCluster([makeBlock([])]))),
-                options: DefaultOptions.zh
+                options: DefaultOptions.zh,
+                language: ['zh', null, 'CN']
             }
         );
     }

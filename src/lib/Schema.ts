@@ -1,6 +1,5 @@
 import { DOMParser, Fragment, Node, ResolvedPos, Schema } from "prosemirror-model";
 import type { TypedNode } from "./details/TypedNode";
-import { findParentNodeClosestToPos, findParentNodeOfType, findParentNodeOfTypeClosestToPos } from "prosemirror-utils";
 import * as z from "zod/v4-mini";
 import { Debug } from "./details/Util";
 
