@@ -25,4 +25,7 @@ serde_json = "1"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 zstd = "0.13.3"
+ts-rs = "12.0.1"
+log = "0.4.32"
+tauri-plugin-log = "2"
 

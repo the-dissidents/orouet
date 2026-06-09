@@ -16,9 +16,9 @@
   import { m } from "$lib/paraglide/messages.js";
 
   import { basename } from '@tauri-apps/api/path';
-  import * as fs from '@tauri-apps/plugin-fs';
   import * as dialog from '@tauri-apps/plugin-dialog';
   import * as z from "zod/v4-mini";
+  import { Backend } from '$lib/Backend';
 
   setLocale('zh');
 
@@ -50,14 +50,11 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
 
   async function load() {
     const filename = await dialog.open(
-      { filters: [{ name: 'orouet document', extensions: ['json'] }] });
+      { filters: [{ name: 'compressed orouët document', extensions: ['orz'] }] });
     if (!filename) return;
 
     try {
-      const text = await fs.readTextFile(filename);
-      const data = JSON.parse(text);
-      cxt = DocumentContext.deserialize(data);
-      status = `已读取：${filename}`;
+      await readFrom(filename);
       path = filename;
     } catch (e) {
       status = `读取存档出错：${e}`;
@@ -67,19 +64,27 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
 
   async function save() {
     if (!path) saveAs();
-    const data = JSON.stringify(cxt.serialize());
-    await fs.writeTextFile(path, data);
-    status = `已保存：${path}`;
+    await writeTo(path);
   }
 
   async function saveAs() {
-    const data = JSON.stringify(cxt.serialize());
     const filename = await dialog.save(
-      { filters: [{ name: 'orouet document', extensions: ['json'] }] });
+      { filters: [{ name: 'compressed orouët document', extensions: ['orz'] }] });
     if (!filename) return;
-    await fs.writeTextFile(filename, data);
-    status = `已保存：${filename}`;
+    await writeTo(filename);
     path = filename;
+  }
+
+  async function readFrom(file: string) {
+    const data = await Backend.readCompressed(file);
+    cxt = DocumentContext.deserialize(JSON.parse(data));
+    status = `已读取：${file}`;
+  }
+
+  async function writeTo(file: string) {
+    const data = JSON.stringify(cxt.serialize());
+    await Backend.saveCompressed(file, data);
+    status = `已保存：${file}`;
   }
 </script>
 
@@ -87,7 +92,8 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
   <header id="titlebar">
     <div class="spacer" data-tauri-drag-region></div>
     <button onclick={load}>open</button>
-    <button onclick={saveAs}>save</button>
+    <button onclick={save}>save</button>
+    <button onclick={saveAs}>save as</button>
     <button onclick={() => console.log(cxt.serialize())}>test</button>
     <button>import</button>
 

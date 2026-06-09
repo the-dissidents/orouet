@@ -12,6 +12,7 @@
     "fs:default",
     "fs:allow-appconfig-read-recursive",
     "fs:allow-appconfig-write-recursive",
-    "dialog:default"
+    "dialog:default",
+    "log:default"
   ]
 }
