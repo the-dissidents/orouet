@@ -13,6 +13,9 @@
     "fs:allow-appconfig-read-recursive",
     "fs:allow-appconfig-write-recursive",
     "dialog:default",
-    "log:default"
+    "log:default",
+    "stronghold:default",
+    "stronghold:allow-remove-store-record",
+    "stronghold:allow-save-store-record"
   ]
 }

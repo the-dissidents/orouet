@@ -6,6 +6,7 @@ import type { Transform } from "prosemirror-transform";
 import { DefaultOptions, TextOptions } from "./TextOptions";
 import * as z from "zod/v4-mini";
 import { LanguageCodes, type LanguageCode } from "../data/LocaleData";
+import { ChatSession, SerializedChatSession } from "./llm/ChatSession.svelte";
 
 export const LocaleId = z.tuple([
     z.nullable(z.enum(Object.keys(LanguageCodes) as LanguageCode[])),
@@ -28,7 +29,8 @@ const SerializedDocumentContext = z.object({
     source: Text,
     target: Text,
     currentCommit: Id<Commit>(),
-    vc: SerializedVersionControl
+    vc: SerializedVersionControl,
+    chats: z.array(SerializedChatSession),
 });
 
 export type SerializedDocumentContextJSON = z.input<typeof SerializedDocumentContext>;
@@ -39,6 +41,9 @@ export class DocumentContext {
 
     #currentCommit: Id<Commit>;
     #vc: VersionControl;
+    #chats = $state<ChatSession[]>([]);
+
+    get chats() { return this.#chats; }
 
     readonly onRevert = new EventHost<[cid: Id<Commit>, ts: Transforms]>();
 
@@ -48,7 +53,8 @@ export class DocumentContext {
             source: this.source,
             target: this.target,
             currentCommit: this.#currentCommit,
-            vc: this.#vc.serialize()
+            vc: this.#vc.serialize(),
+            chats: this.#chats.map((x) => x.serialize()),
         });
     }
 
@@ -57,6 +63,7 @@ export class DocumentContext {
         const c = new DocumentContext(
             decoded.source, decoded.target, VersionControl.deserialize(decoded.vc));
         c.#currentCommit = decoded.currentCommit;
+        c.#chats = decoded.chats.map((x) => ChatSession.deserialize(x));
         return c;
     }
 

@@ -18,12 +18,15 @@
   import { basename } from '@tauri-apps/api/path';
   import * as dialog from '@tauri-apps/plugin-dialog';
   import * as z from "zod/v4-mini";
-  import { Backend } from '$lib/Backend';
+  import { Backend, Secrets } from '$lib/Backend';
   import LocaleSelect from '$lib/component/LocaleSelect.svelte';
+  import ChatSettings from '$lib/component/chat/ChatSettings.svelte';
+  import { ProviderInfo } from '$lib/llm/ChatProvider';
+  import ChatPanel from '$lib/component/chat/ChatPanel.svelte';
 
   setLocale('zh');
 
-  let cxt = $state(DocumentContext.fromTestClusters(`
+  let ctx = $state(DocumentContext.fromTestClusters(`
 Aus einem elenden Zustand sich zu erheben, muß selbst mit gewollter Energie leicht sein. Ich reiße mich vom Sessel los, umlaufe den Tisch, mache Kopf und Hals beweglich, bringe Feuer in die Augen, spanne die Muskeln um sie herum. Arbeite jedem Gefühl entgegen, begrüße A. stürmisch, wenn er jetzt kommen wird, dulde B. freundlich in meinem Zimmer, ziehe bei C. alles, was gesagt wird, trotz Schmerz und Mühe mit langen Zügen in mich hinein.
 
 Aber selbst wenn es so geht, wird mit jedem Fehler, der nicht ausbleiben kann, das Ganze, das Leichte und das Schwere, stocken, und ich werde mich im Kreise zurückdrehen müssen.
@@ -47,7 +50,8 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
   let status = $state('ok');
   let path = $state('');
 
-  Memorized.init();
+  await Memorized.init();
+  await Secrets.init();
 
   async function load() {
     const filename = await dialog.open(
@@ -78,12 +82,12 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
 
   async function readFrom(file: string) {
     const data = await Backend.readCompressed(file);
-    cxt = DocumentContext.deserialize(JSON.parse(data));
+    ctx = DocumentContext.deserialize(JSON.parse(data));
     status = `已读取：${file}`;
   }
 
   async function writeTo(file: string) {
-    const data = JSON.stringify(cxt.serialize());
+    const data = JSON.stringify(ctx.serialize());
     await Backend.saveCompressed(file, data);
     status = `已保存：${file}`;
   }
@@ -95,7 +99,7 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
     <button onclick={load}>open</button>
     <button onclick={save}>save</button>
     <button onclick={saveAs}>save as</button>
-    <button onclick={() => console.log(cxt.serialize())}>test</button>
+    <button onclick={() => console.log(ctx.serialize())}>test</button>
     <button>import</button>
 
     <span class="path" data-tauri-drag-region>
@@ -105,7 +109,7 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
     </div>
   </header>
   <main class="page">
-    <Editor context={cxt} bind:this={editor} />
+    <Editor context={ctx} bind:this={editor} />
     <Resizer first={rightPane!} bind:value={$rightSize} reverse vertical useViewportFraction/>
     <div class="pane" bind:this={rightPane}>
       <ButtonStrip bind:selectValue={page} id='pageselector'>
@@ -114,7 +118,7 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
         <StripRadioItem value='format'><TextInitialIcon /></StripRadioItem>
       </ButtonStrip>
 
-      {#key cxt}
+      {#key ctx}
       {#if page == 'format'}
         <ButtonStrip bind:selectValue={chosen}>
           <StripRadioItem value='source'>{m.source()}</StripRadioItem>
@@ -122,13 +126,15 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
         </ButtonStrip>
 
         <h5>语言</h5>
-        <LocaleSelect bind:locale={cxt[chosen].language} />
+        <LocaleSelect bind:locale={ctx[chosen].language} />
 
-        <DisplayOptions bind:value={cxt[chosen].options} />
+        <DisplayOptions bind:value={ctx[chosen].options} />
         <textarea readonly class="code"
-          >{JSON.stringify(cxt[chosen].content.toJSON(), undefined, 2)}</textarea>
+          >{JSON.stringify(ctx[chosen].content.toJSON(), undefined, 2)}</textarea>
       {:else if page == 'graph'}
-        <CommitGraph context={cxt}/>
+        <CommitGraph context={ctx}/>
+      {:else if page == 'chat'}
+        <ChatPanel context={ctx} />
       {/if}
       {/key}
     </div>
