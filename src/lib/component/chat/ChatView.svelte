@@ -2,6 +2,9 @@
   import { Debug } from "$lib/details/Util";
   import type { ChatProvider } from "$lib/llm/ChatProvider";
   import { ChatSession } from "$lib/llm/ChatSession.svelte";
+  import SvelteMarkdown from '@humanspeak/svelte-markdown';
+
+  import SendIcon from '@lucide/svelte/icons/send';
 
   const { chat, provider }: { chat: ChatSession, provider?: ChatProvider } = $props();
 
@@ -19,57 +22,110 @@
 </script>
 
 <div class="message-log">
-  {#each chat.messages as message}
+  {#each chat.messages as message, i}
     <div class="message-wrapper {message.role}">
       {#if message.role == 'assistant'}
         <span class="sender">{message.modelName}</span>
+        {#if message.reasoning}
+          <details open={chat.isStreaming && i == chat.messages.length - 1}>
+            <summary>显示思考过程</summary>
+            <div class="reasoning">
+              <SvelteMarkdown source={message.reasoning} />
+            </div>
+          </details>
+        {/if}
       {/if}
-      <div class="content">{message.content}</div>
+
+      <div class="content">
+        <SvelteMarkdown source={message.content} />
+      </div>
     </div>
   {/each}
 </div>
 
 <form onsubmit={handleSubmit} class="input-form">
   <input type="text" bind:value={input} disabled={chat.isStreaming} />
-  <button type="submit" disabled={chat.isStreaming || !input.trim() || !provider}>发送</button>
+  <button type="submit" disabled={chat.isStreaming || !input.trim() || !provider}>
+    <SendIcon/>
+  </button>
 </form>
 
-<style>
+<style lang="scss">
+  @use '../../../markdown.sass' as *;
+
   .message-log {
     flex-grow: 1;
     overflow-y: auto;
     padding: 5px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
   }
 
   .message-wrapper {
     display: flex;
     flex-direction: column;
-    padding: 8px 10px;
-    border-radius: 6px;
-    max-width: 80%;
-  }
+    padding: 10px;
+    margin: 0;
 
-  .message-wrapper.user {
-    align-self: flex-end;
-    background-color: #007acc;
-    color: white;
-  }
+    line-height: 1.4;
+    font-family: system-ui, -apple-system;
+    font-size: 95%;
+    // text-align: justify;
 
-  .message-wrapper.assistant {
-    align-self: flex-start;
-    background-color: #f0f0f0;
-    color: #333;
+    &.user {
+      // border-bottom: 1px solid skyblue;
+      background-color: #eee;
+      border-radius: 6px;
+      color: #333;
+
+      @media (prefers-color-scheme: dark) {
+        background-color: #444;
+        color: #eee;
+      }
+    }
+    &.assistant:not(:last-child) {
+      margin-bottom: 20px;
+    }
   }
 
   .sender {
-    font-size: 0.75rem;
+    font-size: 75%;
     text-transform: uppercase;
     font-weight: bold;
-    margin-bottom: 0.25rem;
     opacity: 0.8;
+  }
+
+  details {
+    margin-block: 5px;
+
+    summary {
+      list-style: none;
+      font-size: 80%;
+
+      &:hover {
+        color: #007acc;
+      }
+    }
+
+    &[open]::details-content {
+      padding: 0 0 0 10px;
+      margin: 5px 5px 5px 0;
+      border-left: 2px solid #bbb;
+    }
+  }
+
+  :is(.reasoning, .content) :global {
+    @include markdown();
+  }
+
+  .reasoning {
+    white-space: pre-wrap;
+    user-select: text;
+    -webkit-user-select: text;
+
+    font-size: 80%;
+    opacity: 80%;
+    line-height: 1.3;
   }
 
   .content {

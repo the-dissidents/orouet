@@ -1,0 +1,35 @@
+@mixin markdown()
+  p, ol, ul
+    &:first-child
+      margin-top: 0
+    &:last-child
+      margin-bottom: 0
+
+  $list-spacing: 5px
+  $text-spacing: 5px
+
+  ol, ul
+    list-style: none
+    padding-left: 0
+    margin-left: 0
+    li
+      display: flex
+      align-items: flex-start
+      margin-bottom: $list-spacing
+
+  ol
+    counter-reset: ol-counter
+    li
+      counter-increment: ol-counter
+      &::before
+        content: counter(ol-counter) "."
+        margin-right: $text-spacing
+        text-align: right
+        flex-shrink: 0
+
+  ul
+    li
+      &::before
+        content: "•"
+        margin-right: $text-spacing
+        flex-shrink: 0

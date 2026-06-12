@@ -26,6 +26,11 @@ html, body {
 }
 
 @font-face {
+  font-family: 'Mluvka';
+  src: url('/Mluvka-Light-web.woff2') format("woff2");
+}
+
+@font-face {
   font-family: 'Text';
   font-style: normal;
   src: url('./Baskervville.ttf');

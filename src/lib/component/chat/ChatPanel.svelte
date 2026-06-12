@@ -12,7 +12,9 @@
   const providerInfo = Memorized.$('chat-provider', ProviderInfo, { type: 'deepseek' });
 
   let provider = $state<ChatProvider>();
-  let chat = $state<ChatSession>(ChatSession.example());
+
+  // svelte-ignore state_referenced_locally
+  let chat = $state<ChatSession | undefined>(context.chats.at(0));
 
   onMount(async () => {
     const p = await createChatProvider($providerInfo);
@@ -21,6 +23,22 @@
   });
 </script>
 
+<select bind:value={chat}>
+  <option value={undefined}>新建聊天</option>
+  <hr>
+{#each context.chats as c}
+  <option value={c}>{c.title || '未命名聊天'}</option>
+{/each}
+</select>
+
 {#if chat}
   <ChatView {chat} {provider}/>
+{:else}
+
 {/if}
+
+<style>
+  select {
+    width: 100%;
+  }
+</style>

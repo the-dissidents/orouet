@@ -1,5 +1,7 @@
+import { range } from '$lib/details/Util';
 import { createChatProvider, Message, ProviderInfo, type ChatProvider } from './ChatProvider';
 import * as z from 'zod/v4-mini';
+import { LoremIpsum } from "lorem-ipsum";
 
 export const SerializedChatSession = z.object({
     messages: z.array(Message),
@@ -7,6 +9,8 @@ export const SerializedChatSession = z.object({
 });
 
 export type SerializedChatSession = z.infer<typeof SerializedChatSession>;
+
+const ipsum = new LoremIpsum();
 
 export class ChatSession {
     title = $state<string>('');
@@ -28,14 +32,20 @@ export class ChatSession {
         return session;
     }
 
-    static example() {
+    static lorem() {
         const session = new ChatSession();
-        session.messages = [
-            { role: 'user', content: 'hi' },
-            { role: 'assistant', modelName: 'deepseek-v4-pro', reasoning: '1) If we don’t serialize the whole document at each commit we should store deltas. ProseMirror has serializable transform steps but I think this might difficult to use: I need stable compatibility for saved files so it’d better be something I control entirely on my side, independent with the editor library and with extra information perfectly typed. But on the other hand, emitting deltas manually from ProseMirror transactions (and re-applying them when reading) is also error-prone.\n\n2) Since we track paragraphs as something with a continue history we might give each one a UUID. But actions like merging two paragraphs and then splitting again destroys the continuity since one ID is discarded then a new one is assigned.', content: 'Es gibt noch freundliche Menschen, trotz des großen Elends. […] Besonders die wenig zu essen haben, geben gern ab. Wahrscheinlich zeigen die Menschen einfach gern, was sie können, und womit könnten sie es besser zeigen, als indem sie freundlich sind? Bosheit ist bloß eine Art Ungeschicklichkeit. Wenn jemand ein Lied singt oder eine Maschine baut oder Reis pflanzt, das ist eigentlich Freundlichkeit.' },
-            { role: 'user', content: 'Write a Svelte 5 component showing a simple LLM chat interface. Use the OpenAI TypeScript API, but stay model-agnostic. Just text chat is enough, but you should support streaming.' },
-            { role: 'assistant', modelName: 'deepseek-v4-pro', reasoning: 'Let’s start from one of them. There is a button that should open a <dialog> (not a system dialog!), which is a dynamically mounted Svelte component. When I click it the page reloads. In the logs there is a line', content: 'Note that this is a translation app and it’s natural to assume the translation mostly matches the original document’s structure, so paragraph might seem more like slots and merging/splitting is relatively rare: but it’s wrong to not consider that.' },
-        ];
+        range(1, Math.random() * Math.random() * 15).forEach(() => session.messages.push(
+            { role: 'user', content: ipsum.generateParagraphs(1) },
+            {
+                role: 'assistant',
+                modelName: ipsum.generateWords(Math.floor(1 + Math.random() * 3)),
+                reasoning: range(0, Math.random() * Math.random() * 6)
+                    .map(() => ipsum.generateParagraphs(1)).toArray().join('\n\n'),
+                content: range(0, Math.random() * 4)
+                    .map(() => ipsum.generateParagraphs(1)).toArray().join('\n\n')
+            }
+        ));
+        session.title = ipsum.generateSentences(1)
         return session;
     }
 

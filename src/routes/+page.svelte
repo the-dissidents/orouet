@@ -2,41 +2,46 @@
   import TextInitialIcon from '@lucide/svelte/icons/text-initial';
   import GitGraphIcon from '@lucide/svelte/icons/git-graph';
   import MessagesSquareIcon from '@lucide/svelte/icons/messages-square';
-  import { ButtonStrip, Resizer, StripRadioItem } from '@the_dissidents/svelte-ui';
+  import { ButtonStrip, Resizer, StripRadioItem, Tooltip } from '@the_dissidents/svelte-ui';
 
   import { DocumentContext } from '$lib/DocumentContext.svelte';
   import { blockIndex, clusterIndex, clusterOf, columnPosition } from '$lib/Schema';
+  import { Backend, Secrets } from '$lib/Backend';
+
   import { Memorized } from '$lib/details/Memorized.svelte';
+  import { ChatSession } from '$lib/llm/ChatSession.svelte';
 
   import Editor from '$lib/component/documentview/Editor.svelte';
   import DisplayOptions from '$lib/component/DisplayOptions.svelte';
   import CommitGraph from '$lib/component/graph/CommitGraph.svelte';
+  import LocaleSelect from '$lib/component/LocaleSelect.svelte';
+  import ChatPanel from '$lib/component/chat/ChatPanel.svelte';
 
   import { setLocale } from '$lib/paraglide/runtime';
   import { m } from "$lib/paraglide/messages.js";
 
   import { basename } from '@tauri-apps/api/path';
   import * as dialog from '@tauri-apps/plugin-dialog';
+  import { fly } from 'svelte/transition';
   import * as z from "zod/v4-mini";
-  import { Backend, Secrets } from '$lib/Backend';
-  import LocaleSelect from '$lib/component/LocaleSelect.svelte';
-  import ChatSettings from '$lib/component/chat/ChatSettings.svelte';
-  import { ProviderInfo } from '$lib/llm/ChatProvider';
-  import ChatPanel from '$lib/component/chat/ChatPanel.svelte';
 
   setLocale('zh');
 
-  let ctx = $state(DocumentContext.fromTestClusters(`
-Aus einem elenden Zustand sich zu erheben, muß selbst mit gewollter Energie leicht sein. Ich reiße mich vom Sessel los, umlaufe den Tisch, mache Kopf und Hals beweglich, bringe Feuer in die Augen, spanne die Muskeln um sie herum. Arbeite jedem Gefühl entgegen, begrüße A. stürmisch, wenn er jetzt kommen wird, dulde B. freundlich in meinem Zimmer, ziehe bei C. alles, was gesagt wird, trotz Schmerz und Mühe mit langen Zügen in mich hinein.
+//   let ctx = $state(DocumentContext.fromTestClusters(`
+// Aus einem elenden Zustand sich zu erheben, muß selbst mit gewollter Energie leicht sein. Ich reiße mich vom Sessel los, umlaufe den Tisch, mache Kopf und Hals beweglich, bringe Feuer in die Augen, spanne die Muskeln um sie herum. Arbeite jedem Gefühl entgegen, begrüße A. stürmisch, wenn er jetzt kommen wird, dulde B. freundlich in meinem Zimmer, ziehe bei C. alles, was gesagt wird, trotz Schmerz und Mühe mit langen Zügen in mich hinein.
 
-Aber selbst wenn es so geht, wird mit jedem Fehler, der nicht ausbleiben kann, das Ganze, das Leichte und das Schwere, stocken, und ich werde mich im Kreise zurückdrehen müssen.
+// Aber selbst wenn es so geht, wird mit jedem Fehler, der nicht ausbleiben kann, das Ganze, das Leichte und das Schwere, stocken, und ich werde mich im Kreise zurückdrehen müssen.
 
-Deshalb bleibt doch der beste Rat, alles hinzunehmen, als schwere Masse sich verhalten, und fühle man sich selbst fortgeblasen, keinen unnötigen Schritt sich ablocken lassen, den anderen mit Tierblick anschaun, keine Reue fühlen, kurz, das, was vom Leben als Gespenst noch übrig ist, mit eigener Hand niederdrücken, das heißt, die letzte grabmäßige Ruhe noch vermehren und nichts außer ihr mehr bestehen lassen.
+// Deshalb bleibt doch der beste Rat, alles hinzunehmen, als schwere Masse sich verhalten, und fühle man sich selbst fortgeblasen, keinen unnötigen Schritt sich ablocken lassen, den anderen mit Tierblick anschaun, keine Reue fühlen, kurz, das, was vom Leben als Gespenst noch übrig ist, mit eigener Hand niederdrücken, das heißt, die letzte grabmäßige Ruhe noch vermehren und nichts außer ihr mehr bestehen lassen.
 
-Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kleinen Fingers über die Augenbrauen.
-`.trim().split('\n\n')));
+// Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kleinen Fingers über die Augenbrauen.
+// `.trim().split('\n\n')));
 
-  // let cxt = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
+  import text from '../data/kleist.txt?raw';
+
+  let ctx = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
+  ctx.chats.push(ChatSession.lorem(), ChatSession.lorem(), ChatSession.lorem());
+
   let rightPane: HTMLElement | undefined = $state();
   let page: 'format' | 'graph' | 'chat' = $state('format');
 
@@ -50,8 +55,10 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
   let status = $state('ok');
   let path = $state('');
 
-  await Memorized.init();
-  await Secrets.init();
+  async function init() {
+    await Memorized.init();
+    await Secrets.init();
+  }
 
   async function load() {
     const filename = await dialog.open(
@@ -94,6 +101,14 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
 </script>
 
 <div class="container">
+{#await init()}
+  <div class="loading" out:fly>
+    <div class="text">
+      <div class="logo">orouët</div>
+      <div>正在加载用户设置</div>
+    </div>
+  </div>
+{/await}
   <header id="titlebar">
     <div class="spacer" data-tauri-drag-region></div>
     <button onclick={load}>open</button>
@@ -113,9 +128,15 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
     <Resizer first={rightPane!} bind:value={$rightSize} reverse vertical useViewportFraction/>
     <div class="pane" bind:this={rightPane}>
       <ButtonStrip bind:selectValue={page} id='pageselector'>
-        <StripRadioItem value='chat'><MessagesSquareIcon /></StripRadioItem>
-        <StripRadioItem value='graph'><GitGraphIcon /></StripRadioItem>
-        <StripRadioItem value='format'><TextInitialIcon /></StripRadioItem>
+        <Tooltip text='智能体' position='bottom'>
+          <StripRadioItem value='chat'><MessagesSquareIcon /></StripRadioItem>
+        </Tooltip>
+        <Tooltip text='编辑历史' position='bottom'>
+          <StripRadioItem value='graph'><GitGraphIcon /></StripRadioItem>
+        </Tooltip>
+        <Tooltip text='文本设置' position='bottom'>
+          <StripRadioItem value='format'><TextInitialIcon /></StripRadioItem>
+        </Tooltip>
       </ButtonStrip>
 
       {#key ctx}
@@ -165,6 +186,30 @@ Eine charakteristische Bewegung eines solchen Zustandes ist das Hinfahren des kl
 
 <style lang="scss">
 @use "../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
+
+.loading {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: white;
+  font-family: 'Mluvka';
+  text-align: center;
+  display: flex;
+  align-items: center;
+  z-index: 999;
+
+  @media (prefers-color-scheme: dark) {
+    background-color: black;
+  }
+
+  .text {
+    flex-grow: 1;
+
+    .logo {
+      font-size: 10em;
+      padding-bottom: 0.5em;
+    }
+  }
+}
 
 #titlebar {
   height: 1lh;
@@ -219,7 +264,7 @@ footer {
   }
 
   span.label {
-    opacity: 0.5;
+    opacity: 0.7;
   }
 }
 
