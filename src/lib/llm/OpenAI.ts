@@ -23,6 +23,7 @@ export type OpenAIProviderInfo = z.infer<typeof OpenAIProviderInfo>;
 export class OpenAIGenericProvider implements ChatProvider {
     private openai: OpenAI;
     modelName: string;
+    systemPrompt: string = '';
 
     get info() {
         return { type: 'openai-generic' as const, ...this._info };
@@ -50,7 +51,13 @@ export class OpenAIGenericProvider implements ChatProvider {
     ): Promise<void> {
         const stream = await this.openai.chat.completions.create({
             model: this.modelName,
-            messages: messages,
+            messages: [
+                ...(this.systemPrompt ? [{
+                    role: 'system',
+                    content: this.systemPrompt
+                }] as const : []),
+                ...messages
+            ],
             stream: true,
         });
 

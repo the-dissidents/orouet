@@ -5,9 +5,12 @@
 
   import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 
-  let { provider, onExit }: { provider: ProviderInfo, onExit?: () => void } = $props();
-  let inputValue = $state('');
+  let { provider = $bindable(), onExit }: {
+    provider: ProviderInfo,
+    onExit?: () => void
+  } = $props();
 
+  let inputValue = $state('');
   let working = $state(false);
   let preview = $state((await Secrets.get('llm-key'))?.slice(0, 6));
 </script>
@@ -20,11 +23,12 @@
 
 <ConfigTable>
   <ConfigRow name={'提供商'}>
-    <select value={provider.type}>
+    <select bind:value={provider.type}>
       <option value="openai">OpenAI</option>
       <option value="gemini">Gemini</option>
       <option value="deepseek">DeepSeek</option>
       <option value="openai-generic">自定义（OpenAI API）</option>
+      <option value="dummy">Dummy</option>
     </select>
   </ConfigRow>
   <ConfigRow name={'密钥'}>

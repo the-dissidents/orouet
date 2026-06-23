@@ -19,3 +19,7 @@ export function* range(a: number, b: number, s = 1) {
     for (let i = a; i < b; i += s)
         yield i;
 }
+
+export function wait(t: number) {
+    return new Promise<void>((r) => setTimeout(r, Math.floor(t)));
+}

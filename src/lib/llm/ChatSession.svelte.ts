@@ -1,5 +1,5 @@
 import { range } from '$lib/details/Util';
-import { createChatProvider, Message, ProviderInfo, type ChatProvider } from './ChatProvider';
+import { Message, type ChatProvider, type Tool } from './ChatProvider';
 import * as z from 'zod/v4-mini';
 import { LoremIpsum } from "lorem-ipsum";
 
@@ -49,18 +49,25 @@ export class ChatSession {
         return session;
     }
 
-    async sendMessage(provider: ChatProvider, content: string, abort?: AbortController) {
+    async sendMessage(
+        provider: ChatProvider,
+        content: string,
+        opt?: {
+            abort?: AbortController,
+            tools?: Tool[]
+        }
+    ) {
         if (!content.trim() || this.isStreaming) return;
 
         this.messages.push({ role: 'user', content });
         this.isStreaming = true;
 
         const assistantIndex = this.messages.length;
-        const message: Message = {
+        const message: Message = $state({
             role: 'assistant',
             modelName: provider.modelName,
             content: '', reasoning: ''
-        };
+        });
         this.messages.push(message);
 
         try {
@@ -71,8 +78,8 @@ export class ChatSession {
                     message.reasoning += chunk;
                 else
                     message.content += chunk;
-                return abort ? !abort.signal.aborted : true;
-            });
+                return opt?.abort ? !opt.abort.signal.aborted : true;
+            }, opt?.tools);
         } catch (error) {
             console.error('Session error during execution:', error);
             message.content = 'Error: Failed to finalize stream interaction.';

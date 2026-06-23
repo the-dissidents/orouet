@@ -1,3 +1,12 @@
+<script lang="ts" module>
+  const boundary = Memorized.$('graph-boundary', BoundaryCondition, {
+    delay: 500,
+    fileSaved: true,
+    focusedClusterChange: true,
+    focusedBlockChange: true
+  });
+</script>
+
 <script lang="ts">
   import { formatAbsoluteDate, formatFullDate } from "$lib/details/DateFormat";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
@@ -13,14 +22,9 @@
     context: DocumentContext
   } = $props();
 
-  const boundary = Memorized.$('graph-boundary', BoundaryCondition, {
-    delay: 500,
-    fileSaved: true,
-    focusedClusterChange: true,
-    focusedBlockChange: true
-  });
-
   let boundaryReactive = $state($boundary);
+  boundary.subscribe((v) => boundaryReactive = v);
+
   const layout = $derived(graphLayout(context, boundaryReactive));
 
   const X_STEP = 12; // Lane width

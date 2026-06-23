@@ -38,6 +38,7 @@
 // `.trim().split('\n\n')));
 
   import text from '../data/kleist.txt?raw';
+  import { onDestroy } from 'svelte';
 
   let ctx = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
   ctx.chats.push(ChatSession.lorem(), ChatSession.lorem(), ChatSession.lorem());
@@ -59,6 +60,11 @@
     await Memorized.init();
     await Secrets.init();
   }
+
+  onDestroy(async () => {
+    Secrets.save();
+    Memorized.save();
+  });
 
   async function load() {
     const filename = await dialog.open(
