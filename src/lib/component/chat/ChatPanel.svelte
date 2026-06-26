@@ -35,20 +35,26 @@
 </script>
 
 {#if view == 'chat'}
-  <select bind:value={chat} onselect={() => {
-    if (!chat) temporaryChat = new ChatSession();
-  }}>
-    <option value={undefined}>新建聊天</option>
-    <hr>
-  {#each context.chats as c}
-    <option value={c}>{c.title || '未命名聊天'}</option>
-  {/each}
-  </select>
-
-  <div>
-    当前模型：{provider?.modelName}
-    <button onclick={() => view = 'settings'}>设置</button>
-  </div>
+  <fieldset>
+    <label>
+      <span>当前对话</span>
+      <select bind:value={chat} onselect={() => {
+        if (!chat) temporaryChat = new ChatSession();
+      }}>
+        <option value={undefined}>新建聊天</option>
+        <hr>
+      {#each context.chats as c}
+        <option value={c}>{c.title || '未命名聊天'}</option>
+      {/each}
+      </select>
+    </label>
+    <label>
+      <span>当前模型</span>
+      <code>{provider?.modelName}</code>
+      <button onclick={() => view = 'settings'}>设置</button>
+    </label>
+  </fieldset>
+  <hr>
 
   <ChatView chat={chat ?? temporaryChat} {provider}
     beforeSubmit={() => {
@@ -66,8 +72,34 @@
     }} />
 {/if}
 
-<style>
+<style lang="scss">
+  @use "../../../util.scss" as *;
+
   select {
     width: 100%;
+  }
+
+  fieldset {
+    display: flex;
+    flex-direction: column;
+
+    label {
+      width: 100%;
+      display: flex;
+      flex-direction: row;
+      align-items: baseline;
+      margin-bottom: 5px;
+    }
+
+    span {
+      font-weight: bold;
+      @include colorvars(color, disabled-text);
+      white-space: pre;
+      padding-right: 5px;
+    }
+
+    code {
+      padding-right: 5px;
+    }
   }
 </style>

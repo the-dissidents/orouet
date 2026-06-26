@@ -29,6 +29,7 @@
 
 <style lang="scss">
   @use "../../../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
+  @use "../../../util.scss" as *;
 
   :global [data-block] {
     display: block;
@@ -50,12 +51,12 @@
   }
 
   :global [data-placeholder-text]::before {
+    @include colorvars(color, disabled-text);
     padding: 9px 10px;
     line-height: normal;
 
     position: absolute;
     content: attr(data-placeholder-text);
-    color: gray;
     font-family: var(--ui-font-family);
     pointer-events: none;
   }

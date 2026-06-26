@@ -38,6 +38,7 @@
   const emphasis = toggleMark(PaneSchema.marks.emphasis);
   const keyword = toggleMark(PaneSchema.marks.keyword);
 
+  const lang = $derived(dc[role].language);
   const opts = $derived(dc[role].options);
   const context = new PaneContext();
 
@@ -111,6 +112,7 @@
 </script>
 
 <div class="container"
+  lang={lang.filter((x) => !!x).join('-')}
   style="
     font-variant-numeric: {opts.numericStyle}-nums;
     font-variant-ligatures:
@@ -126,6 +128,8 @@
 </div>
 
 <style lang="scss">
+  @use "../../../util.scss" as *;
+
   @mixin emphasisStyle($attr, $tag) {
     #{$tag} {
       font-style: normal;
@@ -177,11 +181,7 @@
     background-color: transparent;
 
     & ::selection {
-      background-color: pink;
-
-      @media (prefers-color-scheme: dark) {
-        background-color: palevioletred;
-      }
+      @include colors(background-color, pink, palevioletred);
     }
 
     * {

@@ -11,12 +11,6 @@
   const choices = $derived(!locale[0] ? [] : LanguageVariants[locale[0]]);
   const choice = $derived(choices.find((x) => x[0] == locale[1] && x[1] == locale[2]) ?? null);
 
-  function getName(l: LocaleId) {
-    if (!l[0]) return '未制定';
-    const code = l.filter((x) => !!x).join('-');
-    return langName.of(code) ?? code;
-  }
-
   const codes = Object.entries(LanguageCodes);
 </script>
 

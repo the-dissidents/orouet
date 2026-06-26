@@ -4,6 +4,7 @@ import * as z from 'zod/v4-mini';
 import { LoremIpsum } from "lorem-ipsum";
 
 export const SerializedChatSession = z.object({
+    title: z.string(),
     messages: z.array(Message),
     // providerInfo: ProviderInfo
 });
@@ -21,6 +22,7 @@ export class ChatSession {
 
     serialize(): SerializedChatSession {
         return {
+            title: this.title,
             messages: this.messages,
             // providerInfo: this.provider.info
         };
@@ -28,6 +30,7 @@ export class ChatSession {
 
     static deserialize(s: SerializedChatSession) {
         const session = new ChatSession();
+        session.title = s.title;
         session.messages = s.messages;
         return session;
     }

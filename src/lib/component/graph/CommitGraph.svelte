@@ -114,6 +114,8 @@
 </Collapsible>
 
 <style lang="scss">
+  @use '../../../util.scss' as *;
+
   .graph-container {
     overflow-x: auto;
     font-family: sans-serif;
@@ -126,32 +128,19 @@
 
   .edge {
     fill: none;
-    stroke: var(--accent2-back-light);
     stroke-width: 2;
-
-    @media (prefers-color-scheme: dark) {
-      stroke: var(--accent2-back-dark);
-    }
+    @include colorvars(stroke, accent2-back);
   }
 
   .node {
-    fill: var(--accent2-back-light);
-    stroke: white;
     stroke-width: 2;
 
+    @include colorvars(fill, accent2-back);
+    @include colorvars(stroke, page-background);
+
     &.current {
-      fill: white;
-      stroke: var(--accent2-back-light);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      fill: var(--accent2-back-dark);
-      stroke: var(--page-background-dark);;
-
-      &.current {
-        fill: var(--page-background-dark);
-        stroke: var(--accent2-back-dark);
-      }
+      @include colorvars(fill, page-background);
+      @include colorvars(stroke, accent2-back);
     }
   }
 
@@ -170,11 +159,7 @@
 
     &:hover {
       border: none;
-      background-color: #0001;
-
-      @media (prefers-color-scheme: dark) {
-        background-color: #0003;
-      }
+      @include colors(background-color, #0001, #0003);
     }
   }
 
@@ -185,6 +170,6 @@
 
   .hash {
     font-family: monospace;
-    color: gray;
+    @include colorvars(color, disabled-text);
   }
 </style>

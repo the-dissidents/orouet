@@ -41,16 +41,16 @@ export interface ChatProvider {
 }
 
 export const ProviderInfo = z.union([
-  z.object({
-    type: z.literal("openai-generic"),
-    ...OpenAIProviderInfo.shape,
-  }),
-  z.object({
-    type: z.literal("openai")
-  }),
-  z.object({
-    type: z.literal("gemini")
-  }),
+//   z.object({
+//     type: z.literal("openai-generic"),
+//     ...OpenAIProviderInfo.shape,
+//   }),
+//   z.object({
+//     type: z.literal("openai")
+//   }),
+//   z.object({
+//     type: z.literal("gemini")
+//   }),
   z.object({
     type: z.literal("deepseek")
   }),
@@ -75,11 +75,11 @@ export type ProviderInfo = z.infer<typeof ProviderInfo>;
 
 export async function createChatProvider(info: ProviderInfo) {
     switch (info.type) {
-        case 'openai-generic': return await OpenAIGenericProvider.create(info);
         case 'deepseek': return await DeepSeekProvider.create();
         case 'dummy': return new DummyProvider();
-        case 'openai': Debug.assert(false);
-        case 'gemini': Debug.assert(false);
+        // case 'openai-generic': return await OpenAIGenericProvider.create(info);
+        // case 'openai': Debug.assert(false);
+        // case 'gemini': Debug.assert(false);
         default:
             info satisfies never;
     }

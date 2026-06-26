@@ -95,6 +95,8 @@ export interface ReadonlyVersionControl {
     readonly latestCommit: Id<Commit>;
     readonly sortedCommits: readonly Id<Commit>[];
 
+    addAttr(attr: Partial<CommitBase['attrs']>): boolean;
+
     get<C extends Commit>(id: Id<C>): C | undefined;
     forwardLinks(id: Id<Commit>): Id<Commit>[];
 
@@ -154,6 +156,14 @@ export class VersionControl implements ReadonlyVersionControl {
 
     isDelta(id: Id<Commit>): id is Id<DeltaCommit> {
         return this.get(id)?.type == 'delta';
+    }
+
+    addAttr(attr: Partial<CommitBase['attrs']>) {
+        if (this.#sorted.length == 0) return false;
+        const latest = this.get(this.latestCommit);
+        Debug.assert(!!latest);
+        Object.assign(latest.attrs, attr);
+        return true;
     }
 
     add(c: Commit) {

@@ -4,6 +4,7 @@
   import { ConfigRow, ConfigTable } from "@the_dissidents/svelte-ui";
 
   import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+  import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 
   let { provider = $bindable(), onExit }: {
     provider: ProviderInfo,
@@ -18,16 +19,21 @@
 <h5>凭证</h5>
 
 {#if !preview}
-<div class="warning">未设置API密钥，将无法使用AI功能</div>
+<div class="warning">
+  <TriangleAlertIcon/>
+  <div>
+    未设置API密钥，将无法使用AI功能
+  </div>
+</div>
 {/if}
 
 <ConfigTable>
   <ConfigRow name={'提供商'}>
     <select bind:value={provider.type}>
-      <option value="openai">OpenAI</option>
-      <option value="gemini">Gemini</option>
       <option value="deepseek">DeepSeek</option>
-      <option value="openai-generic">自定义（OpenAI API）</option>
+      <!-- <option value="openai">OpenAI</option>
+      <option value="gemini">Gemini</option>
+      <option value="openai-generic">自定义（OpenAI API）</option> -->
       <option value="dummy">Dummy</option>
     </select>
   </ConfigRow>
@@ -37,7 +43,6 @@
       <button onclick={async () => {
         working = true;
         await Secrets.delete('llm-key');
-        await Secrets.save();
         working = false;
         preview = undefined;
       }} disabled={working}>{working ? '删除中' : '删除'}</button>
@@ -46,7 +51,6 @@
       <button onclick={async () => {
         working = true;
         await Secrets.set('llm-key', inputValue);
-        await Secrets.save();
         working = false;
         preview = inputValue.slice(0, 5);
         inputValue = '';
@@ -62,7 +66,30 @@
   </button>
 </div>
 
-<style>
+<style lang='scss'>
+  @use "../../../util.scss" as *;
+
+  .warning {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    @include colorvars(background-color, accent1-back);
+
+    display: flex;
+    flex-direction: row;
+
+    :global(.lucide) {
+      padding: 5px 5px 5px 0;
+      @include colorvars(color, accent2-border);
+    }
+
+    div {
+      font-size: 90%;
+      line-height: normal;
+      flex-grow: 1;
+    }
+  }
+
   .hlayout {
     display: flex;
     flex-direction: row;

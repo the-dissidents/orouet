@@ -1,0 +1,16 @@
+
+@mixin colorvars($prop, $prefix) {
+  #{$prop}: var(--#{$prefix}-light);
+
+  @media (prefers-color-scheme: dark) {
+    #{$prop}: var(--#{$prefix}-dark);
+  }
+}
+
+@mixin colors($prop, $light, $dark) {
+  #{$prop}: $light;
+
+  @media (prefers-color-scheme: dark) {
+    #{$prop}: $dark;
+  }
+}

@@ -6,7 +6,7 @@
 
   import { DocumentContext } from '$lib/DocumentContext.svelte';
   import { blockIndex, clusterIndex, clusterOf, columnPosition } from '$lib/Schema';
-  import { Backend, Secrets } from '$lib/Backend';
+  import { Backend } from '$lib/Backend';
 
   import { Memorized } from '$lib/details/Memorized.svelte';
   import { ChatSession } from '$lib/llm/ChatSession.svelte';
@@ -41,8 +41,6 @@
   import { onDestroy } from 'svelte';
 
   let ctx = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
-  ctx.chats.push(ChatSession.lorem(), ChatSession.lorem(), ChatSession.lorem());
-
   let rightPane: HTMLElement | undefined = $state();
   let page: 'format' | 'graph' | 'chat' = $state('format');
 
@@ -58,11 +56,9 @@
 
   async function init() {
     await Memorized.init();
-    await Secrets.init();
   }
 
   onDestroy(async () => {
-    Secrets.save();
     Memorized.save();
   });
 
@@ -103,6 +99,7 @@
     const data = JSON.stringify(ctx.serialize());
     await Backend.saveCompressed(file, data);
     status = `已保存：${file}`;
+    ctx.versionControl.addAttr({ fileSaved: true });
   }
 </script>
 
@@ -192,20 +189,19 @@
 
 <style lang="scss">
 @use "../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
+@use "../util.scss" as *;
 
 .loading {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: white;
-  font-family: 'Mluvka';
-  text-align: center;
   display: flex;
   align-items: center;
   z-index: 999;
 
-  @media (prefers-color-scheme: dark) {
-    background-color: black;
-  }
+  @include colors(background-color, white, black);
+
+  font-family: 'Mluvka';
+  text-align: center;
 
   .text {
     flex-grow: 1;
@@ -252,11 +248,7 @@ header, footer {
 footer {
   display: flex;
   flex-direction: row;
-  background-color: uchu.$pink-2;
-
-  @media (prefers-color-scheme: dark) {
-    background-color: uchu.$pink-9;
-  }
+  @include colors(background-color, uchu.$pink-2, uchu.$pink-9);
 
   div {
     padding: 0 10px;
@@ -300,11 +292,9 @@ main {
 :global #pageselector {
   margin: 0 0 0.5em 0;
 
-  label {
-    .lucide {
-      width: 2.5em;
-      height: 2.5em;
-    }
+  label .lucide {
+    width: 2.5em;
+    height: 2.5em;
   }
 }
 

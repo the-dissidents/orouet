@@ -58,9 +58,17 @@
   };
 </script>
 
+{#if chat.messages.length == 0}
+<div class="no-message">
+  <div>
+    在下方输入指令，开始新的对话
+  </div>
+</div>
+{/if}
+
 <div class="message-log" {@attach autoscroll}>
   <div>
-    {#each chat.messages as message, i}
+    {#each chat.messages as message}
       <div class="message-wrapper {message.role}">
         {#if message.role == 'assistant'}
           <span class="sender">{message.modelName}</span>
@@ -82,7 +90,10 @@
   </div>
 </div>
 
+<hr>
+
 <form onsubmit={handleSubmit} class="input-form">
+
   <input type="text" bind:value={input} disabled={chat.isStreaming} />
   {#if chat.isStreaming}
     <button type="button" disabled={!provider}>
@@ -97,6 +108,7 @@
 
 <style lang="scss">
   @use '../../../markdown.sass' as *;
+  @use '../../../util.scss' as *;
 
   .message-log {
     flex-grow: 1;
@@ -104,6 +116,20 @@
     padding: 5px;
     display: flex;
     flex-direction: column;
+  }
+
+  .no-message {
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    div {
+      flex-grow: 1;
+      text-align: center;
+      font-weight: bold;
+      color: gray;
+    }
   }
 
   .message-wrapper {
@@ -115,18 +141,11 @@
     line-height: 1.4;
     font-family: system-ui, -apple-system;
     font-size: 95%;
-    // text-align: justify;
 
     &.user {
-      // border-bottom: 1px solid skyblue;
-      background-color: #eee;
+      @include colors(background-color, #eee, #444);
+      @include colors(color, #333, #eee);
       border-radius: 6px;
-      color: #333;
-
-      @media (prefers-color-scheme: dark) {
-        background-color: #444;
-        color: #eee;
-      }
     }
     &.assistant:not(:last-child) {
       margin-bottom: 20px;
@@ -142,20 +161,29 @@
 
   details {
     margin-block: 5px;
+    interpolate-size: allow-keywords;
 
     summary {
       list-style: none;
       font-size: 80%;
 
       &:hover {
-        color: #007acc;
+        @include colors(color, #007acc, #bde);
       }
+    }
+
+    &::details-content   {
+      height: 0;
+      overflow: clip;
+      transition: height 0.3s ease, content-visibility 0.3s ease allow-discrete;
     }
 
     &[open]::details-content {
       padding: 0 0 0 10px;
       margin: 5px 5px 5px 0;
       border-left: 2px solid #bbb;
+
+      height: auto;
     }
   }
 
@@ -180,15 +208,14 @@
   }
 
   .empty-state {
+    @include colorvars(color, disabled-text);
     text-align: center;
-    color: #888;
     margin: auto;
   }
 
   .input-form {
     display: flex;
-    border-top: 1px solid gray;
-    padding: 8px 0 0 0;
+    padding: 4px 0 0 0;
   }
 
   .input-form input {
