@@ -1,13 +1,22 @@
 <script lang="ts" module>
   export class PaneContext {
     selection?: Selection = $state();
+    doc?: Doc = $state();
+    readonly role: 'source' | 'target';
+    readonly dc: DocumentContext;
+
     opts?: TextOptions = $state();
     focused = $state(false);
+
+    constructor(dc: DocumentContext, role: 'source' | 'target') {
+      this.dc = dc;
+      this.role = role;
+    }
   }
 </script>
 
 <script lang="ts">
-  import { PaneSchema, type Doc } from "$lib/Schema";
+  import { blockIndex, clusterIndex, clusterOf, PaneSchema, type Doc } from "$lib/Schema";
   import { createNodeView } from "$lib/details/NodeView.svelte";
   import { Debug } from "$lib/details/Util";
   import { toggleMark, newlineInCode, selectAll, chainCommands, deleteSelection } from "prosemirror-commands";
@@ -29,7 +38,7 @@
     dc: DocumentContext,
   }
 
-  let { role, dc, ...rest }: Props & SvelteHTMLElements['div'] = $props();
+  const { role, dc, ...rest }: Props & SvelteHTMLElements['div'] = $props();
   $effect(() => Debug.assert(dc[role].content.type == PaneSchema.topNodeType));
 
   let content: HTMLElement | undefined = $state();
@@ -40,7 +49,9 @@
 
   const lang = $derived(dc[role].language);
   const opts = $derived(dc[role].options);
-  const context = new PaneContext();
+
+  // svelte-ignore state_referenced_locally
+  const context = new PaneContext(dc, role);
 
   export function selection() {
     return context.selection;
@@ -87,13 +98,18 @@
         ]
       }),
       dispatchTransaction(tr) {
-        const newState = view.state.apply(tr)
+        context.selection = tr.selection;
+        const { $head: r } = context.selection;
+        dc.currentCluster = clusterOf(r).attrs.id;
+
         if (tr.docChanged) {
           dc[role].content = tr.doc as Doc;
-          if (!tr.getMeta('is_revert'))
+          if (!tr.getMeta('is_revert')) {
             dc.addTransform(role, tr);
+          }
         }
-        context.selection = tr.selection;
+
+        const newState = view.state.apply(tr)
         view.updateState(newState);
       },
       nodeViews: {

@@ -26,5 +26,6 @@
 	"placeholderText": "在此输入文字",
 	"boundary_delay": "时间间隔大于",
 	"seconds": "秒",
-	"boundary_fileSaved": "文件保存"
+	"boundary_fileSaved": "文件保存",
+	"boundary_focusedClusterChanged": "焦点段变化"
 }

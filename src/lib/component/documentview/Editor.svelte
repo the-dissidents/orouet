@@ -42,9 +42,9 @@
     <Resizer first={leftPane} bind:value={$leftSize} vertical useViewportFraction/>
   </div>
 
-  {#each context.source.content.children as _, i}
-    <div class="number-container">
-      <div class="number" contenteditable="false">
+  {#each context.source.content.children as cl, i}
+    <div class='number-container' class:current={cl.attrs.id == context.currentCluster}>
+      <div class='number'>
         {i+1}
       </div>
     </div>
@@ -63,6 +63,8 @@
 </div>
 
 <style lang="scss">
+  @use "../../../util.scss" as *;
+
   .container {
     width: 100%;
     overflow-y: auto;
@@ -94,10 +96,17 @@
 
   .number-container {
     grid-column: 1;
+    margin: 3px 0 3px 0;
+
+    border-right: 2px solid transparent;
+    &.current {
+      border-right: 2px solid var(--accent1-border-light);
+      // @include colorvars(border-color, accent1-border);
+    }
   }
 
   .number {
-    padding: 7px 5px 0 5px;
+    padding: 4px 10px 0 8px;
     color: gray;
     position: sticky;
     align-self: start;

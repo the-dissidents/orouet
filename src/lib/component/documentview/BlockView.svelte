@@ -45,9 +45,9 @@
     border-radius: 4px;
     padding: 5px 10px;
 
-    &[data-selected=true] {
-      border-color: var(--accent1-border-light);
-    }
+    // &[data-selected=true] {
+    //   border-color: var(--accent1-border-light);
+    // }
   }
 
   :global [data-placeholder-text]::before {

@@ -5,7 +5,6 @@ import * as z from "zod/v4-mini";
 export const BoundaryCondition = z.object({
   delay: z.optional(z.number()),
   selectionSet: z.optional(z.boolean()),
-  focusedBlockChange: z.optional(z.boolean()),
   focusedClusterChange: z.optional(z.boolean()),
   fileSaved: z.optional(z.boolean()),
 });
@@ -21,6 +20,8 @@ export function isBoundary(
     if (!from)
         return direction == 'forward';
 
+    if (condition.fileSaved && from.attrs.fileSaved) return true;
+
     let nexts: Id<Commit>[];
     if (direction == 'forward') {
         nexts = vc.forwardLinks(current);
@@ -34,15 +35,12 @@ export function isBoundary(
 
     const next = vc.get(nexts[0])!;
     if (next.where !== from.where) return true;
-    if (condition.fileSaved && next.attrs.fileSaved) return true;
     if (condition.selectionSet && next.attrs.selectionSet) return true;
 
     if (condition.delay !== undefined
      && Math.abs(from.attrs.timestamp - next.attrs.timestamp) > condition.delay) return true;
-    if (condition.focusedBlockChange
-     && next.attrs.focusedBlock !== from.attrs.focusedBlock) return true;
     if (condition.focusedClusterChange
-     && next.attrs.focusedCluster !== from.attrs.focusedCluster) return true;
+     && next.attrs.currentCluster !== from.attrs.currentCluster) return true;
 
     return false;
 }

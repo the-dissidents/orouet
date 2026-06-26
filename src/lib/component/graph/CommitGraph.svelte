@@ -3,7 +3,6 @@
     delay: 500,
     fileSaved: true,
     focusedClusterChange: true,
-    focusedBlockChange: true
   });
 </script>
 
@@ -88,6 +87,9 @@
             </span>
             {#if commit}
               {formatAbsoluteDate(new Date(commit.attrs.timestamp))}
+              {#if commit.attrs.fileSaved}
+                <span class="remarks">文件保存</span>
+              {/if}
             {:else}
               Initial commit
             {/if}
@@ -170,6 +172,10 @@
 
   .hash {
     font-family: monospace;
+    @include colorvars(color, disabled-text);
+  }
+
+  .remarks {
     @include colorvars(color, disabled-text);
   }
 </style>

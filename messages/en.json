@@ -27,6 +27,6 @@
 	"boundary_delay": "delay",
 	"seconds": "s",
 	"boundary_fileSaved": "file saved",
-    "boundary_focusedBlockChanged": "focused block changed",
-    "boundary_focusedClusterChanged": "focused cluster changed"
+	"boundary_focusedBlockChanged": "focused block changed",
+	"boundary_focusedClusterChanged": "focused cluster changed"
 }

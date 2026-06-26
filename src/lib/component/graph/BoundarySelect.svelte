@@ -31,10 +31,6 @@
     <input type='checkbox' bind:checked={c.fileSaved}>
   </ConfigRow>
 
-  <ConfigRow name={m.boundary_focusedBlockChanged()}>
-    <input type='checkbox' bind:checked={c.focusedBlockChange}>
-  </ConfigRow>
-
   <ConfigRow name={m.boundary_focusedClusterChanged()}>
     <input type='checkbox' bind:checked={c.focusedClusterChange}>
   </ConfigRow>

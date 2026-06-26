@@ -10,8 +10,11 @@ export function Id<T>() {
     return z.custom<Id<T>>((x) => typeof x === 'string');
 }
 
+const ClusterKinds = ['text', 'blockquote', 'h1', 'h2', 'h3'] as const;
+export type ClusterKind = (typeof ClusterKinds)[number];
+
 export type Block = TypedNode<Node, { }>;
-export type Cluster = TypedNode<Block, { }>;
+export type Cluster = TypedNode<Block, { kind: ClusterKind, id: Id<Cluster> }>;
 export type Doc = TypedNode<Cluster>;
 
 export const Doc = z.codec(z.unknown(), z.custom<Doc>(), {
@@ -48,8 +51,8 @@ export function makeBlock(content: Fragment | Node | readonly Node[]) {
     return PaneSchema.nodes.block.createChecked({ }, content) as Block;
 }
 
-export function makeCluster(content: Block[]) {
-    return PaneSchema.nodes.cluster.createChecked({ }, content) as Cluster;
+export function makeCluster(content: Block[], kind: ClusterKind, _id = id<Cluster>()) {
+    return PaneSchema.nodes.cluster.createChecked({ kind, id: _id }, content) as Cluster;
 }
 
 export function makeDoc(content: Cluster[]) {
@@ -67,14 +70,15 @@ export const PaneSchema = new Schema({
             code: true,
             content: "text*",
             marks: "_",
-            attrs: {
-            },
+            attrs: { },
             parseDOM: [{ tag: 'p' }],
             toDOM: () => ['p', 0],
         },
         cluster: {
             content: "block+",
             attrs: {
+                id: { validate: (x) => typeof x == 'string' },
+                kind: { validate: (x) => ClusterKinds.includes(x) },
             },
             parseDOM: [{ tag: 'div.cluster' }],
             toDOM: () => ['div', {'class': 'cluster'}, 0],
@@ -100,24 +104,24 @@ export const SchemaDOMParser = DOMParser.fromSchema(PaneSchema);
 export const columnPosition = (pos: ResolvedPos) => {
     Debug.assert(pos.depth == 2);
     return pos.parentOffset;
-}
+};
 
 export const blockIndex = (pos: ResolvedPos) => {
     Debug.assert(pos.depth == 2);
     return pos.index(1);
-}
+};
 
 export const blockOf = (pos: ResolvedPos) => {
     Debug.assert(pos.depth == 2);
-    return pos.node(2);
-}
+    return pos.node(2) as Block;
+};
 
 export const clusterIndex = (pos: ResolvedPos) => {
     Debug.assert(pos.depth == 2);
     return pos.index(0);
-}
+};
 
 export const clusterOf = (pos: ResolvedPos) => {
     Debug.assert(pos.depth == 2);
-    return pos.node(1);
-}
+    return pos.node(1) as Cluster;
+};

@@ -9,8 +9,7 @@ const CommitBase = z.object({
     attrs: z.object({
         timestamp: z.number(),
         label: z.optional(z.string()),
-        focusedBlock: z.optional(Id<Block>()),
-        focusedCluster: z.optional(Id<Cluster>()),
+        currentCluster: z.optional(Id<Cluster>()),
         fileSaved: z.optional(z.boolean()),
         selectionSet: z.optional(z.boolean()),
     })
@@ -159,7 +158,7 @@ export class VersionControl implements ReadonlyVersionControl {
     }
 
     addAttr(attr: Partial<CommitBase['attrs']>) {
-        if (this.#sorted.length == 0) return false;
+        if (this.latestCommit == this.initialCommit) return false;
         const latest = this.get(this.latestCommit);
         Debug.assert(!!latest);
         Object.assign(latest.attrs, attr);

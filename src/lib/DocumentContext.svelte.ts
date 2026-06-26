@@ -1,6 +1,6 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
 import { Debug } from "./details/Util";
-import { Doc, Id, id, makeBlock, makeCluster, makeDoc, PaneSchema } from "./Schema";
+import { Doc, Id, id, makeBlock, makeCluster, makeDoc, PaneSchema, type Block, type Cluster } from "./Schema";
 import { Commit, SerializedVersionControl, VersionControl, type DeltaCommit, type ReadonlyVersionControl, type Transforms } from "./VersionControl.svelte";
 import type { Transform } from "prosemirror-transform";
 import { DefaultOptions, TextOptions } from "./TextOptions";
@@ -38,6 +38,8 @@ export type SerializedDocumentContextJSON = z.input<typeof SerializedDocumentCon
 export class DocumentContext {
     readonly source: Text;
     readonly target: Text;
+
+    currentCluster = $state<Id<Cluster>>();
 
     #currentCommit: Id<Commit>;
     #vc: VersionControl;
@@ -97,6 +99,7 @@ export class DocumentContext {
             type: 'delta', where, id: cid,
             attrs: {
                 timestamp: Date.now(),
+                currentCluster: this.currentCluster
             },
             steps: tr.steps,
             invertedSteps: tr.steps.map((s, i) => s.invert(tr.docs[i])).reverse(),
@@ -117,16 +120,21 @@ export class DocumentContext {
     }
 
     static fromTestClusters(s: string[]) {
+        const clusters = s.map((x) => {
+            const _id = id<Cluster>();
+            return [
+                makeCluster([makeBlock(PaneSchema.text(x.trim()))], 'text', _id),
+                makeCluster([makeBlock([])], 'text', _id),
+            ];
+        });
         return new DocumentContext(
             {
-                content: makeDoc(s.map((x) =>
-                    makeCluster([makeBlock(PaneSchema.text(x.trim()))]))),
+                content: makeDoc(clusters.map((x) => x[0])),
                 options: DefaultOptions.en,
                 language: ['en', null, null]
             },
             {
-                content: makeDoc(s.map(() =>
-                    makeCluster([makeBlock([])]))),
+                content: makeDoc(clusters.map((x) => x[1])),
                 options: DefaultOptions.zh,
                 language: ['zh', null, 'CN']
             }
