@@ -181,3 +181,11 @@ export const clusterOf = (pos: ResolvedPos) => {
     if (pos.depth !== 2) return null;
     return pos.node(1) as Cluster;
 };
+
+export const findCluster = (doc: Doc, id: Id<Cluster>) => {
+    let result: Cluster | null = null;
+    doc.forEach((n) => {
+        if (n.attrs.id == id) result = n;
+    });
+    return result;
+};

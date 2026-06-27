@@ -2,10 +2,11 @@
   import TextInitialIcon from '@lucide/svelte/icons/text-initial';
   import GitGraphIcon from '@lucide/svelte/icons/git-graph';
   import MessagesSquareIcon from '@lucide/svelte/icons/messages-square';
+  import FlaskConicalIcon from '@lucide/svelte/icons/flask-conical';
   import { ButtonStrip, Resizer, StripRadioItem, Tooltip } from '@the_dissidents/svelte-ui';
 
   import { DocumentContext } from '$lib/DocumentContext.svelte';
-  import { blockIndex, clusterIndex, clusterOf, columnPosition } from '$lib/Schema';
+  import { blockIndex, clusterIndex, clusterOf, columnPosition, findCluster } from '$lib/Schema';
   import { Backend } from '$lib/Backend';
 
   import { Memorized } from '$lib/details/Memorized.svelte';
@@ -27,14 +28,15 @@
   setLocale('zh');
 
   import { onDestroy } from 'svelte';
-  import { wait } from '$lib/details/Util';
+  import { Debug, wait } from '$lib/details/Util';
 
   import text from '../data/kafka.txt?raw';
+  import { computeDiff, generatePatches, linearize } from '$lib/details/Richdiff';
   let ctx = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
   ctx.source.language = ['de', null, null];
 
   let rightPane: HTMLElement | undefined = $state();
-  let page: 'format' | 'graph' | 'chat' = $state('format');
+  let page: 'format' | 'graph' | 'chat' | 'test' = $state('test');
 
   let chosen: 'source' | 'target' = $state('source');
   let editor = $state<Editor>();
@@ -48,7 +50,7 @@
 
   async function init() {
     await Promise.all([
-      wait(750),
+      wait(500),
       Memorized.init(),
     ]);
   }
@@ -135,6 +137,9 @@
         <Tooltip text='文本设置' position='bottom'>
           <StripRadioItem value='format'><TextInitialIcon /></StripRadioItem>
         </Tooltip>
+        <Tooltip text='测试' position='bottom'>
+          <StripRadioItem value='test'><FlaskConicalIcon /></StripRadioItem>
+        </Tooltip>
       </ButtonStrip>
 
       {#key ctx}
@@ -154,6 +159,19 @@
         <CommitGraph context={ctx}/>
       {:else if page == 'chat'}
         <ChatPanel context={ctx} />
+      {:else if page == 'test'}
+        <button onclick={() => {
+          if (!ctx.currentCluster) return;
+          const src = findCluster(ctx.source.content, ctx.currentCluster);
+          const tgt = findCluster(ctx.target.content, ctx.currentCluster);
+          console.log(src, tgt);
+          Debug.assert(!!src && !!tgt);
+          const diff = computeDiff(linearize(src), linearize(tgt));
+          const patches = generatePatches(diff);
+          console.log(diff, patches);
+        }}>test</button>
+      {:else}
+        {page satisfies never}
       {/if}
       {/key}
     </div>
