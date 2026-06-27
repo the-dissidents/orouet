@@ -1,7 +1,7 @@
 import type { Mark, Fragment, NodeType, Attrs, Slice, ResolvedPos, MarkType, Node } from "prosemirror-model";
 
 export interface TypedNode<C extends Node, A extends Attrs = {}> extends Node {
-    readonly attrs: A;
+    readonly attrs: Readonly<A>;
     readonly marks: readonly Mark[];
     readonly content: Fragment;
     get children(): readonly C[];

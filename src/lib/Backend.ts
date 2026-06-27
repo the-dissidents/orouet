@@ -13,11 +13,8 @@ export const Backend = {
 
 export const Secrets = {
     async get(name: string) {
-        console.log('getting secret', name);
         const value = await getPassword('secret', name);
-        console.log('ok');
-        if (!value) return null;
-        return value;
+        return value ?? null;
     },
 
     async set(name: string, value: string) {
@@ -25,8 +22,6 @@ export const Secrets = {
     },
 
     async delete(name: string) {
-        console.log('removing secret', name);
         await deletePassword('secret', name);
-        console.log('ok');
     },
 }

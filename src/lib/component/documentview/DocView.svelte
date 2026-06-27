@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-  import { blockIndex, clusterIndex, clusterOf, PaneSchema, type Doc } from "$lib/Schema";
+  import { clusterOf, PaneSchema, type Doc } from "$lib/Schema";
   import { createNodeView } from "$lib/details/NodeView.svelte";
   import { Debug } from "$lib/details/Util";
   import { toggleMark, newlineInCode, selectAll, chainCommands, deleteSelection } from "prosemirror-commands";
@@ -100,7 +100,7 @@
       dispatchTransaction(tr) {
         context.selection = tr.selection;
         const { $head: r } = context.selection;
-        dc.currentCluster = clusterOf(r).attrs.id;
+        dc.currentCluster = clusterOf(r)?.attrs.id;
 
         if (tr.docChanged) {
           dc[role].content = tr.doc as Doc;

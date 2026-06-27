@@ -9,7 +9,6 @@
   import { Backend } from '$lib/Backend';
 
   import { Memorized } from '$lib/details/Memorized.svelte';
-  import { ChatSession } from '$lib/llm/ChatSession.svelte';
 
   import Editor from '$lib/component/documentview/Editor.svelte';
   import DisplayOptions from '$lib/component/DisplayOptions.svelte';
@@ -27,10 +26,13 @@
 
   setLocale('zh');
 
-  import text from '../data/kleist.txt?raw';
   import { onDestroy } from 'svelte';
+  import { wait } from '$lib/details/Util';
 
+  import text from '../data/kafka.txt?raw';
   let ctx = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
+  ctx.source.language = ['de', null, null];
+
   let rightPane: HTMLElement | undefined = $state();
   let page: 'format' | 'graph' | 'chat' = $state('format');
 
@@ -45,7 +47,10 @@
   let path = $state('');
 
   async function init() {
-    await Memorized.init();
+    await Promise.all([
+      wait(750),
+      Memorized.init(),
+    ]);
   }
 
   onDestroy(async () => {
@@ -155,19 +160,19 @@
   </main>
   <footer>
     <div class="grow">{status}</div>
-      <div>
-        <span class="label">currentCluster={ctx.currentCluster}</span>
-      </div>
     {#if selection}
     {@const { $head: r, from, to } = selection}
+    {@const cluster = clusterOf(r)}
+    {#if cluster}
       <div class="border">
-        <span class="label">段落：</span>{clusterIndex(r)+1} / {r.node(0).childCount}
+        <span class="label">段落：</span>{clusterIndex(r)!+1} / {r.node(0).childCount}
       </div>
-      {#if clusterOf(r).childCount > 1}
+      {#if cluster.childCount > 1}
         <div class="border">
-          <span class="label">子段落：</span>{blockIndex(r)+1} / {clusterOf(r).childCount}
+          <span class="label">子段落：</span>{blockIndex(r)!+1} / {cluster.childCount}
         </div>
       {/if}
+    {/if}
       <div class={{border: from !== to}}>
         <span class="label">字符：</span>{columnPosition(r)}
       </div>

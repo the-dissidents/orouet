@@ -1,7 +1,8 @@
-import { DOMParser, Fragment, Node, ResolvedPos, Schema } from "prosemirror-model";
+import { DOMParser, Fragment, Mark, Node, ResolvedPos, Schema } from "prosemirror-model";
 import type { TypedNode } from "./details/TypedNode";
 import * as z from "zod/v4-mini";
 import { Debug } from "./details/Util";
+import { Transform } from "prosemirror-transform";
 
 export type IdBaseType = string;
 export type Id<T> = IdBaseType & { __brand: 'id', __for: T };
@@ -55,6 +56,10 @@ export function makeCluster(content: Block[], kind: ClusterKind, _id = id<Cluste
     return PaneSchema.nodes.cluster.createChecked({ kind, id: _id }, content) as Cluster;
 }
 
+export function makeClusterUnchecked(content: Block[], kind: ClusterKind, _id = id<Cluster>()) {
+    return PaneSchema.nodes.cluster.create({ kind, id: _id }, content) as Cluster;
+}
+
 export function makeDoc(content: Cluster[]) {
     const doc = PaneSchema.nodes.doc.createChecked({ }, content) as Doc;
     return doc;
@@ -63,7 +68,7 @@ export function makeDoc(content: Cluster[]) {
 export const PaneSchema = new Schema({
     nodes: {
         text: {
-            code: true,
+            code: true, // newlines allowed
             inline: true,
         },
         block: {
@@ -71,17 +76,19 @@ export const PaneSchema = new Schema({
             content: "text*",
             marks: "_",
             attrs: { },
-            parseDOM: [{ tag: 'p' }],
             toDOM: () => ['p', 0],
         },
         cluster: {
             content: "block+",
             attrs: {
-                id: { validate: (x) => typeof x == 'string' },
-                kind: { validate: (x) => ClusterKinds.includes(x) },
+                // allow dummy values for correctly parsing HTML
+                id: { default: 'dummy', validate: (x) => typeof x == 'string' },
+                kind: { default: 'text', validate: (x) => ClusterKinds.includes(x) },
             },
-            parseDOM: [{ tag: 'div.cluster' }],
-            toDOM: () => ['div', {'class': 'cluster'}, 0],
+            toDOM: (node) => ['div', {
+                'class': 'cluster',
+                'data-kind': node.attrs.kind
+            }, 0],
         },
         doc: {
             content: "cluster*"
@@ -89,39 +96,88 @@ export const PaneSchema = new Schema({
     },
     marks: {
         emphasis: {
-            parseDOM: [{ tag: 'i' }, { tag: 'em' }],
             toDOM: () => ['em', 0]
         },
         keyword: {
-            parseDOM: [{ tag: 'b' }, { tag: 'strong' }],
             toDOM: () => ['strong', 0]
         },
     }
 });
 
-export const SchemaDOMParser = DOMParser.fromSchema(PaneSchema);
+const SchemaDOMParser = DOMParser.fromSchema(PaneSchema);
+
+export const parseDOMDoc = (dom: Element | DocumentFragment): Doc => {
+    if (dom.querySelector('div.cluster[data-kind]')) {
+        const content: Cluster[] = [];
+        function walk(e: Element | DocumentFragment) {
+            if (e instanceof Element && e.matches('div.cluster')) {
+                const kind = e.getAttribute('data-kind') as ClusterKind;
+                content.push(...parseDOMCluster(e, ClusterKinds.includes(kind) ? kind : 'text'));
+            } else
+                [...e.children].forEach((e) => walk(e));
+        }
+        walk(dom);
+        return makeDoc(content);
+    }
+
+    // a single cluster
+    return makeDoc(parseDOMCluster(dom, 'text'));
+};
+
+export const parseDOMCluster = (dom: Element | DocumentFragment, kind: ClusterKind): [Cluster] | [] => {
+    console.log('parse cluster', dom);
+    const content: Block[] = [];
+
+    function walk(e: Element | DocumentFragment) {
+        if (e instanceof Element && e.matches('p'))
+            content.push(parseDOMBlock(e));
+        else
+            [...e.children].forEach((e) => walk(e));
+    }
+    walk(dom);
+    return content.length > 0 ? [makeCluster(content, kind)] : [];
+};
+
+export const parseDOMBlock = (dom: Element): Block => {
+    const content: Node[] = [];
+    function walk(n: globalThis.Node, marks: Mark[] = []) {
+        if (n instanceof Text && n.nodeValue)
+            content.push(PaneSchema.text(n.nodeValue));
+        if (n instanceof Element) {
+            switch (n.tagName.toLowerCase()) {
+            case 'em':
+                marks.push(PaneSchema.marks.emphasis.create()); break;
+            case 'strong':
+                marks.push(PaneSchema.marks.strong.create()); break;
+            }
+            n.childNodes.forEach((c) => walk(c, [...marks]));
+        }
+    }
+    walk(dom);
+    return makeBlock(content);
+}
 
 export const columnPosition = (pos: ResolvedPos) => {
-    Debug.assert(pos.depth == 2);
+    if (pos.depth !== 2) return null;
     return pos.parentOffset;
 };
 
 export const blockIndex = (pos: ResolvedPos) => {
-    Debug.assert(pos.depth == 2);
+    if (pos.depth !== 2) return null;
     return pos.index(1);
 };
 
 export const blockOf = (pos: ResolvedPos) => {
-    Debug.assert(pos.depth == 2);
+    if (pos.depth !== 2) return null;
     return pos.node(2) as Block;
 };
 
 export const clusterIndex = (pos: ResolvedPos) => {
-    Debug.assert(pos.depth == 2);
+    if (pos.depth !== 2) return null;
     return pos.index(0);
 };
 
 export const clusterOf = (pos: ResolvedPos) => {
-    Debug.assert(pos.depth == 2);
+    if (pos.depth !== 2) return null;
     return pos.node(1) as Cluster;
 };
