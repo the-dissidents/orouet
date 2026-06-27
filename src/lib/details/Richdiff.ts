@@ -1,8 +1,9 @@
 // Mostly written by Gemini 3 Pro
 
 import type { Node } from "prosemirror-model";
+import { simpleSegmentText } from "./Segmenter";
 
-export type Token = BlockOpenToken | BlockCloseToken | CharToken;
+export type Token = BlockOpenToken | BlockCloseToken | TextToken;
 
 interface BlockOpenToken {
     kind: 'block_open';
@@ -14,28 +15,35 @@ interface BlockCloseToken {
     type: string;
 }
 
-interface CharToken {
-    kind: 'char';
-    char: string;
+interface TextToken {
+    kind: 'token';
+    content: string;
     marks: string[]; // Sorted array of mark types for fast equality checks
 }
 
+export type LinearizationOptions = {
+    segmenter?: (s: string) => string[],
+    skipRootBoundary?: boolean
+}
+
 // --- 3. Linearization Engine ---
-export function linearize(node: Node): Token[] {
+export function linearize(node: Node, opts?: LinearizationOptions): Token[] {
     const tokens: Token[] = [];
 
     if (node.isText && node.text) {
         const marks = (node.marks || []).map(m => m.type.name).sort();
-        // Configurable step: splitting by character here.
-        // To diff by word, split by regex `\b` instead.
-        for (const char of node.text) {
-            tokens.push({ kind: 'char', char, marks });
+
+        const segmenter = opts?.segmenter ?? simpleSegmentText;
+        for (const segment of segmenter(node.text)) {
+            tokens.push({ kind: 'token', content: segment, marks });
         }
     } else {
-        tokens.push({ kind: 'block_open', type: node.type.name });
+        if (!opts?.skipRootBoundary)
+            tokens.push({ kind: 'block_open', type: node.type.name });
         for (const child of node.children)
-            tokens.push(...linearize(child));
-        tokens.push({ kind: 'block_close', type: node.type.name });
+            tokens.push(...linearize(child, { ...opts, skipRootBoundary: false }));
+        if (!opts?.skipRootBoundary)
+            tokens.push({ kind: 'block_close', type: node.type.name });
     }
 
     return tokens;
@@ -43,8 +51,8 @@ export function linearize(node: Node): Token[] {
 
 function tokensEqual(t1: Token, t2: Token): boolean {
     if (t1.kind !== t2.kind) return false;
-    if (t1.kind === 'char' && t2.kind === 'char') {
-        if (t1.char !== t2.char) return false;
+    if (t1.kind === 'token' && t2.kind === 'token') {
+        if (t1.content !== t2.content) return false;
         if (t1.marks.length !== t2.marks.length) return false;
         return t1.marks.every((m, i) => m === t2.marks[i]);
     }
@@ -93,104 +101,134 @@ export function computeDiff(oldTokens: Token[], newTokens: Token[]): DiffOp[] {
     return diff;
 }
 
-// --- 5. Patch Optimization & Resolution ---
-export type Patch =
-    | { action: 'insertNodes', tokens: Token[], index: number }
-    | { action: 'deleteRange',
-        startIndex: number, endIndex: number }
-    | { action: 'updateMarks',
-        startIndex: number, endIndex: number, add: string[], remove: string[] };
+export type VisualMarker =
+    // Text markers
+    | { type: 'insert_text', index: number, endIndex: number, text: string, marks: string[] }
+    | { type: 'delete_text', anchorIndex: number, text: string, marks: string[] }
+    | { type: 'update_marks', index: number, endIndex: number, text: string, added: string[], removed: string[] }
+    // Block markers
+    | { type: 'insert_block', index: number, nodeType: string, isClose: boolean }
+    | { type: 'delete_block', anchorIndex: number, nodeType: string, isClose: boolean };
 
-export function generatePatches(diffs: DiffOp[]): Patch[] {
-    const patches: Patch[] = [];
-    let currentIndex = 0; // PM absolute position index mapping
+export function generateMarkers(diffs: DiffOp[]): VisualMarker[] {
+    const rawMarkers: VisualMarker[] = [];
+    let newDocIndex = 0; // Exclusively tracks positions in the NEW document
 
     for (let i = 0; i < diffs.length; i++) {
         const current = diffs[i];
 
         if (current.op === 'keep') {
-            currentIndex++; // advance cursor
+            newDocIndex += current.token.kind == 'token'
+                ? current.token.content.length : 1;
             continue;
         }
 
-        // Optimization: Detect formatting changes (Delete char + Insert same char with different marks)
-        if (current.op === 'delete' && i + 1 < diffs.length && diffs[i + 1].op === 'insert') {
-            const next = diffs[i + 1];
-            if (current.token.kind === 'char'
-             && next.token.kind === 'char'
-             && current.token.char === next.token.char
-            ) {
-                const oldMarks = new Set(current.token.marks);
-                const newMarks = new Set(next.token.marks);
-
-                patches.push({
-                    action: 'updateMarks',
-                    startIndex: currentIndex,
-                    endIndex: currentIndex + 1,
-                    add: next.token.marks.filter(m => !oldMarks.has(m)),
-                    remove: current.token.marks.filter(m => !newMarks.has(m))
+        if (current.op === 'insert') {
+            if (current.token.kind === 'token') {
+                rawMarkers.push({
+                    type: 'insert_text',
+                    index: newDocIndex,
+                    endIndex: newDocIndex + current.token.content.length,
+                    text: current.token.content,
+                    marks: current.token.marks
                 });
-
-                currentIndex++;
-                i++; // skip the insert, we handled it as an update
-                continue;
+                newDocIndex += current.token.content.length;
+            } else {
+                rawMarkers.push({
+                    type: 'insert_block',
+                    index: newDocIndex,
+                    nodeType: current.token.type,
+                    isClose: current.token.kind === 'block_close'
+                });
+                newDocIndex++;
             }
         }
 
-        // Standard Delete
         if (current.op === 'delete') {
-            patches.push({
-                action: 'deleteRange',
-                startIndex: currentIndex,
-                endIndex: currentIndex + 1
-            });
-            // Do not increment currentIndex because the node is removed from the target doc
-        }
-
-        // Standard Insert
-        if (current.op === 'insert') {
-            patches.push({
-                action: 'insertNodes',
-                index: currentIndex,
-                tokens: [current.token]
-            });
-            currentIndex++;
+            if (current.token.kind === 'token') {
+                rawMarkers.push({
+                    type: 'delete_text',
+                    anchorIndex: newDocIndex, // Points to the gap where it used to be
+                    text: current.token.content,
+                    marks: current.token.marks
+                });
+            } else {
+                rawMarkers.push({
+                    type: 'delete_block',
+                    anchorIndex: newDocIndex,
+                    nodeType: current.token.type,
+                    isClose: current.token.kind === 'block_close'
+                });
+            }
         }
     }
 
-    return optimizePatches(patches);
+    return optimizeMarkers(rawMarkers);
 }
 
-// Merges contiguous patches of the same action into ranges
-function optimizePatches(patches: Patch[]): Patch[] {
-    const optimized: Patch[] = [];
+function optimizeMarkers(markers: VisualMarker[]): VisualMarker[] {
+    const optimized: VisualMarker[] = [];
 
-    for (const patch of patches) {
+    for (const marker of markers) {
         if (optimized.length === 0) {
-            optimized.push(patch);
+            optimized.push(marker);
             continue;
         }
 
         const last = optimized[optimized.length - 1];
 
-        if (patch.action === 'deleteRange' && last.action === 'deleteRange'
-         && last.startIndex === patch.startIndex
+        // Merge contiguous text deletions at the exact same anchor
+        if (marker.type === 'delete_text' && last.type === 'delete_text'
+         && last.anchorIndex === marker.anchorIndex
+         && JSON.stringify(last.marks) === JSON.stringify(marker.marks)
         ) {
-            last.endIndex += (patch.endIndex - patch.startIndex);
-        } else if (patch.action === 'insertNodes' && last.action === 'insertNodes'
-                && last.index + last.tokens.length === patch.index
+            last.text += marker.text;
+        }
+        // Merge contiguous text insertions
+        else if (marker.type === 'insert_text' && last.type === 'insert_text'
+              && last.endIndex === marker.index
+              && JSON.stringify(last.marks) === JSON.stringify(marker.marks)
         ) {
-            last.tokens.push(...patch.tokens);
-        } else if (patch.action === 'updateMarks' && last.action === 'updateMarks'
-                && last.endIndex === patch.startIndex
-                && JSON.stringify(last.add) === JSON.stringify(patch.add)
-                && JSON.stringify(last.remove) === JSON.stringify(patch.remove)
-        ) {
-            last.endIndex = patch.endIndex;
-        } else {
-            optimized.push(patch);
+            last.text += marker.text;
+            last.endIndex = marker.endIndex;
+        }
+        // No mark updates yet
+        // Do not merge block markers; they represent discrete structural boundaries
+        else {
+            optimized.push(marker);
         }
     }
 
-    return optimized;
+    const result: VisualMarker[] = [];
+    for (let i = 0; i < optimized.length; i++) {
+        const current = optimized[i];
+        if (i == optimized.length - 1) {
+            result.push(current);
+            continue;
+        }
+
+        const next = optimized[i + 1];
+
+        // Optimization: Detect formatting updates
+        if (current.type === 'delete_text' && next.type === 'insert_text'
+         && current.text == next.text
+        ) {
+            const oldMarks = new Set(current.marks);
+            const newMarks = new Set(next.marks);
+
+            result.push({
+                type: 'update_marks',
+                index: next.index,
+                endIndex: next.endIndex,
+                text: current.text,
+                added: next.marks.filter(m => !oldMarks.has(m)),
+                removed: current.marks.filter(m => !newMarks.has(m))
+            });
+            i++;
+            continue;
+        }
+        result.push(current);
+    }
+
+    return result;
 }

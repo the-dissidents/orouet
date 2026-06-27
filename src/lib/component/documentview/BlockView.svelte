@@ -21,15 +21,15 @@
 </script>
 
 <NodeViewContent data-block
-  style="
-    text-align: {context.opts?.justify ? 'justify' : 'start'};
-  "
+  style="text-align: {context.opts?.justify ? 'justify' : 'start'};"
   data-selected={selected} contentsOnly={false}>
 </NodeViewContent>
 
 <style lang="scss">
   @use "../../../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
   @use "../../../util.scss" as *;
+
+  $round: 4px;
 
   :global [data-block] {
     display: block;
@@ -48,6 +48,43 @@
     // &[data-selected=true] {
     //   border-color: var(--accent1-border-light);
     // }
+
+    .diff.insert {
+      display: inline-block;
+      @include colorvars(background-color, accent2-back);
+
+      border-radius: $round;
+      margin-inline: 2px;
+      padding-inline: 2px;
+    }
+
+    .diff.delete {
+      display: inline-block;
+      @include colorvars(color, disabled-text);
+      @include colorvars(background-color, disabled-back);
+      text-decoration: line-through;
+
+      border-radius: $round;
+      margin-inline: 2px;
+      padding-inline: 2px;
+    }
+
+    .diff.delete + .diff.insert {
+      margin-left: 0;
+      border-radius: 0 $round $round 0;
+    }
+
+    .diff.delete:has(+ .diff.insert) {
+      margin-right: 0;
+      border-radius: $round 0 0 $round;
+    }
+
+    .diff.update-marks {
+      text-decoration: dashed underline darkgreen;
+      @include colors(text-decoration-color, uchu.$green-9, uchu.$green-3);
+      // text-decoration-thickness: 2px;
+      text-underline-offset: 0.15em;
+    }
   }
 
   :global [data-placeholder-text]::before {

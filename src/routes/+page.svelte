@@ -10,6 +10,7 @@
   import { Backend } from '$lib/Backend';
 
   import { Memorized } from '$lib/details/Memorized.svelte';
+  import { computeDiff, generateMarkers, linearize, type LinearizationOptions, type VisualMarker } from '$lib/details/Richdiff';
 
   import Editor from '$lib/component/documentview/Editor.svelte';
   import DisplayOptions from '$lib/component/DisplayOptions.svelte';
@@ -31,7 +32,6 @@
   import { Debug, wait } from '$lib/details/Util';
 
   import text from '../data/kafka.txt?raw';
-  import { computeDiff, generatePatches, linearize } from '$lib/details/Richdiff';
   let ctx = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
   ctx.source.language = ['de', null, null];
 
@@ -47,6 +47,8 @@
 
   let status = $state('ok');
   let path = $state('');
+
+  let diff = $state<VisualMarker[]>([]);
 
   async function init() {
     await Promise.all([
@@ -124,7 +126,7 @@
     </div>
   </header>
   <main class="page">
-    <Editor context={ctx} bind:this={editor} />
+    <Editor context={ctx} bind:this={editor} diffSource={[]} diffTarget={diff} />
     <Resizer first={rightPane!} bind:value={$rightSize} reverse vertical useViewportFraction/>
     <div class="pane" bind:this={rightPane}>
       <ButtonStrip bind:selectValue={page} id='pageselector'>
@@ -161,14 +163,12 @@
         <ChatPanel context={ctx} />
       {:else if page == 'test'}
         <button onclick={() => {
-          if (!ctx.currentCluster) return;
-          const src = findCluster(ctx.source.content, ctx.currentCluster);
-          const tgt = findCluster(ctx.target.content, ctx.currentCluster);
-          console.log(src, tgt);
-          Debug.assert(!!src && !!tgt);
-          const diff = computeDiff(linearize(src), linearize(tgt));
-          const patches = generatePatches(diff);
-          console.log(diff, patches);
+          const opts: LinearizationOptions = { skipRootBoundary: true };
+          const ops = computeDiff(
+            linearize(ctx.source.content, opts), linearize(ctx.target.content, opts));
+          const markers = generateMarkers(ops);
+          diff = markers;
+          console.log(ops, markers);
         }}>test</button>
       {:else}
         {page satisfies never}
@@ -181,6 +181,11 @@
     {#if selection}
     {@const { $head: r, from, to } = selection}
     {@const cluster = clusterOf(r)}
+
+    <div class="border">
+      <span class="label">IDX:</span> {r.pos}
+    </div>
+
     {#if cluster}
       <div class="border">
         <span class="label">段落：</span>{clusterIndex(r)!+1} / {r.node(0).childCount}

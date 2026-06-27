@@ -3,6 +3,8 @@
 
 @include main.configure(
   // $page-background-dark: uchu.$yin-9,
+  $disabled-text-dark:    uchu.$gray-7,
+  $disabled-back-dark:    uchu.$yin-8,
 );
 
 :root {

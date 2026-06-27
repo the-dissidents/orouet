@@ -23,7 +23,7 @@
   import { keymap } from "prosemirror-keymap";
   import { EditorState, Selection } from "prosemirror-state";
   import { EditorView } from "prosemirror-view";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import BlockView from "./BlockView.svelte";
   import ClusterView from "./ClusterView.svelte";
   import type { SvelteHTMLElements } from "svelte/elements";
@@ -32,17 +32,20 @@
   import { m } from "$lib/paraglide/messages.js";
   import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, pasteHandler, splitBlock, testCommand } from "./Commands";
   import type { TextOptions } from "$lib/TextOptions";
+  import type { VisualMarker } from "$lib/details/Richdiff";
+  import { diffPluginKey, diffVisualization } from "./Diffview";
 
   interface Props {
     role: 'source' | 'target',
+    diffMarkers?: VisualMarker[],
     dc: DocumentContext,
   }
 
-  const { role, dc, ...rest }: Props & SvelteHTMLElements['div'] = $props();
+  const { role, dc, diffMarkers = [], ...rest }: Props & SvelteHTMLElements['div'] = $props();
   $effect(() => Debug.assert(dc[role].content.type == PaneSchema.topNodeType));
 
   let content: HTMLElement | undefined = $state();
-  let view: EditorView;
+  let view: EditorView | undefined;
 
   const emphasis = toggleMark(PaneSchema.marks.emphasis);
   const keyword = toggleMark(PaneSchema.marks.keyword);
@@ -63,8 +66,15 @@
 
   const me = {};
 
+  $effect(() => {
+    if (diffMarkers) untrack(() => {
+      view?.dispatch(view.state.tr.setMeta(diffPluginKey, diffMarkers));
+    });
+  })
+
   onMount(() => {
     dc.onRevert.bind(me, (_, ts) => {
+      Debug.assert(!!view);
       const tr = view.state.tr.setMeta('is_revert', true);
       for (const step of ts[role].steps)
         tr.step(step);
@@ -95,6 +105,7 @@
           }),
           placeholder(PaneSchema.nodes.block, m.placeholderText),
           pasteHandler,
+          diffVisualization([]),
         ]
       }),
       dispatchTransaction(tr) {
@@ -109,8 +120,8 @@
           }
         }
 
-        const newState = view.state.apply(tr)
-        view.updateState(newState);
+        const newState = view!.state.apply(tr)
+        view!.updateState(newState);
       },
       nodeViews: {
         cluster: createNodeView(ClusterView, { context }),

@@ -12,21 +12,12 @@
 
   const { context, node }: Props = $props();
   $effect(() => Debug.assert(node.type == PaneSchema.nodes.cluster));
-
-  let current = $derived(node.attrs.id == context.dc.currentCluster);
 </script>
 
-<div class="cluster" data-current={current}>
-  <NodeViewContent />
-</div>
+<NodeViewContent contentsOnly={false} data-cluster-kind={node.attrs.kind} />
 
 <style lang='scss'>
-  @use "../../../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
-
-  .cluster {
+  :global [data-cluster-kind] {
     position: relative;
-    // &[data-current=true] {
-    //   background-color: uchu.$gray-1;
-    // }
   }
 </style>
