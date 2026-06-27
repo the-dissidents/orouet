@@ -16,9 +16,12 @@ type Node = PositionedNode & {
     deltaX: number,
 };
 
+export type EdgeType = 'children' | 'merging' | 'merged';
+
 export type GraphEdge = {
     from: PositionedNode,
     to: PositionedNode,
+    type: EdgeType
 };
 
 export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
@@ -37,7 +40,10 @@ export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
         if (skipped.has(id) || !vc.isDelta(id)) continue;
         const commit = vc.get(id)!;
         let p = commit.parent;
-        while (!isBoundary(vc, p, 'forward', b) && p !== c.currentCommitId) {
+        while (!isBoundary(vc, p, 'forward', b)
+            && p !== c.currentDiffCommit
+            && p !== c.currentCommitId
+        ) {
             skipped.add(p);
             Debug.assert(vc.isDelta(p));
             p = vc.get(p)!.parent;
@@ -56,6 +62,7 @@ export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
     }
 
     // modified Reingold-Tilford with right contour only
+    // A bit of this was written by Gemini 3 Pro
     let y = 0;
     for (const id of commits) {
         if (skipped.has(id)) continue;
@@ -97,10 +104,17 @@ export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
 
         for (const child of getChildren(id)) {
             resolveX(child.id, currentX + child.deltaX);
-            edges.push({ from: node, to: child });
+            edges.push({ from: node, to: child, type: 'children' });
         }
     }
     resolveX(vc.initialCommit, 0);
+
+    if (c.currentDiffCommit) {
+        const orig = nodeMap.get(c.currentDiffCommit);
+        const current = nodeMap.get(c.currentCommitId);
+        Debug.assert(!!orig && !!current);
+        edges.push({ from: orig, to: current, type: 'merging' });
+    }
 
     // maxX is just the global width at that Y level
     const globalWidths = nodeMap.get(vc.initialCommit)?.widths;

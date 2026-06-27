@@ -4,18 +4,18 @@
   import DocView from "./DocView.svelte";
   import { Memorized } from "$lib/details/Memorized.svelte";
   import * as z from "zod/v4-mini";
-  import type { VisualMarker } from "$lib/details/Richdiff";
 
   interface Props {
     context: DocumentContext,
-    diffSource: VisualMarker[],
-    diffTarget: VisualMarker[],
   }
 
-  let { context, diffSource, diffTarget }: Props = $props();
+  let { context }: Props = $props();
 
   let leftPane: HTMLElement | undefined = $state();
   let source = $state<DocView>(), target = $state<DocView>();
+  let diffDocs = $derived(context.currentDiffCommit
+    ? context.getDocsAtCommit(context.currentDiffCommit)
+    : { source: undefined, target: undefined });
 
   const leftSize = Memorized.$('left-size', z.string(), '33vw');
 
@@ -54,11 +54,11 @@
   {/each}
 
   <div class="left">
-    <DocView role='source' dc={context} diffMarkers={diffSource} bind:this={source} />
+    <DocView role='source' dc={context} diffTarget={diffDocs.source} bind:this={source} />
   </div>
 
   <div class="right">
-    <DocView role='target' dc={context} diffMarkers={diffTarget} bind:this={target} />
+    <DocView role='target' dc={context} diffTarget={diffDocs.target} bind:this={target} />
   </div>
 </div>
 {/key}

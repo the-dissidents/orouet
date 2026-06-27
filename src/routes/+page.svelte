@@ -36,7 +36,7 @@
   ctx.source.language = ['de', null, null];
 
   let rightPane: HTMLElement | undefined = $state();
-  let page: 'format' | 'graph' | 'chat' | 'test' = $state('test');
+  let page: 'format' | 'graph' | 'chat' | 'test' = $state('graph');
 
   let chosen: 'source' | 'target' = $state('source');
   let editor = $state<Editor>();
@@ -126,7 +126,7 @@
     </div>
   </header>
   <main class="page">
-    <Editor context={ctx} bind:this={editor} diffSource={[]} diffTarget={diff} />
+    <Editor context={ctx} bind:this={editor} />
     <Resizer first={rightPane!} bind:value={$rightSize} reverse vertical useViewportFraction/>
     <div class="pane" bind:this={rightPane}>
       <ButtonStrip bind:selectValue={page} id='pageselector'>
@@ -162,14 +162,7 @@
       {:else if page == 'chat'}
         <ChatPanel context={ctx} />
       {:else if page == 'test'}
-        <button onclick={() => {
-          const opts: LinearizationOptions = { skipRootBoundary: true };
-          const ops = computeDiff(
-            linearize(ctx.source.content, opts), linearize(ctx.target.content, opts));
-          const markers = generateMarkers(ops);
-          diff = markers;
-          console.log(ops, markers);
-        }}>test</button>
+
       {:else}
         {page satisfies never}
       {/if}

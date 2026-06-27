@@ -9,13 +9,14 @@
 <script lang="ts">
   import { formatAbsoluteDate, formatFullDate } from "$lib/details/DateFormat";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
-  import { graphLayout } from "./Layout";
+  import { graphLayout, type EdgeType } from "./Layout";
   import type { Commit } from "$lib/VersionControl.svelte";
   import { Collapsible } from "@the_dissidents/svelte-ui";
   import BoundarySelect from "./BoundarySelect.svelte";
   import { Memorized } from "$lib/details/Memorized.svelte";
   import { BoundaryCondition } from "$lib/Boundary";
   import type { Id } from "$lib/Schema";
+  import { Menu } from "@tauri-apps/api/menu";
 
   const { context }: {
     context: DocumentContext
@@ -33,49 +34,70 @@
 
   let svgHeight = $derived(layout.nodes.length * Y_STEP + PADDING * 2);
 
-  function generatePath(x1: number, y1: number, x2: number, y2: number): string {
+  function generatePath(type: EdgeType, x1: number, y1: number, x2: number, y2: number): string {
     const startX = x1 * X_STEP + PADDING;
     const startY = y1 * Y_STEP + PADDING;
     const endX = x2 * X_STEP + PADDING;
     const endY = y2 * Y_STEP + PADDING;
 
-    if (startX === endX) {
-        return `M ${startX} ${startY} L ${endX} ${endY}`;
-    }
+    if (type == 'children') {
+      if (startX === endX)
+          return `M ${startX} ${startY} L ${endX} ${endY}`;
 
-    // Add a smooth curve when jumping lanes
-    const midY = Math.max((startY + endY) / 2, startY - (endX - startX) / 2);
-    return `M ${startX} ${startY} C ${endX} ${startY}, ${endX} ${midY}, ${endX} ${endY}`;
+      // Add a smooth curve when jumping lanes
+      const midY = Math.max((startY + endY) / 2, startY - (endX - startX) / 2);
+      return `M ${startX} ${startY} C ${endX} ${startY}, ${endX} ${midY}, ${endX} ${endY}`;
+    } else {
+      return `M ${startX} ${startY} H ${3} V ${endY} H ${endX - RADIUS}`;
+    }
   }
 
   async function onClickRow(id: Id<Commit>, c?: Commit) {
-    context.revertTo(id);
-
-    // const label = c ? c.attrs.label : 'Initial commit';
-    // const m = await Menu.new({items: [
-    //   ...(label ? [{
-    //     text: label,
-    //     enabled: false
-    //   }] : []),
-    //   ...(c ? [{
-    //     text: `时间：${formatFullDate(new Date(c.attrs.timestamp))}`,
-    //     enabled: false
-    //   }] : []),
-    //   {
-    //     item: 'Separator'
-    //   },
-    //   {
-    //     text: `恢复到此刻`,
-    //     enabled: id !== context.currentCommitId,
-    //     action: () => context.revertTo(id)
-    //   },
-    // ]});
-    // m.popup();
+    const label = c ? c.attrs.label : '初始状态';
+    const m = await Menu.new({items: [
+      ...(label ? [{
+        text: label,
+        enabled: false
+      }] : []),
+      ...(c ? [{
+        text: `时间：${formatFullDate(new Date(c.attrs.timestamp))}`,
+        enabled: false
+      }] : []),
+      {
+        item: 'Separator'
+      },
+      {
+        text: `恢复到此刻`,
+        enabled: id !== context.currentCommitId,
+        action: () => context.revertTo(id)
+      },
+      {
+        text: `进行比对`,
+        enabled: id !== context.currentCommitId,
+        action: () => context.currentDiffCommit = id
+      },
+    ]});
+    m.popup();
   }
 </script>
 
 <div class="graph-container">
   <svg height={svgHeight}>
+    <defs>
+      <!-- A marker to be used as an arrowhead -->
+      <marker
+        id="arrow"
+        class="arrow"
+        viewBox="0 0 6 10"
+        refX="6"
+        refY="5"
+        markerWidth="5"
+        markerHeight="5"
+        orient="auto">
+        <path d="M 0 0 L 6 5 L 0 10" fill="none" />
+      </marker>
+  </defs>
+
     {#each layout.nodes as node (node.id)}
     {@const commit = context.versionControl.get(node.id)}
       <foreignObject width="100%" height={Y_STEP}
@@ -91,7 +113,7 @@
                 <span class="remarks">文件保存</span>
               {/if}
             {:else}
-              Initial commit
+              初始状态
             {/if}
           </span>
         </button>
@@ -99,8 +121,8 @@
     {/each}
 
     {#each layout.edges as edge}
-      <path class="edge"
-        d={generatePath(edge.from.x, edge.from.y, edge.to.x, edge.to.y)} />
+      <path class="edge {edge.type}"
+        d={generatePath(edge.type, edge.from.x, edge.from.y, edge.to.x, edge.to.y)} />
     {/each}
 
     {#each layout.nodes as node (node.id)}
@@ -116,6 +138,7 @@
 </Collapsible>
 
 <style lang="scss">
+  @use "../../../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
   @use '../../../util.scss' as *;
 
   .graph-container {
@@ -130,8 +153,23 @@
 
   .edge {
     fill: none;
+    stroke-linejoin: round;
+  }
+
+  .children {
     stroke-width: 2;
     @include colorvars(stroke, accent2-back);
+  }
+
+  .merging {
+    stroke-width: 1.5;
+    @include colors(stroke, uchu.$blue-3, uchu.$blue-4);
+    marker-end: url(#arrow);
+  }
+
+  .arrow {
+    stroke-width: 2;
+    @include colors(stroke, uchu.$blue-3, uchu.$blue-4);
   }
 
   .node {

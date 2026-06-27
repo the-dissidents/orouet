@@ -79,7 +79,7 @@ type PathSegment = {
     to: Id<Commit>;
 };
 
-type Docs = {
+export type Docs = {
     source: Doc,
     target: Doc
 };

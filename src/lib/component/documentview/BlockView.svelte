@@ -51,32 +51,33 @@
 
     .diff.insert {
       display: inline-block;
-      @include colorvars(background-color, accent2-back);
+      @include colors(color, uchu.$blue-9, uchu.$blue-2);
 
-      border-radius: $round;
-      margin-inline: 2px;
-      padding-inline: 2px;
+      &:hover {
+        @include colors(background-color, uchu.$blue-1, uchu.$blue-9);
+      }
     }
 
     .diff.delete {
       display: inline-block;
       @include colorvars(color, disabled-text);
-      @include colorvars(background-color, disabled-back);
       text-decoration: line-through;
 
-      border-radius: $round;
-      margin-inline: 2px;
-      padding-inline: 2px;
+      &:hover {
+        @include colors(background-color, uchu.$gray-2, uchu.$gray-9);
+      }
     }
 
     .diff.delete + .diff.insert {
-      margin-left: 0;
-      border-radius: 0 $round $round 0;
+      border-left: 0.75px solid;
+      padding-left: 2px;
+      @include colors(border-color, gray, gray);
     }
 
     .diff.delete:has(+ .diff.insert) {
-      margin-right: 0;
-      border-radius: $round 0 0 $round;
+      border-right: 0.75px solid;
+      padding-right: 2px;
+      @include colors(border-color, gray, gray);
     }
 
     .diff.update-marks {

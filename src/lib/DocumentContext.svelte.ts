@@ -1,7 +1,7 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
 import { Debug } from "./details/Util";
 import { Doc, Id, id, makeBlock, makeCluster, makeDoc, PaneSchema, type Block, type Cluster } from "./Schema";
-import { Commit, SerializedVersionControl, VersionControl, type DeltaCommit, type ReadonlyVersionControl, type Transforms } from "./VersionControl.svelte";
+import { Commit, SerializedVersionControl, VersionControl, type DeltaCommit, type Docs, type ReadonlyVersionControl, type Transforms } from "./VersionControl.svelte";
 import type { Transform } from "prosemirror-transform";
 import { DefaultOptions, TextOptions } from "./TextOptions";
 import * as z from "zod/v4-mini";
@@ -40,6 +40,7 @@ export class DocumentContext {
     readonly target: Text;
 
     currentCluster = $state<Id<Cluster>>();
+    currentDiffCommit = $state<Id<Commit>>();
 
     #currentCommit: Id<Commit>;
     #vc: VersionControl;
@@ -117,6 +118,18 @@ export class DocumentContext {
         Debug.assert(!!result);
         this.onRevert.dispatch(cid, result);
         this.#currentCommit = cid;
+    }
+
+    getDocsAtCommit(cid: Id<Commit>) {
+        const result = this.#vc.transform({
+            source: this.source.content,
+            target: this.target.content
+        }, this.#currentCommit, cid);
+        Debug.assert(!!result);
+        return {
+            source: result.source.doc as Doc,
+            target: result.target.doc as Doc
+        } satisfies Docs;
     }
 
     static fromTestClusters(s: string[]) {

@@ -11,7 +11,11 @@ export const Debug: {
     assert(x: boolean, file?: string, line?: number): asserts x
 } = {
     assert(x: boolean, file?: string, line?: number): asserts x {
-        if (!!!x) throw new Error('assertion failed ' + file ? `[${file}@${line}]` : '[?]');
+        if (!!!x) {
+            const e =  new Error('assertion failed ' + (file ? `[${file}@${line}]` : '[?]'));
+            console.error(e.stack);
+            throw e;
+        }
     }
 };
 

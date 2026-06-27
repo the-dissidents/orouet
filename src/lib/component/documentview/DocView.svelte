@@ -1,7 +1,6 @@
 <script lang="ts" module>
   export class PaneContext {
     selection?: Selection = $state();
-    doc?: Doc = $state();
     readonly role: 'source' | 'target';
     readonly dc: DocumentContext;
 
@@ -32,16 +31,17 @@
   import { m } from "$lib/paraglide/messages.js";
   import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, pasteHandler, splitBlock, testCommand } from "./Commands";
   import type { TextOptions } from "$lib/TextOptions";
-  import type { VisualMarker } from "$lib/details/Richdiff";
+  import { computeDiff, generateMarkers, linearize, type LinearizationOptions, type VisualMarker } from "$lib/details/Richdiff";
   import { diffPluginKey, diffVisualization } from "./Diffview";
+  import { DebouncedTask } from "$lib/details/DebouncedTask";
 
   interface Props {
     role: 'source' | 'target',
-    diffMarkers?: VisualMarker[],
+    diffTarget?: Doc,
     dc: DocumentContext,
   }
 
-  const { role, dc, diffMarkers = [], ...rest }: Props & SvelteHTMLElements['div'] = $props();
+  const { role, dc, diffTarget, ...rest }: Props & SvelteHTMLElements['div'] = $props();
   $effect(() => Debug.assert(dc[role].content.type == PaneSchema.topNodeType));
 
   let content: HTMLElement | undefined = $state();
@@ -66,11 +66,22 @@
 
   const me = {};
 
+  const diffTask = new DebouncedTask(() => {
+    if (!view) return;
+
+    let result: VisualMarker[] = [];
+    if (diffTarget) {
+      const opts: LinearizationOptions = { skipRootBoundary: true };
+      const ops = computeDiff(
+        linearize(diffTarget, opts), linearize(view.state.doc, opts));
+      result = generateMarkers(ops);
+    }
+    view?.dispatch(view.state.tr.setMeta(diffPluginKey, result));
+  }, 500);
+
   $effect(() => {
-    if (diffMarkers) untrack(() => {
-      view?.dispatch(view.state.tr.setMeta(diffPluginKey, diffMarkers));
-    });
-  })
+    if (diffTarget) untrack(() => diffTask.request());
+  });
 
   onMount(() => {
     dc.onRevert.bind(me, (_, ts) => {
