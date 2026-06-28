@@ -7,6 +7,7 @@
 
   import SendIcon from '@lucide/svelte/icons/send';
   import SquareIcon from '@lucide/svelte/icons/square';
+  import AstroidIcon from '@lucide/svelte/icons/astroid';
 
   import { getSystemPrompt, parseFencedCommands, type FencedCommandResult } from "./SystemPrompt";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
@@ -52,12 +53,12 @@
     }
 
     msg.content += '\n```replace_clusters' + `
-<oro-cluster id="${dc.target.content.child(0).attrs.id}" kind="text">
+<oro-cluster id="${dc.target.content.child(1).attrs.id}" kind="text">
 <oro-target>
 <p>${lorem.generateParagraphs(1)}</p>
 </oro-target>
 </oro-cluster>
-<oro-cluster id="${dc.target.content.child(2).attrs.id}" kind="text">
+<oro-cluster id="${dc.target.content.maybeChild(Math.floor(Math.random() * 10))?.attrs?.id ?? 'hho'}" kind="text">
 <oro-target>
 <p>${lorem.generateParagraphs(1)}</p>
 </oro-target>
@@ -164,8 +165,13 @@
         {:else if message.role == 'system'}
         {@const ret = message.data as FencedCommandResult}
           {#each ret.commands as cmd}
+          {@const ok = cmd.errors.length == 0}
             <details class="command">
-              <summary>{cmd.name}</summary>
+              <summary class:fail={!ok}>
+                <AstroidIcon/>
+                <code>{cmd.name}</code>
+                <span>{ok ? '成功' : '错误'}</span>
+              </summary>
               <pre>{cmd.code}</pre>
             </details>
           {/each}
@@ -177,7 +183,7 @@
 
 <hr>
 
-<form onsubmit={(e) => handleSubmit(e, true)} class="input-form">
+<form onsubmit={(e) => handleSubmit(e, /* mock: */ false)} class="input-form">
   <input type="text" bind:value={input} disabled={chat.isStreaming} />
   {#if chat.isStreaming}
     <button type="button" disabled={!provider}>
@@ -237,18 +243,38 @@
     }
 
     &.system {
-      padding: 5px 5px 5px 10px;
-      border-radius: 5px;
-      border-left: 1px solid skyblue;
       summary {
+        display: flex;
+        align-items: center;
         list-style: none;
-        font-family: monospace;
-        font-weight: bold;
+
+        code {
+          font-family: monospace;
+          font-weight: bold;
+        }
+
+        span {
+          font-size: 90%;
+          margin-left: 10px;
+          @include colorvars(color, disabled-text);
+        }
+
+        :global(.lucide) {
+          margin: 0 5px 0 0;
+          height: 0.8lh;
+          stroke-width: 2px;
+          @include colorvars(color, disabled-text);
+        }
 
         &:hover {
           @include colors(color, #007acc, #bde);
         }
+
+        &.fail span {
+          @include colors(color, darkred, lightcoral);
+        }
       }
+
       pre {
         // margin: 0;
         white-space: pre-wrap;

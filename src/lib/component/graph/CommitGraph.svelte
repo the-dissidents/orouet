@@ -30,7 +30,7 @@
   const X_STEP = 12; // Lane width
   const Y_STEP = 30; // Row height
   const RADIUS = 5;
-  const PADDING = 20;
+  const PADDING = 25;
 
   let svgHeight = $derived(layout.nodes.length * Y_STEP + PADDING * 2);
 
@@ -48,7 +48,7 @@
       const midY = Math.max((startY + endY) / 2, startY - (endX - startX) / 2);
       return `M ${startX} ${startY} C ${endX} ${startY}, ${endX} ${midY}, ${endX} ${endY}`;
     } else {
-      return `M ${startX} ${startY} H ${3} V ${endY} H ${endX - RADIUS}`;
+      return `M ${startX} ${startY} H ${7} V ${endY} H ${endX - RADIUS}`;
     }
   }
 
@@ -110,6 +110,9 @@
             </span>
             {#if commit}
               {formatAbsoluteDate(new Date(commit.attrs.timestamp))}
+              {#if commit.attrs.label}
+                <span class="label">{commit.attrs.label}</span>
+              {/if}
               {#if commit.attrs.fileSaved}
                 <span class="remarks">文件保存</span>
               {/if}

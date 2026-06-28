@@ -6,6 +6,7 @@ export const BoundaryCondition = z.object({
   delay: z.optional(z.number()),
   selectionSet: z.optional(z.boolean()),
   focusedClusterChange: z.optional(z.boolean()),
+  hasLabel: z.optional(z.boolean()),
   fileSaved: z.optional(z.boolean()),
 });
 
@@ -21,6 +22,7 @@ export function isBoundary(
         return direction == 'forward';
 
     if (condition.fileSaved && from.attrs.fileSaved) return true;
+    if (condition.hasLabel && from.attrs.label) return true;
 
     let nexts: Id<Commit>[];
     if (direction == 'forward') {

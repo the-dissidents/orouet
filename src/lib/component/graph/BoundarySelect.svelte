@@ -27,6 +27,10 @@
     </label>
   </ConfigRow>
 
+  <ConfigRow name={"带有标签"}>
+    <input type='checkbox' bind:checked={c.hasLabel}>
+  </ConfigRow>
+
   <ConfigRow name={m.boundary_fileSaved()}>
     <input type='checkbox' bind:checked={c.fileSaved}>
   </ConfigRow>

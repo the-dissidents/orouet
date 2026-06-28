@@ -61,6 +61,7 @@
       if (!chat) {
         context.chats.push(temporaryChat);
         chat = temporaryChat;
+        temporaryChat = new ChatSession();
       }
     }}/>
 {:else}
