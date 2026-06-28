@@ -103,6 +103,8 @@ export const PaneSchema = new Schema({
 });
 
 export const parseDOMDoc = (dom: Element | DocumentFragment): Doc => {
+    console.log(dom);
+
     if (dom.querySelector('div.cluster[data-kind]')) {
         const content: Cluster[] = [];
         function walk(e: Element | DocumentFragment) {
@@ -116,12 +118,40 @@ export const parseDOMDoc = (dom: Element | DocumentFragment): Doc => {
         return makeDoc(content);
     }
 
-    // a single cluster
-    return makeDoc(parseDOMCluster(dom, 'text'));
+    return makeDoc(parseDOMSingleClusters(dom));
+};
+
+// parse like a single cluster but then make each block a new cluster
+const parseDOMSingleClusters = (dom: Element | DocumentFragment): Cluster[] => {
+    const content: Cluster[] = [];
+
+    function walk(e: Element | DocumentFragment) {
+        if (e instanceof Element) {
+            let ok = false;
+            ([
+                ['p', 'text'],
+                ['blockquote', 'blockquote'],
+                ['h1', 'h1'], ['h2', 'h2'], ['h3', 'h3'],
+                ['h4', 'h4'], ['h5', 'h5'], ['h6', 'h6']
+            ] as const).forEach(([a, b]) => {
+                if (ok || !e.matches(a)) return;
+                content.push(makeCluster([parseDOMBlock(e)], b));
+                ok = true;
+            })
+            if (ok) return;
+        }
+        [...e.children].forEach((c) => walk(c));
+    }
+    walk(dom);
+
+    if (content.length == 0) {
+        // attempt to treat the whole as inline
+        content.push(makeCluster([parseDOMBlock(dom)], 'text'));
+    }
+    return content;
 };
 
 export const parseDOMCluster = (dom: Element | DocumentFragment, kind: ClusterKind): [Cluster] | [] => {
-    console.log('parse cluster', dom);
     const content: Block[] = [];
 
     function walk(e: Element | DocumentFragment) {
@@ -134,11 +164,11 @@ export const parseDOMCluster = (dom: Element | DocumentFragment, kind: ClusterKi
     return content.length > 0 ? [makeCluster(content, kind)] : [];
 };
 
-export const parseDOMBlock = (dom: Element): Block => {
+export const parseDOMBlock = (dom: Element | DocumentFragment): Block => {
     const content: Node[] = [];
     function walk(n: globalThis.Node, marks: Mark[] = []) {
         if (n instanceof Text && n.nodeValue)
-            content.push(PaneSchema.text(n.nodeValue));
+            content.push(PaneSchema.text(n.nodeValue, marks));
         if (n instanceof Element) {
             switch (n.tagName.toLowerCase()) {
             case 'em': case 'i':
@@ -146,8 +176,8 @@ export const parseDOMBlock = (dom: Element): Block => {
             case 'strong': case 'b':
                 marks.push(PaneSchema.marks.strong.create()); break;
             }
-            n.childNodes.forEach((c) => walk(c, [...marks]));
         }
+        n.childNodes.forEach((c) => walk(c, [...marks]));
     }
     walk(dom);
     return makeBlock(content);
