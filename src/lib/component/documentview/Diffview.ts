@@ -36,6 +36,12 @@ export const diffVisualization = (initialMarkers: VisualMarker[]) => {
                             startIndex: mapping.map(marker.index, 1),
                             endIndex: mapping.map(marker.endIndex, -1)
                         };
+                    case 'replace_text':
+                        return {
+                            ...marker,
+                            startIndex: mapping.map(marker.index, 1),
+                            endIndex: mapping.map(marker.endIndex, -1)
+                        };
                     default:
                         marker satisfies never;
                     }
@@ -53,7 +59,6 @@ export const diffVisualization = (initialMarkers: VisualMarker[]) => {
                 markers.forEach(marker => {
                     switch (marker.type) {
                     case 'insert_text':
-                        // The text exists in the DOM. Decorate the exact range.
                         decos.push(Decoration.inline(
                             marker.index,
                             marker.endIndex,
@@ -62,18 +67,23 @@ export const diffVisualization = (initialMarkers: VisualMarker[]) => {
                         break;
 
                     case 'delete_text':
-                        // The text is gone from the DOM. Render it as an artificial widget.
-                        const deleteWidget = document.createElement('span');
-                        deleteWidget.className = 'diff delete';
-                        deleteWidget.textContent = marker.text;
-                        // Re-apply marks as classes if necessary
-                        // todo: look at this
-                        marker.marks.forEach(m => deleteWidget.classList.add(`mark-${m}`));
-
                         decos.push(Decoration.widget(
                             marker.anchorIndex,
-                            deleteWidget,
-                            { side: -1, marks: [] } // side: -1 renders it before content at this position
+                            makeDeleteWidget(marker.text, marker.marks, false),
+                            { side: -1, marks: [] }
+                        ));
+                        break;
+
+                    case 'replace_text':
+                        decos.push(Decoration.widget(
+                            marker.index,
+                            makeDeleteWidget(marker.deleted, marker.deletedMarks, true),
+                            { side: -1, marks: [] }
+                        ));
+                        decos.push(Decoration.inline(
+                            marker.index,
+                            marker.endIndex,
+                            { class: 'diff insert replace' }
                         ));
                         break;
 
@@ -118,3 +128,14 @@ export const diffVisualization = (initialMarkers: VisualMarker[]) => {
         }
     });
 };
+
+function makeDeleteWidget(text: string, marks: string[], replace: boolean) {
+    const deleteWidget = document.createElement('span');
+    deleteWidget.className = `diff delete ${replace ? 'replace' : ''}`;
+    deleteWidget.textContent = text;
+    // Re-apply marks as classes if necessary
+    // todo: look at this
+    marks.forEach(m => deleteWidget.classList.add(`mark-${m}`));
+    return deleteWidget;
+}
+

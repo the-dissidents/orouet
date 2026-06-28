@@ -50,7 +50,7 @@
     // }
 
     .diff.insert {
-      display: inline-block;
+      // display: inline-block;
       @include colors(color, uchu.$blue-9, uchu.$blue-2);
 
       &:hover {
@@ -59,7 +59,7 @@
     }
 
     .diff.delete {
-      display: inline-block;
+      // display: inline-block;
       @include colorvars(color, disabled-text);
       text-decoration: line-through;
 
@@ -68,13 +68,13 @@
       }
     }
 
-    .diff.delete + .diff.insert {
+    .diff.insert.replace {
       border-left: 0.75px solid;
       padding-left: 2px;
       @include colors(border-color, gray, gray);
     }
 
-    .diff.delete:has(+ .diff.insert) {
+    .diff.delete.replace {
       border-right: 0.75px solid;
       padding-right: 2px;
       @include colors(border-color, gray, gray);

@@ -1,7 +1,8 @@
-// Mostly written by Gemini 3 Pro
+// Draft by Gemini 3 Pro, with manual extensions
 
 import type { Node } from "prosemirror-model";
 import { simpleSegmentText } from "./Segmenter";
+import { Debug } from "./Util";
 
 export type Token = BlockOpenToken | BlockCloseToken | TextToken;
 
@@ -102,11 +103,10 @@ export function computeDiff(oldTokens: Token[], newTokens: Token[]): DiffOp[] {
 }
 
 export type VisualMarker =
-    // Text markers
     | { type: 'insert_text', index: number, endIndex: number, text: string, marks: string[] }
     | { type: 'delete_text', anchorIndex: number, text: string, marks: string[] }
+    | { type: 'replace_text', index: number, endIndex: number, deleted: string, deletedMarks: string[], inserted: string, insertedMarks: string[] }
     | { type: 'update_marks', index: number, endIndex: number, text: string, added: string[], removed: string[] }
-    // Block markers
     | { type: 'insert_block', index: number, nodeType: string, isClose: boolean }
     | { type: 'delete_block', anchorIndex: number, nodeType: string, isClose: boolean };
 
@@ -163,10 +163,11 @@ export function generateMarkers(diffs: DiffOp[]): VisualMarker[] {
         }
     }
 
-    return optimizeMarkers(rawMarkers);
+    let m = opt1(rawMarkers);
+    return opt2(m);
 }
 
-function optimizeMarkers(markers: VisualMarker[]): VisualMarker[] {
+function opt1(markers: VisualMarker[]): VisualMarker[] {
     const optimized: VisualMarker[] = [];
 
     for (const marker of markers) {
@@ -198,7 +199,10 @@ function optimizeMarkers(markers: VisualMarker[]): VisualMarker[] {
             optimized.push(marker);
         }
     }
+    return optimized;
+}
 
+function opt2(optimized: VisualMarker[]): VisualMarker[] {
     const result: VisualMarker[] = [];
     for (let i = 0; i < optimized.length; i++) {
         const current = optimized[i];
@@ -208,21 +212,21 @@ function optimizeMarkers(markers: VisualMarker[]): VisualMarker[] {
         }
 
         const next = optimized[i + 1];
-
-        // Optimization: Detect formatting updates
-        if (current.type === 'delete_text' && next.type === 'insert_text'
-         && current.text == next.text
-        ) {
-            const oldMarks = new Set(current.marks);
-            const newMarks = new Set(next.marks);
-
-            result.push({
+        if (current.type === 'delete_text' && next.type === 'insert_text') {
+            if (current.text == next.text) result.push({
                 type: 'update_marks',
                 index: next.index,
                 endIndex: next.endIndex,
                 text: current.text,
-                added: next.marks.filter(m => !oldMarks.has(m)),
-                removed: current.marks.filter(m => !newMarks.has(m))
+                added: next.marks.filter(m => !new Set(current.marks).has(m)),
+                removed: current.marks.filter(m => !new Set(next.marks).has(m)),
+            });
+            else result.push({
+                type: 'replace_text',
+                index: next.index,
+                endIndex: next.endIndex,
+                deleted: current.text, deletedMarks: current.marks,
+                inserted: next.text, insertedMarks: next.marks,
             });
             i++;
             continue;
@@ -232,3 +236,30 @@ function optimizeMarkers(markers: VisualMarker[]): VisualMarker[] {
 
     return result;
 }
+
+// todo: merge replace patches with only punctuation and whitespace in between, important for western languages
+
+// function opt3(optimized: VisualMarker[]): VisualMarker[] {
+//     const result: VisualMarker[] = [];
+//     let lastReplace: { type: 'replace_text', index: number, endIndex: number, deleted: string, inserted: string } | undefined;
+//     for (let i = 0; i < optimized.length; i++) {
+//         const current = optimized[i];
+
+//         if (current.type == 'replace_text') {
+//             if (!lastReplace) {
+//                 lastReplace = current;
+//                 result.push(current);
+//             } else {
+//                 const between = ;
+//                 lastReplace.inserted += lastSkippable + current.inserted;
+//                 lastReplace.deleted += lastSkippable + current.deleted;
+//                 lastReplace.endIndex = current.endIndex;
+//             }
+//             continue;
+//         } else {
+//             lastReplace = undefined;
+//         }
+//     }
+
+//     return result;
+// }
