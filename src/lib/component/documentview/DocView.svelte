@@ -29,7 +29,7 @@
   import { placeholder } from "./Placeholder";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { m } from "$lib/paraglide/messages.js";
-  import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, pasteHandler, splitBlock, testCommand } from "./Commands";
+  import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, pasteHandler, redo, splitBlock, testCommand, undo } from "./Commands";
   import type { TextOptions } from "$lib/TextOptions";
   import { computeDiff, generateMarkers, linearize, type LinearizationOptions, type VisualMarker } from "$lib/details/Richdiff";
   import { diffPluginKey, diffVisualization } from "./Diffview";
@@ -112,8 +112,8 @@
             "Mod-e": testCommand,
 
             "Mod-a": selectAll,
-            // "Mod-z": undo,
-            // "Mod-y": redo,
+            "Mod-z": undo(dc),
+            "Mod-y": redo(dc),
             "Mod-i": emphasis,
             "Mod-b": keyword,
           }),

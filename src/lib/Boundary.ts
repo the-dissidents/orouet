@@ -3,11 +3,12 @@ import type { Commit, ReadonlyVersionControl } from "$lib/VersionControl.svelte"
 import * as z from "zod/v4-mini";
 
 export const BoundaryCondition = z.object({
-  delay: z.optional(z.number()),
-  selectionSet: z.optional(z.boolean()),
-  focusedClusterChange: z.optional(z.boolean()),
-  hasLabel: z.optional(z.boolean()),
-  fileSaved: z.optional(z.boolean()),
+    // in ms
+    delay: z.optional(z.number()),
+    selectionSet: z.optional(z.boolean()),
+    focusedClusterChange: z.optional(z.boolean()),
+    hasLabel: z.optional(z.boolean()),
+    fileSaved: z.optional(z.boolean()),
 });
 
 export type BoundaryCondition = z.infer<typeof BoundaryCondition>;

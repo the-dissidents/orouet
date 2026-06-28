@@ -11,7 +11,7 @@
     if (c) untrack(() => onChange?.(c));
   });
 
-  let delaySeconds = c.delay ?? 5;
+  let delaySeconds = (c.delay ?? 5000) / 1000;
 </script>
 
 <ConfigTable>

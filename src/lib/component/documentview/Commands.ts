@@ -1,3 +1,5 @@
+import { BoundaryCondition, isBoundary } from "$lib/Boundary";
+import type { DocumentContext } from "$lib/DocumentContext.svelte";
 import { makeBlock, PaneSchema, parseDOMCluster, parseDOMDoc, type Doc } from "$lib/Schema";
 import { Fragment, Slice } from "prosemirror-model";
 import { Plugin, TextSelection, type Command } from "prosemirror-state";
@@ -47,6 +49,33 @@ export const gotoNextBlockIfAtEnd: Command = (s, d) => {
     d?.(s.tr.setSelection(sel).scrollIntoView());
     return true;
 }
+
+const historyBoundary: BoundaryCondition = {
+    delay: 1000,
+    hasLabel: true
+};
+
+export const undo: (dc: DocumentContext) => Command = (dc) => () => {
+    let id = dc.currentCommitId;
+    do {
+        const c = dc.versionControl.get(id);
+        if (!c || c.type != 'delta') break;
+        id = c.parent;
+    } while (!isBoundary(dc.versionControl, id, 'backward', historyBoundary));
+    dc.revertTo(id);
+    return true;
+};
+
+export const redo: (dc: DocumentContext) => Command = (dc) => () => {
+    let id = dc.currentCommitId;
+    do {
+        const c = dc.versionControl.forwardLinks(dc.currentCommitId);
+        if (c.length != 1) return false;
+        id = c[0];
+    } while (!isBoundary(dc.versionControl, id, 'forward', historyBoundary));
+    dc.revertTo(id);
+    return true;
+};
 
 function parseHTML(html: string) {
     const template = document.createElement('template');
