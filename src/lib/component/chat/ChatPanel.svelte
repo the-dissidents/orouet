@@ -56,7 +56,7 @@
   </fieldset>
   <hr>
 
-  <ChatView chat={chat ?? temporaryChat} {provider}
+  <ChatView chat={chat ?? temporaryChat} {provider} dc={context}
     beforeSubmit={() => {
       if (!chat) {
         context.chats.push(temporaryChat);

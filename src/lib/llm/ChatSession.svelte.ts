@@ -1,7 +1,5 @@
-import { range } from '$lib/details/Util';
-import { Message, type ChatProvider, type Tool } from './ChatProvider';
+import { Message, type ChatProvider } from './ChatProvider';
 import * as z from 'zod/v4-mini';
-import { LoremIpsum } from "lorem-ipsum";
 
 export const SerializedChatSession = z.object({
     title: z.string(),
@@ -10,8 +8,6 @@ export const SerializedChatSession = z.object({
 });
 
 export type SerializedChatSession = z.infer<typeof SerializedChatSession>;
-
-const ipsum = new LoremIpsum();
 
 export class ChatSession {
     title = $state<string>('');
@@ -35,54 +31,43 @@ export class ChatSession {
         return session;
     }
 
-    static lorem() {
-        const session = new ChatSession();
-        range(1, Math.random() * Math.random() * 15).forEach(() => session.messages.push(
-            { role: 'user', content: ipsum.generateParagraphs(1) },
-            {
-                role: 'assistant',
-                modelName: ipsum.generateWords(Math.floor(1 + Math.random() * 3)),
-                reasoning: range(0, Math.random() * Math.random() * 6)
-                    .map(() => ipsum.generateParagraphs(1)).toArray().join('\n\n'),
-                content: range(0, Math.random() * 4)
-                    .map(() => ipsum.generateParagraphs(1)).toArray().join('\n\n')
-            }
-        ));
-        session.title = ipsum.generateSentences(1)
-        return session;
-    }
-
     async sendMessage(
         provider: ChatProvider,
         content: string,
         opt?: {
             abort?: AbortController,
-            tools?: Tool[]
+            systemPrompt?: string,
+            // tools?: Tool[]
         }
     ) {
-        if (!content.trim() || this.isStreaming) return;
+        if (!content.trim() || this.isStreaming) return null;
 
         this.messages.push({ role: 'user', content });
         this.isStreaming = true;
+
+        if (opt?.systemPrompt)
+            provider.systemPrompt = opt.systemPrompt;
 
         const assistantIndex = this.messages.length;
         const message: Message = $state({
             role: 'assistant',
             modelName: provider.modelName,
-            content: '', reasoning: ''
+            content: '', reasoning: '', original: null
         });
         this.messages.push(message);
 
         try {
             const history = this.messages.slice(0, assistantIndex);
 
-            await provider.streamCompletion(history, (chunk, type) => {
+            const ret = await provider.streamCompletion(history, (chunk, type) => {
                 if (type == 'reasoning')
                     message.reasoning += chunk;
                 else
                     message.content += chunk;
                 return opt?.abort ? !opt.abort.signal.aborted : true;
-            }, opt?.tools);
+            });
+            if (ret) Object.assign(message, ret);
+            return message;
         } catch (error) {
             console.error('Session error during execution:', error);
             message.content = 'Error: Failed to finalize stream interaction.';

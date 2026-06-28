@@ -1,10 +1,37 @@
 // TODO: move to backend in the future to improve safety
 
 import OpenAI from "openai";
-import type { ChatProvider, Message, Tool } from "./ChatProvider";
+import type { ChatProvider, Message } from "./ChatProvider";
 import { Secrets } from "$lib/Backend";
 import { Debug } from "$lib/details/Util";
-import * as z from "zod/v4-mini";
+
+type OpenAIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
+
+function toMsg(m: Message): OpenAIMessage {
+    switch (m.role) {
+    case "assistant":
+        return {
+            role: m.role,
+            content: m.originalContent ?? m.content,
+            reasoning_content: m.reasoning
+        } as OpenAIMessage;
+    case "user":
+        return m;
+    // case "tool":
+    //     return {
+    //         role: m.role,
+    //         tool_call_id: m.id,
+    //         content: m.content
+    //     };
+    case "system":
+        return {
+            role: 'system',
+            content: m.message
+        };
+    default:
+        return m satisfies never;
+    }
+}
 
 export class DeepSeekProvider implements ChatProvider {
     private openai: OpenAI;
@@ -33,8 +60,8 @@ export class DeepSeekProvider implements ChatProvider {
     async streamCompletion(
         messages: Message[],
         onChunk: (text: string, type: 'reasoning' | 'content') => boolean | void,
-        tools: Tool[] = []
-    ): Promise<void> {
+        // tools: Tool[] = []
+    ): Promise<Message> {
         const stream = await this.openai.chat.completions.create({
             model: this.modelName,
             messages: [
@@ -42,38 +69,52 @@ export class DeepSeekProvider implements ChatProvider {
                     role: 'system',
                     content: this.systemPrompt
                 }] as const : []),
-                ...messages
+                ...messages.map(toMsg)
             ],
             stream: true,
-            tool_choice: 'auto',
-            tools: tools.map((x) => ({
-                type: 'function',
-                function: {
-                    name: x.name,
-                    description: x.description,
-                    parameters: z.toJSONSchema(x.parameters)
-                }
-            } as const))
+            // tool_choice: 'auto',
+            // tools: tools.map((x) => ({
+            //     type: 'function',
+            //     function: {
+            //         name: x.name,
+            //         description: x.description,
+            //         parameters: z.toJSONSchema(x.parameters)
+            //     }
+            // } as const))
         });
+
+        // const toolCalls = [];
+        let content = '', reasoning = '';
 
         for await (const chunk of stream) {
             const choice = chunk.choices[0]?.delta;
             if (!choice) continue;
 
+            // if (choice.tool_calls)
+            //     toolCalls.push(choice.tool_calls[0]);
 
-            const reasoning: string = (choice as any).reasoning_content;
-            if (reasoning) {
-                const result = onChunk(reasoning, 'reasoning');
+            const rdelta: string = (choice as any).reasoning_content;
+            if (rdelta) {
+                reasoning += rdelta;
+                const result = onChunk(rdelta, 'reasoning');
                 if (result !== undefined && !result)
                     stream.controller.abort();
             }
 
             const delta = choice.content;
             if (delta) {
+                content += delta;
                 const result = onChunk(delta, 'content');
                 if (result !== undefined && !result)
                     stream.controller.abort();
             }
+        }
+
+        return {
+            role: 'assistant' as const,
+            modelName: this.modelName,
+            content, reasoning,
+            originalContent: content
         }
     }
 }

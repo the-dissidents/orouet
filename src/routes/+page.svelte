@@ -6,11 +6,10 @@
   import { ButtonStrip, Resizer, StripRadioItem, Tooltip } from '@the_dissidents/svelte-ui';
 
   import { DocumentContext } from '$lib/DocumentContext.svelte';
-  import { blockIndex, clusterIndex, clusterOf, columnPosition, findCluster } from '$lib/Schema';
+  import { blockIndex, clusterIndex, clusterOf, columnPosition } from '$lib/Schema';
   import { Backend } from '$lib/Backend';
 
   import { Memorized } from '$lib/details/Memorized.svelte';
-  import { computeDiff, generateMarkers, linearize, type LinearizationOptions, type VisualMarker } from '$lib/details/Richdiff';
 
   import Editor from '$lib/component/documentview/Editor.svelte';
   import DisplayOptions from '$lib/component/DisplayOptions.svelte';
@@ -29,9 +28,10 @@
   setLocale('zh');
 
   import { onDestroy } from 'svelte';
-  import { Debug, wait } from '$lib/details/Util';
+  import { wait } from '$lib/details/Util';
 
   import text from '../data/kafka.txt?raw';
+  import { getSystemPrompt, parseFencedCommands } from '$lib/component/chat/SystemPrompt';
   let ctx = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
   ctx.source.language = ['de', null, null];
 
@@ -47,8 +47,6 @@
 
   let status = $state('ok');
   let path = $state('');
-
-  let diff = $state<VisualMarker[]>([]);
 
   async function init() {
     await Promise.all([
@@ -100,6 +98,8 @@
     status = `已保存：${file}`;
     ctx.versionControl.addAttr({ fileSaved: true });
   }
+
+  let testArea = $state('');
 </script>
 
 <div class="container">
@@ -155,14 +155,18 @@
         <LocaleSelect bind:locale={ctx[chosen].language} />
 
         <DisplayOptions bind:value={ctx[chosen].options} />
-        <textarea readonly class="code"
+        <textarea class="code"
           >{JSON.stringify(ctx[chosen].content.toJSON(), undefined, 2)}</textarea>
       {:else if page == 'graph'}
         <CommitGraph context={ctx}/>
       {:else if page == 'chat'}
         <ChatPanel context={ctx} />
       {:else if page == 'test'}
-
+        <button onclick={() => console.log(getSystemPrompt(ctx))}>system prompt</button>
+        <textarea style="width: 100%; height: 15em" bind:value={testArea}></textarea>
+        <button onclick={() => {
+          console.log(parseFencedCommands(testArea, ctx));
+        }}>parseFencedCommands</button>
       {:else}
         {page satisfies never}
       {/if}

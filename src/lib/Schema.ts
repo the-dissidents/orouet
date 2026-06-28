@@ -1,8 +1,6 @@
-import { DOMParser, Fragment, Mark, Node, ResolvedPos, Schema } from "prosemirror-model";
+import { Fragment, Mark, Node, ResolvedPos, Schema } from "prosemirror-model";
 import type { TypedNode } from "./details/TypedNode";
 import * as z from "zod/v4-mini";
-import { Debug } from "./details/Util";
-import { Transform } from "prosemirror-transform";
 
 export type IdBaseType = string;
 export type Id<T> = IdBaseType & { __brand: 'id', __for: T };
@@ -11,7 +9,7 @@ export function Id<T>() {
     return z.custom<Id<T>>((x) => typeof x === 'string');
 }
 
-const ClusterKinds = ['text', 'blockquote', 'h1', 'h2', 'h3'] as const;
+export const ClusterKinds = ['text', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const;
 export type ClusterKind = (typeof ClusterKinds)[number];
 
 export type Block = TypedNode<Node, { }>;
@@ -104,8 +102,6 @@ export const PaneSchema = new Schema({
     }
 });
 
-const SchemaDOMParser = DOMParser.fromSchema(PaneSchema);
-
 export const parseDOMDoc = (dom: Element | DocumentFragment): Doc => {
     if (dom.querySelector('div.cluster[data-kind]')) {
         const content: Cluster[] = [];
@@ -145,9 +141,9 @@ export const parseDOMBlock = (dom: Element): Block => {
             content.push(PaneSchema.text(n.nodeValue));
         if (n instanceof Element) {
             switch (n.tagName.toLowerCase()) {
-            case 'em':
+            case 'em': case 'i':
                 marks.push(PaneSchema.marks.emphasis.create()); break;
-            case 'strong':
+            case 'strong': case 'b':
                 marks.push(PaneSchema.marks.strong.create()); break;
             }
             n.childNodes.forEach((c) => walk(c, [...marks]));
@@ -182,10 +178,10 @@ export const clusterOf = (pos: ResolvedPos) => {
     return pos.node(1) as Cluster;
 };
 
-export const findCluster = (doc: Doc, id: Id<Cluster>) => {
-    let result: Cluster | null = null;
-    doc.forEach((n) => {
-        if (n.attrs.id == id) result = n;
+export const findCluster = (doc: Doc, id: Id<Cluster>): [Cluster, number] | null => {
+    let result: [Cluster, number] | null = null;
+    doc.forEach((n, p) => {
+        if (n.attrs.id == id) result = [n, p];
     });
     return result;
 };

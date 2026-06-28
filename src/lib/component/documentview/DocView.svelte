@@ -80,11 +80,14 @@
   }, 500);
 
   $effect(() => {
-    if (diffTarget) untrack(() => diffTask.request());
+    diffTarget;
+    untrack(() => diffTask.request());
   });
 
   onMount(() => {
     dc.onRevert.bind(me, (_, ts) => {
+      if (!ts[role]) return;
+
       Debug.assert(!!view);
       const tr = view.state.tr.setMeta('is_revert', true);
       for (const step of ts[role].steps)
@@ -126,9 +129,8 @@
 
         if (tr.docChanged) {
           dc[role].content = tr.doc as Doc;
-          if (!tr.getMeta('is_revert')) {
-            dc.addTransform(role, tr);
-          }
+          if (!tr.getMeta('is_revert'))
+            dc.addTransform(role, tr, { internal: true });
         }
 
         const newState = view!.state.apply(tr)

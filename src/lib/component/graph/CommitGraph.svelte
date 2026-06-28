@@ -74,7 +74,8 @@
       {
         text: `进行比对`,
         enabled: id !== context.currentCommitId,
-        action: () => context.currentDiffCommit = id
+        checked: id == context.currentDiffCommit,
+        action: () => context.currentDiffCommit = (id == context.currentDiffCommit ? undefined : id)
       },
     ]});
     m.popup();

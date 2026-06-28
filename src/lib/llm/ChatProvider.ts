@@ -1,5 +1,3 @@
-import { OpenAIGenericProvider, OpenAIProviderInfo } from './OpenAI';
-import { Debug } from '$lib/details/Util';
 import * as z from 'zod/v4-mini';
 import { DeepSeekProvider } from './DeepSeek';
 import { DummyProvider } from './Dummy';
@@ -10,21 +8,40 @@ export const Message = z.union([
         modelName: z.string(),
         reasoning: z.optional(z.string()),
         content: z.string(),
-        // finished: z.optional(z.boolean())
+        originalContent: z.optional(z.string()),
+        // toolCalls: z.object({
+        //     name: z.string(),
+        //     args: z.string()
+        // }),
     }),
     z.object({
-        role: z.enum(['user', 'system']),
+        role: z.enum(['user']),
         content: z.string(),
+    }),
+    z.object({
+        role: z.literal('system'),
+        data: z.optional(z.unknown()),
+        message: z.string(),
     })
-])
-;
+    // z.object({
+    //     role: z.literal('tool'),
+    //     id: z.string(),
+    //     content: z.string(),
+    // })
+]);
 
 export type Message = z.infer<typeof Message>;
 
-export type Tool<Z extends z.ZodMiniType = z.ZodMiniType> = {
-    name: string,
-    description: string,
-    parameters: Z
+// export type Tool<Z extends z.ZodMiniType = z.ZodMiniType> = {
+//     name: string,
+//     description: string,
+//     parameters: Z,
+//     handler: (params: z.infer<Z>) => string
+// };
+
+export type RespondChunk = {
+    type: 'reasoning' | 'content',
+    text: string
 };
 
 export interface ChatProvider {
@@ -36,8 +53,8 @@ export interface ChatProvider {
     streamCompletion(
         messages: Message[],
         onChunk: (text: string, type?: 'reasoning' | 'content') => boolean | void,
-        tools?: Tool[]
-    ): Promise<void>;
+        // tools?: Tool[]
+    ): Promise<Message | void>;
 }
 
 export const ProviderInfo = z.union([

@@ -48,7 +48,7 @@ export class DocumentContext {
 
     get chats() { return this.#chats; }
 
-    readonly onRevert = new EventHost<[cid: Id<Commit>, ts: Transforms]>();
+    readonly onRevert = new EventHost<[cid: Id<Commit>, ts: Partial<Transforms>]>();
 
     serialize(): SerializedDocumentContextJSON {
         return z.encode(SerializedDocumentContext, {
@@ -94,10 +94,17 @@ export class DocumentContext {
         this.#currentCommit = $state(vc.initialCommit);
     }
 
-    addTransform(where: 'source' | 'target', tr: Transform, cid: Id<DeltaCommit> = id()) {
+    addTransform(
+        where: 'source' | 'target', tr: Transform,
+        opts?: {
+            cid?: Id<DeltaCommit>,
+            internal?: boolean
+        }
+    ) {
         Debug.assert(tr.steps.length > 0);
+        const _id = opts?.cid ?? id();
         this.#vc.add({
-            type: 'delta', where, id: cid,
+            type: 'delta', where, id: _id,
             attrs: {
                 timestamp: Date.now(),
                 currentCluster: this.currentCluster
@@ -106,8 +113,11 @@ export class DocumentContext {
             invertedSteps: tr.steps.map((s, i) => s.invert(tr.docs[i])).reverse(),
             parent: this.#currentCommit
         });
-        console.log(`created commit ${cid} with ${tr.steps.length} steps`);
-        this.#currentCommit = cid;
+        console.log(`created commit ${_id} with ${tr.steps.length} steps`);
+
+        if (!opts?.internal)
+            this.onRevert.dispatch(_id, { [where]: tr });
+        this.#currentCommit = _id;
     }
 
     revertTo(cid: Id<Commit>) {
