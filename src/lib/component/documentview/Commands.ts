@@ -1,8 +1,23 @@
 import { BoundaryCondition, isBoundary } from "$lib/Boundary";
 import type { DocumentContext } from "$lib/DocumentContext.svelte";
-import { makeBlock, PaneSchema, parseDOMCluster, parseDOMDoc, type Doc } from "$lib/Schema";
+import { clusterIndex, id, isCluster, makeBlock, PaneSchema, parseDOMDoc, type Cluster } from "$lib/Schema";
 import { Fragment, Slice } from "prosemirror-model";
 import { Plugin, TextSelection, type Command } from "prosemirror-state";
+
+export const stopIfAcrossClusters: Command = (s) => {
+    const { $from, $to } = s.selection;
+    return clusterIndex($from) !== clusterIndex($to);
+};
+
+export const splitCluster: Command = (s, d) => {
+    const head = s.selection.$head;
+    const tr = s.tr.split(head.pos, 2, [{
+        type: PaneSchema.nodes.cluster,
+        attrs: { id: id<Cluster>() }
+    }]);
+    d?.(tr.scrollIntoView());
+    return true;
+};
 
 export const splitBlock: Command = (s, d) => {
     const head = s.selection.$head;
@@ -12,21 +27,32 @@ export const splitBlock: Command = (s, d) => {
     }]);
     d?.(tr.scrollIntoView());
     return true;
-}
+};
+
+export const mergeClusterUpIfAtStart: Command = (s, d) => {
+    const head = s.selection.$head;
+    const clusterStart = head.before(head.depth-1);
+    if (clusterStart < 2 || head.pos - clusterStart > 2) return false;
+
+    const tr = s.tr.delete(clusterStart - 1, clusterStart + 1);
+    d?.(tr.scrollIntoView());
+    return true;
+};
 
 export const mergeBlockUpIfAtStart: Command = (s, d) => {
     const head = s.selection.$head;
     if (head.parentOffset > 0 || head.index(head.depth-1) == 0 || !d) return false;
+
     const tr = s.tr.delete(head.pos - 2, head.pos);
     d?.(tr.scrollIntoView());
     return true;
-}
+};
 
 export const testCommand: Command = (s, d) => {
     const head = s.selection.$head;
     console.log(head, head.depth, head.index(head.depth-1), head.nodeBefore, head.nodeAfter);
     return false;
-}
+};
 
 export const gotoPrevBlockIfAtStart: Command = (s, d) => {
     const head = s.selection.$head;
@@ -37,7 +63,7 @@ export const gotoPrevBlockIfAtStart: Command = (s, d) => {
 
     d?.(s.tr.setSelection(sel).scrollIntoView());
     return true;
-}
+};
 
 export const gotoNextBlockIfAtEnd: Command = (s, d) => {
     const head = s.selection.$head;
@@ -48,7 +74,7 @@ export const gotoNextBlockIfAtEnd: Command = (s, d) => {
 
     d?.(s.tr.setSelection(sel).scrollIntoView());
     return true;
-}
+};
 
 const historyBoundary: BoundaryCondition = {
     delay: 1000,
@@ -145,16 +171,18 @@ export const pasteHandler = new Plugin({
                     let found = false;
                     tr.doc.nodesBetween(pos, tr.doc.content.size, (n, p) => {
                         if (found || p < pos - 2) return false;
-                        if (n.type !== PaneSchema.nodes.cluster) return;
-                        // console.log('found', p, n.nodeSize, p + n.nodeSize);
+                        if (!isCluster(n)) return;
+                        console.log('found', p, n.nodeSize, p + n.nodeSize);
                         if (n.textContent.length > 0) hasContent = true;
-                        tr.replaceWith(p, p + n.nodeSize, cl);
+                        const pastedCluster = cl as Cluster;
+                        tr.replaceWith(p, p + n.nodeSize, PaneSchema.nodes.cluster.create({
+                            id: n.attrs.id,
+                            kind: pastedCluster.attrs.kind
+                        }, pastedCluster.children));
                         found = true;
+                        pos = p + pastedCluster.nodeSize;
                     });
                     if (!found) break;
-                    // console.log('pos', pos, '->', tr.selection.head, tr.selection.$head.end());
-
-                    pos = tr.selection.head;
                 }
 
                 const sel = TextSelection.near(tr.doc.resolve(pos));

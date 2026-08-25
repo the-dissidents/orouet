@@ -95,10 +95,7 @@
 
     if (ret.transforms) {
       const commit = dc.currentCommitId;
-      if (ret.transforms.source.steps.length > 0)
-        dc.addTransform('source', ret.transforms.source);
-      if (ret.transforms.target.steps.length > 0)
-        dc.addTransform('target', ret.transforms.target);
+      dc.addTransform(ret.transforms);
       dc.versionControl.addAttr({ label: '智能体编辑' });
       dc.currentDiffCommit = commit;
     }

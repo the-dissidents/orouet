@@ -5,7 +5,6 @@ import { SvelteMap } from "svelte/reactivity";
 import * as z from "zod/v4-mini";
 
 const CommitBase = z.object({
-    where: z.enum(['source', 'target']),
     attrs: z.object({
         timestamp: z.number(),
         label: z.optional(z.string()),
@@ -34,12 +33,19 @@ const ZStep = z.codec(z.unknown(), z.instanceof(Step), {
     encode: (v) => v.toJSON()
 });
 
+export const ZSteps = z.object({
+    steps: z.array(ZStep),
+    invertedSteps: z.array(ZStep),
+})
+
+export type Steps = z.infer<typeof ZSteps>;
+
 export const DeltaCommit = z.object({
     ...CommitBase.shape,
     type: z.literal('delta'),
     id: Id<DeltaCommit>(),
-    steps: z.array(ZStep),
-    invertedSteps: z.array(ZStep),
+    source: z.optional(ZSteps),
+    target: z.optional(ZSteps),
     parent: Id<Commit>(),
 });
 
@@ -55,8 +61,8 @@ export const MergeCommit = z.object({
 export type DeltaCommit = CommitBase & {
     type: 'delta',
     id: Id<DeltaCommit>,
-    steps: Step[],
-    invertedSteps: Step[],
+    source?: Steps,
+    target?: Steps,
     parent: Id<Commit>
 };
 
@@ -74,8 +80,8 @@ export type Commit =
 
 type PathSegment = {
     from?: PathSegment;
-    steps?: Step[];
-    where?: 'source' | 'target';
+    source?: Step[];
+    target?: Step[];
     to: Id<Commit>;
 };
 
@@ -184,11 +190,13 @@ export class VersionControl implements ReadonlyVersionControl {
         }
     }
 
+    // modifies `trs`
     #apply(trs: Transforms, seg: PathSegment): Transforms {
-        Debug.assert(!!seg.steps && !!seg.where)
-        let tr = trs[seg.where];
-        for (const s of seg.steps) tr = tr.step(s);
-        return { ...trs, [seg.where]: tr };
+        if (seg.source)
+            for (const s of seg.source) trs.source.step(s);
+        if (seg.target)
+            for (const s of seg.target) trs.target.step(s);
+        return trs;
     }
 
     transform(docs: Docs, from: Id<Commit>, to: Id<Commit>): Transforms | null {
@@ -204,7 +212,7 @@ export class VersionControl implements ReadonlyVersionControl {
             if (currentTo === to) {
                 let currentStep = step, segs: PathSegment[] = [];
                 while (currentStep.to !== from) {
-                    Debug.assert(!!currentStep.from && !!currentStep.steps);
+                    Debug.assert(!!currentStep.from);
                     segs.unshift(currentStep); // reverse order
                     currentStep = currentStep.from;
                 }
@@ -220,17 +228,24 @@ export class VersionControl implements ReadonlyVersionControl {
             const forward = this.#forwardEdges.get(currentTo);
             if (forward) queue.push(...forward.map(
                 (to) => {
-                    const t = this.get(to);
-                    Debug.assert(!!t);
-                    return { from: step, to, steps: t.steps, where: t.where }
+                    const c = this.get(to);
+                    Debug.assert(!!c);
+                    return {
+                        from: step, to,
+                        source: c.source?.steps,
+                        target: c.target?.steps
+                    };
                 }));
 
             if (currentTo == this.initialCommit) continue;
             const c = this.#commits.get(currentTo);
             Debug.assert(!!c);
 
-            if (c.type == 'delta') queue.push(
-                { from: step, to: c.parent, steps: c.invertedSteps, where: c.where });
+            if (c.type == 'delta') queue.push({
+                from: step, to: c.parent,
+                source: c.source?.invertedSteps,
+                target: c.target?.invertedSteps
+            });
         }
 
         return null;

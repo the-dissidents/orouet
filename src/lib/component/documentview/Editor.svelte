@@ -80,8 +80,6 @@
 
     flex-grow: 1;
     white-space: pre-wrap;
-
-    row-gap: 5px;
   }
 
   .dummy-row {

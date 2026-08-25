@@ -5,7 +5,6 @@ import debugInfoSvelte from './vite-plugins/DebugInfoSvelte';
 import debugInfoTS from './vite-plugins/DebugInfoTS';
 import Inspect from 'vite-plugin-inspect';
 
-// @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/

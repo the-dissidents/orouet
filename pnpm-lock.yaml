@@ -33,8 +33,8 @@ importers:
         specifier: ~2.3.1
         version: 2.3.1
       '@the_dissidents/svelte-ui':
-        specifier: 0.0.15
-        version: 0.0.15(svelte@5.55.4)
+        specifier: 0.0.18
+        version: 0.0.18(svelte@5.55.4)
       lorem-ipsum:
         specifier: ^3.0.0
         version: 3.0.0
@@ -773,8 +773,8 @@ packages:
   '@tauri-apps/plugin-stronghold@2.3.1':
     resolution: {integrity: sha512-zFbD1Apk/VFdWaoGaoKcouRrZnzLFiNY9b1KDeBaN47sMaMHRYIa+ZDhvbzMOyH314+OHCQBXfe8I/ph59Lp9g==}
 
-  '@the_dissidents/svelte-ui@0.0.15':
-    resolution: {integrity: sha512-NPtfU087fJeaxT7zVi5qyLtfWaFQLckluP3pltTHq2t72BcOP0HHKqnMaAFmyY1wU1SnSO/cwxcjsFgeas5tZg==}
+  '@the_dissidents/svelte-ui@0.0.18':
+    resolution: {integrity: sha512-mVeANopndFjsJwreN2zjv6lssYrFTeTBk74zzXeiLPSGnXunDFoGw/ZF/Kz62LAu5/4+IDwPwg4QIbQrV3d7xg==}
     peerDependencies:
       svelte: ^5.0.0
 
@@ -2066,7 +2066,7 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.11.0
 
-  '@the_dissidents/svelte-ui@0.0.15(svelte@5.55.4)':
+  '@the_dissidents/svelte-ui@0.0.18(svelte@5.55.4)':
     dependencies:
       '@lucide/svelte': 1.21.0(svelte@5.55.4)
       colorjs.io: 0.6.1

@@ -1,8 +1,8 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
-import { Debug } from "./details/Util";
+import { Debug, range } from "./details/Util";
 import { Doc, Id, id, makeBlock, makeCluster, makeDoc, PaneSchema, type Block, type Cluster } from "./Schema";
-import { Commit, SerializedVersionControl, VersionControl, type DeltaCommit, type Docs, type ReadonlyVersionControl, type Transforms } from "./VersionControl.svelte";
-import type { Transform } from "prosemirror-transform";
+import { Commit, SerializedVersionControl, VersionControl, type DeltaCommit, type Docs, type ReadonlyVersionControl, type Steps, type Transforms } from "./VersionControl.svelte";
+import { Transform } from "prosemirror-transform";
 import { DefaultOptions, TextOptions } from "./TextOptions";
 import * as z from "zod/v4-mini";
 import { LanguageCodes, type LanguageCode } from "../data/LocaleData";
@@ -35,6 +35,70 @@ const SerializedDocumentContext = z.object({
 
 export type SerializedDocumentContextJSON = z.input<typeof SerializedDocumentContext>;
 
+function transformToSteps(tr?: Transform): Steps | undefined {
+    return tr ? {
+        steps: tr.steps,
+        invertedSteps: tr.steps.map(
+            (s, i) => s.invert(tr!.docs[i])
+        ).reverse()
+    } : undefined;
+}
+
+export function balanceTargetClusters(source: Doc, targetTr: Transform) {
+    let modified: boolean;
+    do {
+        const target = targetTr.doc as Doc;
+        modified = false;
+        target.forEach((c, offset, i) => {
+            if (modified) return;
+
+            const sc = source.maybeChild(i);
+            if (!sc) {
+                console.log('deleting', c.attrs.id, i);
+                targetTr.delete(offset, offset + c.nodeSize);
+                modified = true;
+                return;
+            }
+            if (sc.attrs.id !== c.attrs.id) {
+                let found = -1;
+                for (let j = i+1; j < source.childCount; j++)
+                    if (source.child(j).attrs.id == c.attrs.id) {
+                        found = j;
+                        break;
+                    }
+
+                if (found < 0) {
+                    console.log('deleting', c.attrs.id, i);
+                    targetTr.delete(offset, offset + c.nodeSize);
+                } else {
+                    // add the corresponding (found - i) clusters
+                    console.log('inserting clusters', i, found);
+                    targetTr.insert(offset, [...range(i, found)].map((k) => {
+                        const sc = source.child(k);
+                        return makeCluster([makeBlock([])], sc.attrs.kind, sc.attrs.id);
+                    }));
+                }
+
+                modified = true;
+                return;
+            }
+        });
+    } while (modified);
+
+    // add any missing clusters at the end
+    const target = targetTr.doc as Doc;
+    if (target.childCount < source.childCount) {
+        console.log('inserting ending', target.childCount, source.childCount);
+        targetTr.insert(target.content.size,
+            [...range(target.childCount, source.childCount)].map((i) => {
+                const sc = source.child(i);
+                return makeCluster([makeBlock([])], sc.attrs.kind, sc.attrs.id);
+            }));
+    }
+
+    return targetTr;
+}
+
 export class DocumentContext {
     readonly source: Text;
     readonly target: Text;
@@ -48,7 +112,8 @@ export class DocumentContext {
 
     get chats() { return this.#chats; }
 
-    readonly onRevert = new EventHost<[cid: Id<Commit>, ts: Partial<Transforms>]>();
+    /** Used to notify editors to apply transforms */
+    readonly onTransform = new EventHost<[cid: Id<Commit>, ts: Partial<Transforms>]>();
 
     serialize(): SerializedDocumentContextJSON {
         return z.encode(SerializedDocumentContext, {
@@ -94,29 +159,49 @@ export class DocumentContext {
         this.#currentCommit = $state(vc.initialCommit);
     }
 
+    // if clusters are added to or removed from source, this will automatically apply
+    // corresponding changes in target
     addTransform(
-        where: 'source' | 'target', tr: Transform,
+        trs: Partial<Transforms>,
         opts?: {
             cid?: Id<DeltaCommit>,
+            /** if true, the editor is already at a state where the transforms have been applied (happens when the transform comes from user edit) */
             internal?: boolean
         }
     ) {
-        Debug.assert(tr.steps.length > 0);
+        Debug.assert(!!(trs.source?.steps.length || trs.target?.steps.length));
+
         const _id = opts?.cid ?? id();
+
+        if (trs.source) {
+            const newTr = new Transform(trs.target?.doc ?? this.target.content);
+            balanceTargetClusters(trs.source.doc as Doc, newTr);
+            if (newTr.docChanged) {
+                if (!trs.target) {
+                    trs.target = newTr;
+                } else {
+                    for (const step of newTr.steps)
+                        trs.target?.step(step);
+                }
+                if (opts?.internal)
+                    this.onTransform.dispatch(_id, { target: newTr });
+            }
+        }
+
         this.#vc.add({
-            type: 'delta', where, id: _id,
+            type: 'delta',
+            id: _id,
             attrs: {
                 timestamp: Date.now(),
                 currentCluster: this.currentCluster
             },
-            steps: tr.steps,
-            invertedSteps: tr.steps.map((s, i) => s.invert(tr.docs[i])).reverse(),
+            source: transformToSteps(trs.source),
+            target: transformToSteps(trs.target),
             parent: this.#currentCommit
         });
-        console.log(`created commit ${_id} with ${tr.steps.length} steps`);
+        console.log(`created commit ${_id} with ${trs.source?.steps.length ?? 0}/${trs.target?.steps.length ?? 0} steps`);
 
-        if (!opts?.internal)
-            this.onRevert.dispatch(_id, { [where]: tr });
+        if (!opts?.internal) this.onTransform.dispatch(_id, trs);
         this.#currentCommit = _id;
     }
 
@@ -126,7 +211,7 @@ export class DocumentContext {
             target: this.target.content
         }, this.#currentCommit, cid);
         Debug.assert(!!result);
-        this.onRevert.dispatch(cid, result);
+        this.onTransform.dispatch(cid, result);
         this.#currentCommit = cid;
     }
 

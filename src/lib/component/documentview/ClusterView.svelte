@@ -19,5 +19,7 @@
 <style lang='scss'>
   :global [data-cluster-kind] {
     position: relative;
+    padding-block: 3px;
+    border-bottom: #ccc 1px dashed;
   }
 </style>

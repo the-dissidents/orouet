@@ -29,7 +29,7 @@
   import { placeholder } from "./Placeholder";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { m } from "$lib/paraglide/messages.js";
-  import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, pasteHandler, redo, splitBlock, testCommand, undo } from "./Commands";
+  import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, mergeClusterUpIfAtStart, pasteHandler, redo, splitBlock, splitCluster, stopIfAcrossClusters, testCommand, undo } from "./Commands";
   import type { TextOptions } from "$lib/TextOptions";
   import { computeDiff, generateMarkers, linearize, type LinearizationOptions, type VisualMarker } from "$lib/details/Richdiff";
   import { diffPluginKey, diffVisualization } from "./Diffview";
@@ -85,11 +85,11 @@
   });
 
   onMount(() => {
-    dc.onRevert.bind(me, (_, ts) => {
+    dc.onTransform.bind(me, (_, ts) => {
       if (!ts[role]) return;
 
       Debug.assert(!!view);
-      const tr = view.state.tr.setMeta('is_revert', true);
+      const tr = view.state.tr.setMeta('is_system', true);
       for (const step of ts[role].steps)
         tr.step(step);
       view.dispatch(tr);
@@ -102,10 +102,13 @@
         doc: dc[role].content,
         plugins: [
           keymap({
-            "Enter": chainCommands(deleteSelection, gotoNextBlockIfAtEnd, splitBlock),
-            "Control-Enter": chainCommands(deleteSelection, splitBlock),
-            "Backspace": chainCommands(deleteSelection, mergeBlockUpIfAtStart),
-            "Shift-Enter": newlineInCode,
+            "Enter": chainCommands(stopIfAcrossClusters, deleteSelection, gotoNextBlockIfAtEnd, splitBlock),
+            "Control-Enter": chainCommands(stopIfAcrossClusters, deleteSelection, splitBlock),
+            "Shift-Enter": chainCommands(stopIfAcrossClusters, deleteSelection, newlineInCode),
+            "Alt-Enter": chainCommands(splitCluster),
+
+            "Backspace": chainCommands(stopIfAcrossClusters, deleteSelection, mergeBlockUpIfAtStart),
+            "Alt-Backspace": chainCommands(mergeBlockUpIfAtStart, mergeClusterUpIfAtStart),
 
             "ArrowLeft": gotoPrevBlockIfAtStart,
             "ArrowRight": gotoNextBlockIfAtEnd,
@@ -129,8 +132,8 @@
 
         if (tr.docChanged) {
           dc[role].content = tr.doc as Doc;
-          if (!tr.getMeta('is_revert'))
-            dc.addTransform(role, tr, { internal: true });
+          if (!tr.getMeta('is_system'))
+            dc.addTransform({ [role]: tr }, { internal: true });
         }
 
         const newState = view!.state.apply(tr)
