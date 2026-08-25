@@ -14,12 +14,72 @@
   $effect(() => Debug.assert(node.type == PaneSchema.nodes.cluster));
 </script>
 
-<NodeViewContent contentsOnly={false} data-cluster-kind={node.attrs.kind} />
+<div class="container">
+  <NodeViewContent contentsOnly={false} data-cluster-kind={node.attrs.kind} />
+</div>
 
 <style lang='scss'>
-  :global [data-cluster-kind] {
+  %heading {
+    line-height: 1.25;
+    margin-top: 0.5em;
+    margin-bottom: 0.25em;
+    page-break-after: avoid;
+  }
+
+  .container {
     position: relative;
-    padding-block: 3px;
+    padding-block: 5px;
     border-bottom: #ccc 1px dashed;
+  }
+
+  :global [data-cluster-kind] {
+    &[data-cluster-kind="h1"] [data-block] {
+      @extend %heading;
+      font-weight: 600;
+      font-size: 200%;
+      letter-spacing: -0.015em;
+      text-align: center !important;
+    }
+
+    &[data-cluster-kind="h2"] [data-block] {
+      @extend %heading;
+      font-weight: 600;
+      font-size: 162.5%;
+    }
+
+    &[data-cluster-kind="h3"] [data-block] {
+      @extend %heading;
+      font-weight: 600;
+      font-size: 137.5%;
+    }
+
+    &[data-cluster-kind="h4"] [data-block] {
+      @extend %heading;
+      font-weight: 600;
+      font-size: 112.5%;
+      text-align: center !important;
+    }
+
+    &[data-cluster-kind="h5"] [data-block] {
+      @extend %heading;
+      font-weight: 600;
+      font-size: 100%;
+      letter-spacing: 0.06em;
+    }
+
+    &[data-cluster-kind="h6"] [data-block] {
+      @extend %heading;
+      font-size: 87.5%;
+      font-family: sans-serif;
+      letter-spacing: 0.06em;
+      font-weight: 500;
+    }
+
+    &[data-cluster-kind="blockquote"] {
+      background-color: #eee;
+      font-size: 95%;
+      border-radius: 5px;
+      margin-inline: 1em;
+    }
   }
 </style>

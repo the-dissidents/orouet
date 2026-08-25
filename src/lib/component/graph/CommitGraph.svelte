@@ -142,7 +142,7 @@
 </Collapsible>
 
 <style lang="scss">
-  @use "../../../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
+  @use "@the_dissidents/svelte-ui/uchu.scss";
   @use '../../../util.scss' as *;
 
   .graph-container {

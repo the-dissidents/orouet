@@ -3,11 +3,9 @@
   import type { ChatProvider, Message } from "$lib/llm/ChatProvider";
   import { ChatSession } from "$lib/llm/ChatSession.svelte";
   import type { Attachment } from "svelte/attachments";
-  import SvelteMarkdown from '@humanspeak/svelte-markdown';
 
-  import SendIcon from '@lucide/svelte/icons/send';
-  import SquareIcon from '@lucide/svelte/icons/square';
-  import AstroidIcon from '@lucide/svelte/icons/astroid';
+  import SvelteMarkdown from '@humanspeak/svelte-markdown';
+  import { SendIcon, SquareIcon, AstroidIcon } from '@lucide/svelte';
 
   import { getSystemPrompt, parseFencedCommands, type FencedCommandResult } from "./SystemPrompt";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";

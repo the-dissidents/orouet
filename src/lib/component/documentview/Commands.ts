@@ -1,12 +1,14 @@
 import { BoundaryCondition, isBoundary } from "$lib/Boundary";
 import type { DocumentContext } from "$lib/DocumentContext.svelte";
-import { clusterIndex, id, isCluster, makeBlock, PaneSchema, parseDOMDoc, type Cluster } from "$lib/Schema";
+import { Cluster, id, isCluster, makeBlock, makeCluster, PaneSchema, parseDOMDoc } from "$lib/Schema";
 import { Fragment, Slice } from "prosemirror-model";
 import { Plugin, TextSelection, type Command } from "prosemirror-state";
 
+export const noop: Command = () => false;
+
 export const stopIfAcrossClusters: Command = (s) => {
     const { $from, $to } = s.selection;
-    return clusterIndex($from) !== clusterIndex($to);
+    return Cluster.indexFromPos($from) !== Cluster.indexFromPos($to);
 };
 
 export const splitCluster: Command = (s, d) => {
@@ -141,12 +143,14 @@ function parseClipboard(data: DataTransfer): Fragment {
     const doubleNewlines = [...text.matchAll(/\n\n+/g)].length;
     if (doubleNewlines > 0) {
         const paras = text.split(/\n\n+/)
+        console.log('plaintext: using double newline as paragraph markers');
         return Fragment.from(paras.map(
-            (x) => makeBlock(PaneSchema.text(x.trim()))));
+            (x) => makeCluster([makeBlock(PaneSchema.text(x.trim()))], 'text')));
     } else {
         const paras = text.split(/\n/)
+        console.log('plaintext: using single newline as paragraph markers');
         return Fragment.from(paras.map(
-            (x) => makeBlock(PaneSchema.text(x.trim()))));
+            (x) => makeCluster([makeBlock(PaneSchema.text(x.trim()))], 'text')));
     }
 }
 

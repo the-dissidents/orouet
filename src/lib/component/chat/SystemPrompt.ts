@@ -1,7 +1,7 @@
 import type { DocumentContext, LocaleId } from "$lib/DocumentContext.svelte";
 import { getInterlacedRepresentation } from "$lib/component/chat/DocRepresentation";
 import { getLocale } from "$lib/paraglide/runtime";
-import { type Cluster, ClusterKinds, findCluster, id, parseDOMCluster, type ClusterKind, Id, Doc } from "$lib/Schema";
+import { Cluster, ClusterKinds, id, parseDOMCluster, type ClusterKind, Id, Doc } from "$lib/Schema";
 import { Transform } from "prosemirror-transform";
 import type { Transforms } from "$lib/VersionControl.svelte";
 import type { Fragment } from "prosemirror-model";
@@ -105,7 +105,7 @@ export type FencedCommandResultData = {
 function replaceCluster(
     tr: Transform, id: Id<Cluster>, content: Fragment
 ): FencedCommandError | void {
-    const src = findCluster(tr.doc as Doc, id);
+    const src = Cluster.findById(tr.doc as Doc, id);
     if (!src) return { type: 'invalid_id', id };
     const [c, pos] = src;
     tr.replaceWith(pos + 1, pos + 1 + c.content.size, content);
@@ -114,7 +114,7 @@ function replaceCluster(
 function setClusterKind(
     tr: Transform, id: Id<Cluster>, kind: ClusterKind
 ): FencedCommandError | void {
-    const src = findCluster(tr.doc as Doc, id);
+    const src = Cluster.findById(tr.doc as Doc, id);
     if (!src) return { type: 'invalid_id', id };
     const [c, pos] = src;
     if (c.attrs.kind !== kind)

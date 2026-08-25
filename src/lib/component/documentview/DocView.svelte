@@ -15,7 +15,7 @@
 </script>
 
 <script lang="ts">
-  import { clusterOf, PaneSchema, type Doc } from "$lib/Schema";
+  import { Cluster, PaneSchema, type Doc } from "$lib/Schema";
   import { createNodeView } from "$lib/details/NodeView.svelte";
   import { Debug } from "$lib/details/Util";
   import { toggleMark, newlineInCode, selectAll, chainCommands, deleteSelection } from "prosemirror-commands";
@@ -29,7 +29,7 @@
   import { placeholder } from "./Placeholder";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { m } from "$lib/paraglide/messages.js";
-  import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, mergeClusterUpIfAtStart, pasteHandler, redo, splitBlock, splitCluster, stopIfAcrossClusters, testCommand, undo } from "./Commands";
+  import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, mergeClusterUpIfAtStart, noop, pasteHandler, redo, splitBlock, splitCluster, stopIfAcrossClusters, testCommand, undo } from "./Commands";
   import type { TextOptions } from "$lib/TextOptions";
   import { computeDiff, generateMarkers, linearize, type LinearizationOptions, type VisualMarker } from "$lib/details/Richdiff";
   import { diffPluginKey, diffVisualization } from "./Diffview";
@@ -52,9 +52,7 @@
 
   const lang = $derived(dc[role].language);
   const opts = $derived(dc[role].options);
-
-  // svelte-ignore state_referenced_locally
-  const context = new PaneContext(dc, role);
+  const context = $derived(new PaneContext(dc, role));
 
   export function selection() {
     return context.selection;
@@ -102,13 +100,12 @@
         doc: dc[role].content,
         plugins: [
           keymap({
-            "Enter": chainCommands(stopIfAcrossClusters, deleteSelection, gotoNextBlockIfAtEnd, splitBlock),
-            "Control-Enter": chainCommands(stopIfAcrossClusters, deleteSelection, splitBlock),
+            "Enter": chainCommands(stopIfAcrossClusters, deleteSelection, splitBlock),
             "Shift-Enter": chainCommands(stopIfAcrossClusters, deleteSelection, newlineInCode),
-            "Alt-Enter": chainCommands(splitCluster),
+            "Alt-Enter": role == 'source' ? chainCommands(deleteSelection, splitCluster) : noop,
 
             "Backspace": chainCommands(stopIfAcrossClusters, deleteSelection, mergeBlockUpIfAtStart),
-            "Alt-Backspace": chainCommands(mergeBlockUpIfAtStart, mergeClusterUpIfAtStart),
+            "Alt-Backspace": role == 'source' ? chainCommands(deleteSelection, mergeBlockUpIfAtStart, mergeClusterUpIfAtStart) : noop,
 
             "ArrowLeft": gotoPrevBlockIfAtStart,
             "ArrowRight": gotoNextBlockIfAtEnd,
@@ -128,10 +125,12 @@
       dispatchTransaction(tr) {
         context.selection = tr.selection;
         const { $head: r } = context.selection;
-        dc.currentCluster = clusterOf(r)?.attrs.id;
+        dc.currentCluster = Cluster.fromPos(r)?.attrs.id;
 
         if (tr.docChanged) {
+          // this should be the only place that assigns to Text.content!
           dc[role].content = tr.doc as Doc;
+          dc.onDocumentChanged.dispatch();
           if (!tr.getMeta('is_system'))
             dc.addTransform({ [role]: tr }, { internal: true });
         }
@@ -227,8 +226,6 @@
       @include colors(background-color, pink, palevioletred);
     }
 
-    * {
-      font-size: 20px;
-    }
+    font-size: 20px;
   }
 </style>

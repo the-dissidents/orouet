@@ -12,7 +12,7 @@ export const placeholder = (forType: NodeType, text: Wrapped<string>) => new Plu
                 if (n.type.name == forType.name && n.textContent.length == 0) {
                     decorations.push(Decoration.node(pos, pos + n.nodeSize, {
                         class: 'placeholder',
-                        'data-placeholder-text': unwrap(text)
+                        'style': `--placeholder-text: "${unwrap(text)}"`,
                     }));
                 }
             });

@@ -188,30 +188,38 @@ export const columnPosition = (pos: ResolvedPos) => {
     return pos.parentOffset;
 };
 
-export const blockIndex = (pos: ResolvedPos) => {
-    if (pos.depth !== 2) return null;
-    return pos.index(1);
-};
+export const Block = {
+    indexFromPos(pos: ResolvedPos) {
+        if (pos.depth !== 2) return null;
+        return pos.index(1);
+    },
+    fromPos(pos: ResolvedPos) {
+        if (pos.depth !== 2) return null;
+        return pos.node(2) as Block;
+    },
+}
 
-export const blockOf = (pos: ResolvedPos) => {
-    if (pos.depth !== 2) return null;
-    return pos.node(2) as Block;
-};
-
-export const clusterIndex = (pos: ResolvedPos) => {
-    if (pos.depth !== 2) return null;
-    return pos.index(0);
-};
-
-export const clusterOf = (pos: ResolvedPos) => {
-    if (pos.depth !== 2) return null;
-    return pos.node(1) as Cluster;
-};
-
-export const findCluster = (doc: Doc, id: Id<Cluster>): [Cluster, number] | null => {
-    let result: [Cluster, number] | null = null;
-    doc.forEach((n, p) => {
-        if (n.attrs.id == id) result = [n, p];
-    });
-    return result;
-};
+export const Cluster = {
+    indexFromPos(pos: ResolvedPos) {
+        if (pos.depth !== 2) return null;
+        return pos.index(0);
+    },
+    fromPos(pos: ResolvedPos) {
+        if (pos.depth !== 2) return null;
+        return pos.node(1) as Cluster;
+    },
+    findById(doc: Doc, id: Id<Cluster>): [cl: Cluster, pos: number] | null {
+        let result: [Cluster, number] | null = null;
+        doc.forEach((n, pos) => {
+            if (n.attrs.id == id) result = [n, pos];
+        });
+        return result;
+    },
+    findByIndex(doc: Doc, i: number): [cl: Cluster, pos: number] | null {
+        let result: [Cluster, number] | null = null;
+        doc.forEach((n, pos, i1) => {
+            if (i == i1) result = [n, pos];
+        });
+        return result;
+    },
+}

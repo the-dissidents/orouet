@@ -1,12 +1,9 @@
 <script lang="ts">
-  import TextInitialIcon from '@lucide/svelte/icons/text-initial';
-  import GitGraphIcon from '@lucide/svelte/icons/git-graph';
-  import MessagesSquareIcon from '@lucide/svelte/icons/messages-square';
-  import FlaskConicalIcon from '@lucide/svelte/icons/flask-conical';
+  import { TextInitialIcon, GitGraphIcon, MessagesSquareIcon, FlaskConicalIcon } from '@lucide/svelte';
   import { ButtonStrip, Resizer, StripRadioItem, Tooltip } from '@the_dissidents/svelte-ui';
 
   import { DocumentContext } from '$lib/DocumentContext.svelte';
-  import { blockIndex, clusterIndex, clusterOf, columnPosition } from '$lib/Schema';
+  import { Block, Cluster, columnPosition } from '$lib/Schema';
   import { Backend } from '$lib/Backend';
 
   import { Memorized } from '$lib/details/Memorized.svelte';
@@ -177,7 +174,7 @@
     <div class="grow">{status}</div>
     {#if selection}
     {@const { $head: r, from, to } = selection}
-    {@const cluster = clusterOf(r)}
+    {@const cluster = Cluster.fromPos(r)}
 
     <div class="border">
       <span class="label">IDX:</span> {r.pos}
@@ -185,11 +182,11 @@
 
     {#if cluster}
       <div class="border">
-        <span class="label">段落：</span>{clusterIndex(r)!+1} / {r.node(0).childCount}
+        <span class="label">段落：</span>{Cluster.indexFromPos(r)!+1} / {r.node(0).childCount}
       </div>
       {#if cluster.childCount > 1}
         <div class="border">
-          <span class="label">子段落：</span>{blockIndex(r)!+1} / {cluster.childCount}
+          <span class="label">子段落：</span>{Block.indexFromPos(r)!+1} / {cluster.childCount}
         </div>
       {/if}
     {/if}
@@ -206,7 +203,7 @@
 </div>
 
 <style lang="scss">
-@use "../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
+@use "@the_dissidents/svelte-ui/uchu.scss";
 @use "../util.scss" as *;
 
 .loading {

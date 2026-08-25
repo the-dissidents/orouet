@@ -114,6 +114,7 @@ export class DocumentContext {
 
     /** Used to notify editors to apply transforms */
     readonly onTransform = new EventHost<[cid: Id<Commit>, ts: Partial<Transforms>]>();
+    readonly onDocumentChanged = new EventHost<[]>();
 
     serialize(): SerializedDocumentContextJSON {
         return z.encode(SerializedDocumentContext, {
@@ -159,20 +160,18 @@ export class DocumentContext {
         this.#currentCommit = $state(vc.initialCommit);
     }
 
-    // if clusters are added to or removed from source, this will automatically apply
-    // corresponding changes in target
+    /** If clusters are added to or removed from source, this will automatically apply corresponding changes in target */
     addTransform(
         trs: Partial<Transforms>,
         opts?: {
             cid?: Id<DeltaCommit>,
-            /** if true, the editor is already at a state where the transforms have been applied (happens when the transform comes from user edit) */
+            /** if true, the editor is already at a state where the transforms have been applied, and the `Text.content`s have already been modified (happens when the transform comes from user edit) */
             internal?: boolean
         }
     ) {
         Debug.assert(!!(trs.source?.steps.length || trs.target?.steps.length));
 
         const _id = opts?.cid ?? id();
-
         if (trs.source) {
             const newTr = new Transform(trs.target?.doc ?? this.target.content);
             balanceTargetClusters(trs.source.doc as Doc, newTr);

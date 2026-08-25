@@ -2,9 +2,7 @@
   import { Secrets } from "$lib/Backend";
   import type { ProviderInfo } from "$lib/llm/ChatProvider";
   import { ConfigRow, ConfigTable } from "@the_dissidents/svelte-ui";
-
-  import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
-  import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
+  import { ArrowLeftIcon, TriangleAlertIcon } from '@lucide/svelte';
 
   let { provider = $bindable(), onExit }: {
     provider: ProviderInfo,

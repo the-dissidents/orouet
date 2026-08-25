@@ -4,17 +4,18 @@
   import DocView from "./DocView.svelte";
   import { Memorized } from "$lib/details/Memorized.svelte";
   import * as z from "zod/v4-mini";
+  import ClusterKindSelector from "./ClusterKindSelector.svelte";
 
   interface Props {
     context: DocumentContext,
   }
 
-  let { context }: Props = $props();
+  let { context: dc }: Props = $props();
 
   let leftPane: HTMLElement | undefined = $state();
   let source = $state<DocView>(), target = $state<DocView>();
-  let diffDocs = $derived(context.currentDiffCommit
-    ? context.getDocsAtCommit(context.currentDiffCommit)
+  let diffDocs = $derived(dc.currentDiffCommit
+    ? dc.getDocsAtCommit(dc.currentDiffCommit)
     : { source: undefined, target: undefined });
 
   const leftSize = Memorized.$('left-size', z.string(), '33vw');
@@ -34,8 +35,8 @@
 
 <div class="container">
 
-{#key context}
-<div class="grid" style="grid-template-rows: min-content repeat({context.source.content.childCount}, min-content) auto;">
+{#key dc}
+<div class="grid" style="grid-template-rows: min-content repeat({dc.source.content.childCount}, min-content) auto;">
   <div class="dummy-row">
     <div class="dummy-left" bind:this={leftPane} style:width="33vw"></div>
     <!-- <div class="dummy-right" bind:this={rightPane} style:width="33vw"></div> -->
@@ -45,20 +46,21 @@
     <Resizer first={leftPane} bind:value={$leftSize} vertical useViewportFraction/>
   </div>
 
-  {#each context.source.content.children as cl, i}
-    <div class='number-container' class:current={cl.attrs.id == context.currentCluster}>
+  {#each dc.source.content.children as cl, i}
+    <div class='number-container' class:current={cl.attrs.id == dc.currentCluster}>
       <div class='number'>
-        {i+1}
+        <span>{i+1}</span>
+        <ClusterKindSelector index={i} {dc} />
       </div>
     </div>
   {/each}
 
   <div class="left">
-    <DocView role='source' dc={context} diffTarget={diffDocs.source} bind:this={source} />
+    <DocView role='source' {dc} diffTarget={diffDocs.source} bind:this={source} />
   </div>
 
   <div class="right">
-    <DocView role='target' dc={context} diffTarget={diffDocs.target} bind:this={target} />
+    <DocView role='target' {dc} diffTarget={diffDocs.target} bind:this={target} />
   </div>
 </div>
 {/key}
@@ -107,14 +109,21 @@
   }
 
   .number {
-    padding: 4px 10px 0 8px;
-    color: gray;
+    padding: 4px 3px 0 8px;
     position: sticky;
     align-self: start;
     top: 0;
 
-    font-variant-numeric: tabular-nums;
-    text-align: right;
+    display: flex;
+    flex-direction: row;
+
+    span {
+      padding-right: 3px;
+      flex-grow: 1;
+      color: gray;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
   }
 
   .resizer {

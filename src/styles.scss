@@ -1,5 +1,5 @@
-@use "../node_modules/@the_dissidents/svelte-ui/dist/main";
-@use "../node_modules/@the_dissidents/svelte-ui/dist/uchu";
+@use "@the_dissidents/svelte-ui/main.sass";
+@use "@the_dissidents/svelte-ui/uchu.scss";
 
 @include main.configure(
   // $page-background-dark: uchu.$yin-9,

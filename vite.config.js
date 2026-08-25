@@ -14,7 +14,9 @@ export default defineConfig(async () => ({
     debugInfoSvelte(),
     debugInfoTS(),
     paraglideVitePlugin({ project: "./project.inlang", outdir: "./src/lib/paraglide" }),
-    Inspect(),
+
+    // this somehow conflicts with SCSS preprocessor
+    // Inspect(),
   ],
   optimizeDeps: { force: true },
 

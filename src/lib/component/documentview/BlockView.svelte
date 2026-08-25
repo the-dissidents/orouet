@@ -26,7 +26,7 @@
 </NodeViewContent>
 
 <style lang="scss">
-  @use "../../../../node_modules/@the_dissidents/svelte-ui/dist/uchu";
+  @use "@the_dissidents/svelte-ui/uchu.scss";
   @use "../../../util.scss" as *;
 
   $round: 4px;
@@ -88,13 +88,16 @@
     }
   }
 
-  :global [data-placeholder-text]::before {
+  :global [data-placeholder-text] [data-block]::before {
     @include colorvars(color, disabled-text);
-    padding: 9px 10px;
+    // padding: 9px 10px;
     line-height: normal;
 
-    position: absolute;
-    content: attr(data-placeholder-text);
+    // position: absolute;
+    // left: 0;
+    // top: 0;
+
+    content: var(--placeholder-text);
     font-family: var(--ui-font-family);
     pointer-events: none;
   }
