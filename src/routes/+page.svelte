@@ -14,15 +14,21 @@
   import LocaleSelect from '$lib/component/LocaleSelect.svelte';
   import ChatPanel from '$lib/component/chat/ChatPanel.svelte';
 
-  import { setLocale } from '$lib/paraglide/runtime';
-  import { m } from "$lib/paraglide/messages.js";
+  import { _ } from 'svelte-i18n';
+  import { locale, getTextDirection } from '$lib/I18n.js';
 
   import { basename } from '@tauri-apps/api/path';
   import * as dialog from '@tauri-apps/plugin-dialog';
   import { fly } from 'svelte/transition';
   import * as z from "zod/v4-mini";
 
-  setLocale('zh');
+  locale.set('zh');
+
+  $effect(() => {
+    const lang = $locale ?? 'en';
+    document.documentElement.lang = lang;
+    document.documentElement.dir = getTextDirection(lang);
+  });
 
   import { onDestroy } from 'svelte';
   import { wait } from '$lib/details/Util';
@@ -159,8 +165,8 @@
       </div>
       <div class="tool" class:show={page == 'format'}>
         <ButtonStrip bind:selectValue={chosen}>
-          <StripRadioItem value='source'>{m.source()}</StripRadioItem>
-          <StripRadioItem value='target'>{m.target()}</StripRadioItem>
+          <StripRadioItem value='source'>{$_('source')}</StripRadioItem>
+          <StripRadioItem value='target'>{$_('target')}</StripRadioItem>
         </ButtonStrip>
 
         <h5>语言</h5>

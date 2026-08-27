@@ -33,6 +33,7 @@
     "prosemirror-transform": "^1.12.0",
     "prosemirror-utils": "^1.2.2",
     "prosemirror-view": "^1.41.8",
+    "svelte-i18n": "^4.0.1",
     "tauri-plugin-keyring-api": "^0.1.1",
     "zod": "^4.3.6"
   },
@@ -40,7 +41,6 @@
     "@babel/core": "^7.29.0",
     "@babel/helper-plugin-utils": "^7.28.6",
     "@babel/types": "^7.29.0",
-    "@inlang/paraglide-js": "^2.15.2",
     "@sveltejs/adapter-static": "^3.0.6",
     "@sveltejs/kit": "^2.57.1",
     "@sveltejs/vite-plugin-svelte": "^6.0.0",

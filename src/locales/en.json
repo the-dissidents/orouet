@@ -1,0 +1,37 @@
+{
+	"displayOptions": "display options",
+	"numericStyle": {
+		"label": "numeric style",
+		"lining": "lining",
+		"oldstyle": "old style",
+		"tabular": "tabular"
+	},
+	"emphasisStyle": "emphasis style",
+	"keywordStyle": "keyword style",
+	"justify": "justify",
+	"hyphenate": "hyphenate",
+	"sizeAdjustment": "size adjustment",
+	"ligatures": {
+		"label": "ligatures",
+		"common": "common",
+		"discretionary": "discretionary",
+		"historical": "historical",
+		"contextual": "contextual"
+	},
+	"italic": "italic",
+	"bold": "bold",
+	"smallCaps": "small caps",
+	"underline": "underline",
+	"emphasisMark": "emphasis mark",
+	"sperrsatz": "Sperrsatz",
+	"source": "source",
+	"target": "target",
+	"placeholderText": "enter text here",
+	"boundary": {
+		"delay": "delay",
+		"fileSaved": "file saved",
+		"focusedBlockChanged": "focused block changed",
+		"focusedClusterChanged": "focused cluster changed"
+	},
+	"seconds": "s"
+}

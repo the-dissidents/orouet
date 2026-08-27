@@ -5,7 +5,7 @@
   import { findNext, findPrev, replaceAll, replaceCurrent, replaceNext, SearchQuery, setSearchState } from "prosemirror-search";
   import * as z from 'zod/v4-mini';
   import Editor from "./documentview/Editor.svelte";
-  import { m } from "$lib/paraglide/messages";
+  import { _ } from "svelte-i18n";
   import type { Transaction } from "prosemirror-state";
 
   interface Props {
@@ -44,22 +44,22 @@
   function customDispatch(tr: Transaction) {
     if (!view) return;
     view.dispatch(tr);
-    context.versionControl.addAttr({ label: '查找替换' });
+    context.versionControl.addAttr({ label: $_('search.find-and-replace') });
   }
 </script>
 
 <ButtonStrip bind:selectValue={side} onValueChanged={() => setQuery()}>
-  <StripRadioItem value='source'>{m.source()}</StripRadioItem>
-  <StripRadioItem value='target'>{m.target()}</StripRadioItem>
+  <StripRadioItem value='source'>{$_('source')}</StripRadioItem>
+  <StripRadioItem value='target'>{$_('target')}</StripRadioItem>
 </ButtonStrip>
 
-<h5>查找与替换</h5>
+<h5>{$_('search.heading')}</h5>
 
-<input type="text" placeholder="查找……" bind:value={searchPattern} onchange={setQuery} />
-<input type="text" placeholder="替换为……" bind:value={replacement} onchange={setQuery} />
+<input type="text" placeholder={$_('search.term-placeholder')} bind:value={searchPattern} onchange={setQuery} />
+<input type="text" placeholder={$_('search.replacement-placeholder')} bind:value={replacement} onchange={setQuery} />
 
 <ConfigTable>
-  <ConfigRow name='查找'>
+  <ConfigRow name={$_('search.find')}>
     <ButtonStrip>
       <StripItem disabled={!view || !query.valid}
         onclick={() => view ? findNext(view.state, customDispatch, view) : 0}
@@ -69,28 +69,28 @@
       >上一个</StripItem>
     </ButtonStrip>
   </ConfigRow>
-  <ConfigRow name='替换'>
+  <ConfigRow name={$_('search.replace')}>
     <ButtonStrip>
       <StripItem disabled={!view || !query.valid}
         onclick={() => view ? replaceCurrent(view.state, customDispatch, view) : 0}
-      >当前匹配项</StripItem>
+      >{$_('search.current')}</StripItem>
       <StripItem disabled={!view || !query.valid}
         onclick={() => view ? replaceNext(view.state, customDispatch, view) : 0}
-      >下一个</StripItem>
+      >{$_('search.next')}</StripItem>
       <StripItem disabled={!view || !query.valid}
         onclick={() => view ? replaceAll(view.state, customDispatch, view) : 0}
-      >所有</StripItem>
+      >{$_('search.all')}</StripItem>
     </ButtonStrip>
   </ConfigRow>
 </ConfigTable>
 
-<h5>设置</h5>
+<h5>{$_('search.settings')}</h5>
 <label>
   <input type='checkbox' bind:checked={$regexp} onchange={setQuery}>
-  使用正则表达式
+  {$_('search.use-regexp')}
 </label>
 
 <label>
   <input type='checkbox' bind:checked={$caseSensitive} onchange={setQuery}>
-  大小写敏感
+  {$_('search.case-sensitive')}
 </label>

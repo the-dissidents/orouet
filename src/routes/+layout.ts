@@ -5,3 +5,9 @@
 export const ssr = false;
 
 import '../styles.scss';
+import '$lib/I18n.js';
+import { waitLocale } from 'svelte-i18n';
+
+export const load = async () => {
+	await waitLocale();
+};

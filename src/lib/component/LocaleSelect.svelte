@@ -2,12 +2,13 @@
   import type { LocaleId } from "$lib/DocumentContext.svelte";
   import { ConfigRow, ConfigTable } from "@the_dissidents/svelte-ui";
   import { LanguageCodes, LanguageVariants } from "../../data/LocaleData";
+  import { _ } from 'svelte-i18n';
 
   const { locale = $bindable() }: { locale: LocaleId } = $props();
 
   const langName = new Intl.DisplayNames(['zh', 'en'], { type: 'language', languageDisplay: 'dialect' });
-  const scriptName = new Intl.DisplayNames(['zh', 'en'], { type: 'script' });
-  const regionName = new Intl.DisplayNames(['zh', 'en'], { type: 'region' });
+  // const scriptName = new Intl.DisplayNames(['zh', 'en'], { type: 'script' });
+  // const regionName = new Intl.DisplayNames(['zh', 'en'], { type: 'region' });
 
   const choices = $derived(!locale[0] ? [] : LanguageVariants[locale[0]]);
   const choice = $derived(choices.find((x) => x[0] == locale[1] && x[1] == locale[2]) ?? null);
@@ -16,12 +17,12 @@
 </script>
 
 <ConfigTable>
-  <ConfigRow name="语言" style="display:flex">
+  <ConfigRow name={$_('locselect.language')} style="display:flex">
     <select bind:value={locale[0]} onchange={() => {
       locale[1] = null;
       locale[2] = null;
     }}>
-      <option value={null}>自动识别</option>
+      <option value={null}>{$_('locselect.automatic')}</option>
       <hr>
       <optgroup label="modern">
         {#each codes.filter((x) => x[1] == 'modern') as [code, _]}
@@ -50,12 +51,12 @@
   </ConfigRow>
 
   {#if choices.length > 0}
-  <ConfigRow name="方言" style="display:flex">
+  <ConfigRow name={$_('locselect.variant')} style="display:flex">
     <select bind:value={() => choice, (x) => {
       if (!x) { locale[1] = null; locale[2] = null; }
       else { locale[1] = x[0]; locale[2] = x[1]; }
     }}>
-      <option value={null}>通用</option>
+      <option value={null}>{$_('locselect.generic')}</option>
       {#each choices as ch}
       {@const id = [locale[0], ...ch].filter((x) => !!x).join('-')}
         <option value={ch}>{langName.of(id)}</option>

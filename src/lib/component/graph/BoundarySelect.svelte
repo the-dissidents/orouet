@@ -2,7 +2,7 @@
   import type { BoundaryCondition } from "$lib/Boundary";
   import { ConfigRow, ConfigTable, NumberInput } from "@the_dissidents/svelte-ui";
   import { untrack } from "svelte";
-  import { m } from "$lib/paraglide/messages.js";
+  import { _ } from "svelte-i18n";
 
   const { c = $bindable(), onChange }:
     { c: BoundaryCondition, onChange?: (c: BoundaryCondition) => void } = $props();
@@ -15,7 +15,7 @@
 </script>
 
 <ConfigTable>
-  <ConfigRow name={m.boundary_delay()}>
+  <ConfigRow name={$_('boundary.delay')}>
     <label>
       <input type='checkbox' checked={c.delay !== undefined}
         onchange={(x) => x.currentTarget.checked
@@ -23,7 +23,7 @@
       <NumberInput bind:value={
         () => c.delay ? c.delay / 1000 : delaySeconds,
         (x) => { c.delay = x * 1000; delaySeconds = x; }} min='0' max='10000' step='0.1' />
-      {m.seconds()}
+      {$_('seconds')}
     </label>
   </ConfigRow>
 
@@ -31,11 +31,11 @@
     <input type='checkbox' bind:checked={c.hasLabel}>
   </ConfigRow>
 
-  <ConfigRow name={m.boundary_fileSaved()}>
+  <ConfigRow name={$_('boundary.fileSaved')}>
     <input type='checkbox' bind:checked={c.fileSaved}>
   </ConfigRow>
 
-  <ConfigRow name={m.boundary_focusedClusterChanged()}>
+  <ConfigRow name={$_('boundary.focusedClusterChanged')}>
     <input type='checkbox' bind:checked={c.focusedClusterChange}>
   </ConfigRow>
 </ConfigTable>

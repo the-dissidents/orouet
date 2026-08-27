@@ -1,0 +1,27 @@
+{
+	"displayOptions": "Anzeigeoptionen",
+	"numericStyle": {
+		"label": "Zahlenstil",
+		"lining": "lining",
+		"oldstyle": "alter Stil",
+		"tabular": "tabellarisch"
+	},
+	"emphasisStyle": "Auszeichnungsstil",
+	"keywordStyle": "Schlüsselwortstil",
+	"justify": "Randausgleich",
+	"hyphenate": "Worttrennung",
+	"sizeAdjustment": "Schriftgrößenanpassung",
+	"ligatures": {
+		"label": "Ligaturen",
+		"common": "gebräuchlich",
+		"discretionary": "spezifisch",
+		"historical": "historisch",
+		"contextual": "kontextuell"
+	},
+	"italic": "kursiv",
+	"bold": "fett",
+	"smallCaps": "Kapitälchen",
+	"underline": "unterstrichen",
+	"emphasisMark": "Betonungszeichen",
+	"sperrsatz": "gesperrt"
+}

@@ -1,6 +1,6 @@
 import type { DocumentContext, LocaleId } from "$lib/DocumentContext.svelte";
 import { getInterlacedRepresentation } from "$lib/component/chat/DocRepresentation";
-import { getLocale } from "$lib/paraglide/runtime";
+import { getLocale } from "$lib/I18n";
 import { Cluster, ClusterKinds, id, parseDOMCluster, type ClusterKind, Id, Doc } from "$lib/Schema";
 import { Transform } from "prosemirror-transform";
 import type { Transforms } from "$lib/VersionControl.svelte";

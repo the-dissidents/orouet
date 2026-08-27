@@ -37,7 +37,7 @@ export function isBoundary(
     if (nexts.length !== 1 || !vc.isDelta(nexts[0])) return true;
 
     const next = vc.get(nexts[0])!;
-    if (next.where !== from.where) return true;
+    // if (next.where !== from.where) return true;
     if (condition.selectionSet && next.attrs.selectionSet) return true;
 
     if (condition.delay !== undefined

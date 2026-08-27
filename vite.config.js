@@ -1,4 +1,3 @@
-import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { defineConfig } from "vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 import debugInfoSvelte from './vite-plugins/DebugInfoSvelte';
@@ -13,7 +12,6 @@ export default defineConfig(async () => ({
     sveltekit(),
     debugInfoSvelte(),
     debugInfoTS(),
-    paraglideVitePlugin({ project: "./project.inlang", outdir: "./src/lib/paraglide" }),
 
     // this somehow conflicts with SCSS preprocessor
     // Inspect(),

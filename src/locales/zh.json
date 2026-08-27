@@ -1,0 +1,56 @@
+{
+  "bold": "粗体",
+  "boundary": {
+    "delay": "时间间隔大于",
+    "fileSaved": "文件保存",
+    "focusedClusterChanged": "焦点段变化"
+  },
+  "displayOptions": "显示设置",
+  "emphasisMark": "着重号",
+  "emphasisStyle": "着重样式",
+  "hyphenate": "自动断词",
+  "italic": "斜体",
+  "justify": "两端对齐",
+  "keywordStyle": "关键词样式",
+  "ligatures": {
+    "common": "常见",
+    "contextual": "上下文特定",
+    "discretionary": "特殊",
+    "historical": "历史",
+    "label": "连笔"
+  },
+  "locselect": {
+    "automatic": "自动识别",
+    "generic": "通用",
+    "language": "语言",
+    "variant": "方言"
+  },
+  "numericStyle": {
+    "label": "数字形态",
+    "lining": "平齐",
+    "oldstyle": "旧式",
+    "tabular": "等宽"
+  },
+  "placeholderText": "在此输入文字",
+  "search": {
+    "all": "所有",
+    "case-sensitive": "大小写敏感",
+    "current": "当前匹配项",
+    "find": "查找",
+    "find-and-replace": "查找替换",
+    "heading": "查找与替换",
+    "next": "下一个",
+    "replace": "替换",
+    "replacement-placeholder": "替换为……",
+    "settings": "设置",
+    "term-placeholder": "查找……",
+    "use-regexp": "使用正则表达式"
+  },
+  "seconds": "秒",
+  "sizeAdjustment": "字号调整",
+  "smallCaps": "小型大写字符",
+  "source": "原文",
+  "sperrsatz": "Sperrsatz",
+  "target": "译文",
+  "underline": "下划线"
+}

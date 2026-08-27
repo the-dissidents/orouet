@@ -31,13 +31,14 @@
   import type { SvelteHTMLElements } from "svelte/elements";
   import { placeholder } from "./Placeholder";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
-  import { m } from "$lib/paraglide/messages.js";
   import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, mergeClusterUpIfAtStart, noop, redo, splitBlock, splitCluster, stopIfAcrossClusters, testCommand, undo } from "./Commands";
   import type { TextOptions } from "$lib/TextOptions";
   import { computeDiff, generateMarkers, linearize, type LinearizationOptions, type VisualMarker } from "$lib/details/Richdiff";
   import { diffPluginKey, diffVisualization } from "./Diffview";
   import { DebouncedTask } from "$lib/details/DebouncedTask";
   import { pasteHandler } from "./PasteHandler";
+
+  import { _ } from "svelte-i18n";
 
   interface Props {
     role: 'source' | 'target',
@@ -129,7 +130,7 @@
             "Mod-i": emphasis,
             "Mod-b": keyword,
           }),
-          placeholder(PaneSchema.nodes.block, m.placeholderText),
+          placeholder(PaneSchema.nodes.block, () => $_('placeholderText')),
           pasteHandler(role),
           diffVisualization([]),
           search()
