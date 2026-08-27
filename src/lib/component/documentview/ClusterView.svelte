@@ -19,6 +19,9 @@
 </div>
 
 <style lang='scss'>
+  @use "@the_dissidents/svelte-ui/uchu";
+  @use "../../../util.scss" as *;
+
   %heading {
     line-height: 1.25;
     margin-top: 0.5em;
@@ -29,7 +32,8 @@
   .container {
     position: relative;
     padding-block: 5px;
-    border-bottom: #ccc 1px dashed;
+    border-bottom: 1px dashed;
+    @include colors(border-color, #ccc, #555);
   }
 
   :global [data-cluster-kind] {

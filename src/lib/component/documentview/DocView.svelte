@@ -18,10 +18,13 @@
   import { Cluster, PaneSchema, type Doc } from "$lib/Schema";
   import { createNodeView } from "$lib/details/NodeView.svelte";
   import { Debug } from "$lib/details/Util";
+
   import { toggleMark, newlineInCode, selectAll, chainCommands, deleteSelection } from "prosemirror-commands";
   import { keymap } from "prosemirror-keymap";
+  import { search } from "prosemirror-search";
   import { EditorState, Selection } from "prosemirror-state";
   import { EditorView } from "prosemirror-view";
+
   import { onMount, untrack } from "svelte";
   import BlockView from "./BlockView.svelte";
   import ClusterView from "./ClusterView.svelte";
@@ -46,7 +49,7 @@
   $effect(() => Debug.assert(dc[role].content.type == PaneSchema.topNodeType));
 
   let content: HTMLElement | undefined = $state();
-  let view: EditorView | undefined;
+  let editor: EditorView | undefined;
 
   const emphasis = toggleMark(PaneSchema.marks.emphasis);
   const keyword = toggleMark(PaneSchema.marks.keyword);
@@ -54,6 +57,10 @@
   const lang = $derived(dc[role].language);
   const opts = $derived(dc[role].options);
   const context = $derived(new PaneContext(dc, role));
+
+  export function view() {
+    return editor;
+  }
 
   export function selection() {
     return context.selection;
@@ -66,16 +73,16 @@
   const me = {};
 
   const diffTask = new DebouncedTask(() => {
-    if (!view) return;
+    if (!editor) return;
 
     let result: VisualMarker[] = [];
     if (diffTarget) {
       const opts: LinearizationOptions = { skipRootBoundary: true };
       const ops = computeDiff(
-        linearize(diffTarget, opts), linearize(view.state.doc, opts));
+        linearize(diffTarget, opts), linearize(editor.state.doc, opts));
       result = generateMarkers(ops);
     }
-    view?.dispatch(view.state.tr.setMeta(diffPluginKey, result));
+    editor?.dispatch(editor.state.tr.setMeta(diffPluginKey, result));
   }, 500);
 
   $effect(() => {
@@ -87,15 +94,15 @@
     dc.onTransform.bind(me, (_, ts) => {
       if (!ts[role]) return;
 
-      Debug.assert(!!view);
-      const tr = view.state.tr.setMeta('is_system', true);
+      Debug.assert(!!editor);
+      const tr = editor.state.tr.setMeta('is_system', true);
       for (const step of ts[role].steps)
         tr.step(step);
-      view.dispatch(tr);
+      editor.dispatch(tr);
     });
 
     Debug.assert(!!content);
-    view = new EditorView(content, {
+    editor = new EditorView(content, {
       state: EditorState.create({
         schema: PaneSchema,
         doc: dc[role].content,
@@ -125,6 +132,7 @@
           placeholder(PaneSchema.nodes.block, m.placeholderText),
           pasteHandler(role),
           diffVisualization([]),
+          search()
         ]
       }),
       dispatchTransaction(tr) {
@@ -140,8 +148,8 @@
             dc.addTransform({ [role]: tr }, { internal: true });
         }
 
-        const newState = view!.state.apply(tr)
-        view!.updateState(newState);
+        const newState = editor!.state.apply(tr)
+        editor!.updateState(newState);
       },
       nodeViews: {
         cluster: createNodeView(ClusterView, { context }),
@@ -152,8 +160,8 @@
         blur: () => context.focused = false,
       },
     });
-    context.selection = view.state.selection;
-    context.focused = view.hasFocus();
+    context.selection = editor.state.selection;
+    context.focused = editor.hasFocus();
     context.opts = opts;
   })
 </script>
@@ -175,6 +183,7 @@
 </div>
 
 <style lang="scss">
+  @use "@the_dissidents/svelte-ui/uchu";
   @use "../../../util.scss" as *;
 
   @mixin emphasisStyle($attr, $tag) {
@@ -232,5 +241,14 @@
     }
 
     font-size: 20px;
+
+    .ProseMirror-search-match, .ProseMirror-active-search-match {
+      border-radius: 2px;
+      @include colors(--color, uchu.$red-3, uchu.$red-3);
+      box-shadow: 0 0 0 1px var(--color);
+    }
+    .ProseMirror-active-search-match {
+      @include colors(background-color, uchu.$pink-2, uchu.$red-7);
+    }
   }
 </style>

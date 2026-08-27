@@ -1,6 +1,6 @@
 <script lang="ts">
   import { TextInitialIcon, GitGraphIcon, MessagesSquareIcon, FlaskConicalIcon, SearchIcon } from '@lucide/svelte';
-  import { ButtonStrip, Resizer, StripRadioItem, Tooltip } from '@the_dissidents/svelte-ui';
+  import { ButtonStrip, Resizer, StripItem, StripRadioItem, Tooltip } from '@the_dissidents/svelte-ui';
 
   import { DocumentContext } from '$lib/DocumentContext.svelte';
   import { Block, Cluster, columnPosition } from '$lib/Schema';
@@ -112,11 +112,12 @@
 {/await}
   <header id="titlebar">
     <div class="spacer" data-tauri-drag-region></div>
-    <button onclick={load}>open</button>
-    <button onclick={save}>save</button>
-    <button onclick={saveAs}>save as</button>
-    <button onclick={() => console.log(ctx.serialize())}>test</button>
-    <button>import</button>
+    <ButtonStrip>
+      <StripItem onclick={load}>打开</StripItem>
+      <StripItem onclick={save}>保存</StripItem>
+      <StripItem onclick={saveAs}>另存为</StripItem>
+      <StripItem onclick={() => console.log(ctx.serialize())}>test</StripItem>
+    </ButtonStrip>
 
     <span class="path" data-tauri-drag-region>
       {path !== '' ? await basename(path) : '未命名文档'}
@@ -151,7 +152,7 @@
         <CommitGraph context={ctx}/>
       </div>
       <div class="tool" class:show={page == 'search'}>
-        <Search />
+        <Search context={ctx} {editor} />
       </div>
       <div class="tool" class:show={page == 'chat'}>
         <ChatPanel context={ctx} />

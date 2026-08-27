@@ -31,6 +31,10 @@
          : target?.focused() ? 'target'
          : null;
   }
+
+  export function pane(side: 'source' | 'target') {
+    return side == 'source' ? source : target;
+  }
 </script>
 
 <div class="container">
