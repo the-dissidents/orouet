@@ -1,27 +1,48 @@
 {
-	"displayOptions": "Anzeigeoptionen",
-	"numericStyle": {
-		"label": "Zahlenstil",
-		"lining": "lining",
-		"oldstyle": "alter Stil",
-		"tabular": "tabellarisch"
-	},
-	"emphasisStyle": "Auszeichnungsstil",
-	"keywordStyle": "Schlüsselwortstil",
-	"justify": "Randausgleich",
-	"hyphenate": "Worttrennung",
-	"sizeAdjustment": "Schriftgrößenanpassung",
-	"ligatures": {
-		"label": "Ligaturen",
-		"common": "gebräuchlich",
-		"discretionary": "spezifisch",
-		"historical": "historisch",
-		"contextual": "kontextuell"
-	},
-	"italic": "kursiv",
-	"bold": "fett",
-	"smallCaps": "Kapitälchen",
-	"underline": "unterstrichen",
-	"emphasisMark": "Betonungszeichen",
-	"sperrsatz": "gesperrt"
+  "bold": "fett",
+  "displayOptions": "Anzeigeoptionen",
+  "emphasisMark": "Betonungszeichen",
+  "emphasisStyle": "Auszeichnungsstil",
+  "go-back": "zurück",
+  "graph": {
+    "compare": "vergleichen"
+  },
+  "hyphenate": "Worttrennung",
+  "italic": "kursiv",
+  "justify": "Randausgleich",
+  "keywordStyle": "Schlüsselwortstil",
+  "ligatures": {
+    "common": "gebräuchlich",
+    "contextual": "kontextuell",
+    "discretionary": "spezifisch",
+    "historical": "historisch",
+    "label": "Ligaturen"
+  },
+  "locselect": {
+    "automatic": "automatisch",
+    "generic": "allgemein",
+    "variant": "Variante"
+  },
+  "msg": {
+    "opened": "Geöffnet: {file}",
+    "saved": "Gespeichert: {file}"
+  },
+  "numericStyle": {
+    "label": "Zahlenstil",
+    "lining": "lining",
+    "oldstyle": "alter Stil",
+    "tabular": "tabellarisch"
+  },
+  "search": {
+    "all": "alles",
+    "find": "suchen",
+    "find-and-replace": "suchen & ersetzen",
+    "next": "das nächste",
+    "previous": "das vorherige",
+    "replace": "ersetzen"
+  },
+  "sizeAdjustment": "Schriftgrößenanpassung",
+  "smallCaps": "Kapitälchen",
+  "sperrsatz": "gesperrt",
+  "underline": "unterstrichen"
 }

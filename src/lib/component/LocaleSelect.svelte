@@ -24,25 +24,25 @@
     }}>
       <option value={null}>{$_('locselect.automatic')}</option>
       <hr>
-      <optgroup label="modern">
+      <optgroup label={$_('locselect.modern')}>
         {#each codes.filter((x) => x[1] == 'modern') as [code, _]}
           <option value={code}>{langName.of(code) ?? '??'}</option>
         {/each}
       </optgroup>
 
-      <optgroup label="moderate">
+      <optgroup label={$_('locselect.moderate')}>
         {#each codes.filter((x) => x[1] == 'moderate') as [code, _]}
           <option value={code}>{langName.of(code) ?? '??'}</option>
         {/each}
       </optgroup>
 
-      <optgroup label="basic">
+      <optgroup label={$_('locselect.basic')}>
         {#each codes.filter((x) => x[1] == 'basic') as [code, _]}
           <option value={code}>{langName.of(code) ?? '??'}</option>
         {/each}
       </optgroup>
 
-      <optgroup label="n/a">
+      <optgroup label={$_('locselect.n-a')}>
         {#each codes.filter((x) => x[1] == 'na') as [code, _]}
           <option value={code}>{langName.of(code) ?? '??'}</option>
         {/each}

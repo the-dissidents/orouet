@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Debug, wait } from "$lib/details/Util";
-  import type { ChatProvider, Message } from "$lib/llm/ChatProvider";
+  import type { ChatProvider } from "$lib/llm/ChatProvider";
   import { ChatSession, MessageWithMetadata } from "$lib/llm/ChatSession.svelte";
   import type { Attachment } from "svelte/attachments";
 
@@ -12,6 +12,7 @@
   import { LoremIpsum } from "lorem-ipsum";
   import { scrollShadows, ScrollShadows } from "@the_dissidents/svelte-ui";
   import { Timer } from "$lib/details/Timer.svelte";
+  import { _ } from "svelte-i18n";
 
   const { dc, chat, provider, beforeSubmit }: {
     dc: DocumentContext,
@@ -106,7 +107,7 @@
     if (ret.transforms) {
       const commit = dc.currentCommitId;
       dc.addTransform(ret.transforms);
-      dc.versionControl.addAttr({ label: '智能体编辑' });
+      dc.versionControl.addAttr({ label: $_('commitlabel.agentic-edit') });
       dc.currentDiffCommit = commit;
     }
   }
@@ -144,7 +145,7 @@
 {#if chat.messages.length == 0}
 <div class="no-message">
   <div>
-    在下方输入指令，开始新的对话
+    {$_('chat.type-below-to-start-a-conversation')}
   </div>
 </div>
 {/if}
@@ -158,7 +159,7 @@
 
           {#if message.state == 'connecting'}
             <header>
-              正在连接
+              {$_('chat.connecting')}
             </header>
           {/if}
 
@@ -166,9 +167,11 @@
             <details class="reasoning" open={true}>
               <summary>
                 {#if message.state == 'reasoning'}
-                  正在思考（{Math.floor(messageTimer.time / 1000)} 秒）
+                  {$_('chat.thinking-seconds', { values:
+                    {s: Math.floor(messageTimer.time / 1000)} })}
                 {:else}
-                  已思考（{Math.floor(message.thinkingTime / 1000)} 秒）
+                  {$_('chat.thought-for-seconds', { values:
+                    {s: Math.floor(message.thinkingTime / 1000)} })}
                 {/if}
               </summary>
               <ScrollShadows>
@@ -193,7 +196,7 @@
               <summary class:fail={!ok}>
                 <AstroidIcon/>
                 <code>{cmd.name}</code>
-                <span>{ok ? '成功' : '错误'}</span>
+                <span>{ok ? $_('chat.success') : $_('chat.error')}</span>
               </summary>
 
               <ScrollShadows>
@@ -206,7 +209,8 @@
         {#if message.role == 'assistant'}
           {#if message.state == 'ok'}
             <footer class="result">
-              用时 {Math.floor(message.totalTime / 1000)} 秒
+              {$_('chat.done-in-seconds', { values:
+                {s: Math.floor(message.totalTime / 1000)} })}
             </footer>
           {/if}
         {/if}

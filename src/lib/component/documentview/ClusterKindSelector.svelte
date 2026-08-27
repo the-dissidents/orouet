@@ -6,6 +6,7 @@
   import { Menu } from "@tauri-apps/api/menu";
   import { Cluster, ClusterKind, ClusterKindCategories, ClusterKinds } from "$lib/Schema";
   import { Transform } from "prosemirror-transform";
+  import { _ } from "svelte-i18n";
 
   interface Props {
     dc: DocumentContext,
@@ -42,15 +43,16 @@
     (await Menu.new({
       items: [
         ...ClusterKind.category('common').map((y) => ({
-          text: y,
+          text: $_(`clusterkind.${y}`),
           checked: kind == y,
           enabled: kind !== y,
           action: () => changeKindTo(y)
         })),
+        { item: 'Separator' },
         ...ClusterKindCategories.filter((x) => x != 'common').map((x) => ({
-          text: x,
+          text: $_(`clusterkind.category.${x}`),
           items: ClusterKind.category(x).map((y) => ({
-            text: y,
+            text: $_(`clusterkind.${y}`),
             checked: kind == y,
             enabled: kind !== y,
             action: () => changeKindTo(y)

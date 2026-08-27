@@ -63,10 +63,10 @@
     <ButtonStrip>
       <StripItem disabled={!view || !query.valid}
         onclick={() => view ? findNext(view.state, customDispatch, view) : 0}
-      >下一个</StripItem>
+      >{$_('search.next')}</StripItem>
       <StripItem disabled={!view || !query.valid}
         onclick={() => view ? findPrev(view.state, customDispatch, view) : 0}
-      >上一个</StripItem>
+      >{$_('search.previous')}</StripItem>
     </ButtonStrip>
   </ConfigRow>
   <ConfigRow name={$_('search.replace')}>

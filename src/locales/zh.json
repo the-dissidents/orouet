@@ -1,13 +1,72 @@
 {
+  "action": {
+    "load": "打开",
+    "save": "保存",
+    "save-as": "另存为"
+  },
   "bold": "粗体",
   "boundary": {
     "delay": "时间间隔大于",
     "fileSaved": "文件保存",
-    "focusedClusterChanged": "焦点段变化"
+    "focusedClusterChanged": "焦点段变化",
+    "has-label": "带有标签"
+  },
+  "chat": {
+    "connecting": "正在连接",
+    "create-new-session": "新建聊天",
+    "current-session": "当前对话",
+    "done-in-seconds": "用时 {s} 秒",
+    "error": "错误",
+    "model": "当前模型",
+    "settings": "设置",
+    "success": "成功",
+    "thinking-seconds": "正在思考（{s} 秒）",
+    "thought-for-seconds": "已思考 {s} 秒",
+    "type-below-to-start-a-conversation": "在下方输入指令，开始新的对话",
+    "untitled-session": "未命名聊天"
+  },
+  "chatsettings": {
+    "credentials": "凭证",
+    "delete": "删除",
+    "deleting": "删除中",
+    "key": "密钥",
+    "key-not-set-d": "未设置API密钥，将无法使用AI功能",
+    "provider": "提供商",
+    "save": "保存",
+    "saving": "保存中"
+  },
+  "clusterkind": {
+    "blockquote": "引用",
+    "category": {
+      "common": "常见",
+      "heading": "标题",
+      "theaterInterview": "戏剧/访谈"
+    },
+    "h1": "总标题",
+    "h2": "二级标题",
+    "h3": "三级标题",
+    "h4": "四级标题",
+    "h5": "五级标题",
+    "h6": "六级标题",
+    "poetry": "诗歌",
+    "speaker": "说话者",
+    "stage-direction": "舞台指示",
+    "text": "文本"
+  },
+  "commitlabel": {
+    "agentic-edit": "智能体编辑"
   },
   "displayOptions": "显示设置",
   "emphasisMark": "着重号",
   "emphasisStyle": "着重样式",
+  "go-back": "返回",
+  "graph": {
+    "boundary-display-options": "显示设置",
+    "compare": "进行比对",
+    "initial-state": "初始状态",
+    "revert-to-this": "恢复到此刻",
+    "time": "时间：{t}"
+  },
   "hyphenate": "自动断词",
   "italic": "斜体",
   "justify": "两端对齐",
@@ -21,9 +80,20 @@
   },
   "locselect": {
     "automatic": "自动识别",
+    "basic": "基础支持",
     "generic": "通用",
     "language": "语言",
+    "moderate": "一般支持",
+    "modern": "广泛支持",
+    "n-a": "无数据",
     "variant": "方言"
+  },
+  "msg": {
+    "compressed-orouet-document": "压缩的orouët翻译文档",
+    "error-reading-archive": "读取存档出错",
+    "loading-user-settings": "正在加载用户设置",
+    "opened": "已读取：{file}",
+    "saved": "已保存：{file}"
   },
   "numericStyle": {
     "label": "数字形态",
@@ -40,6 +110,7 @@
     "find-and-replace": "查找替换",
     "heading": "查找与替换",
     "next": "下一个",
+    "previous": "上一个",
     "replace": "替换",
     "replacement-placeholder": "替换为……",
     "settings": "设置",
@@ -51,6 +122,12 @@
   "smallCaps": "小型大写字符",
   "source": "原文",
   "sperrsatz": "Sperrsatz",
+  "status": {
+    "block": "子段落：",
+    "cluster": "段落：",
+    "column": "字符：",
+    "selection-length": "选中长度："
+  },
   "target": "译文",
   "underline": "下划线"
 }

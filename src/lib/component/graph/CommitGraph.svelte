@@ -18,6 +18,8 @@
   import type { Id } from "$lib/Schema";
   import { Menu } from "@tauri-apps/api/menu";
 
+  import { _ } from "svelte-i18n";
+
   const { context }: {
     context: DocumentContext
   } = $props();
@@ -53,26 +55,26 @@
   }
 
   async function onClickRow(id: Id<Commit>, c?: Commit) {
-    const label = c ? c.attrs.label : '初始状态';
+    const label = c ? c.attrs.label : $_('graph.initial-state');
     const m = await Menu.new({items: [
       ...(label ? [{
         text: label,
         enabled: false
       }] : []),
       ...(c ? [{
-        text: `时间：${formatFullDate(new Date(c.attrs.timestamp))}`,
+        text: $_('graph.time', { values: {t: formatFullDate(new Date(c.attrs.timestamp))} }),
         enabled: false
       }] : []),
       {
         item: 'Separator'
       },
       {
-        text: `恢复到此刻`,
+        text: $_('graph.revert-to-this'),
         enabled: id !== context.currentCommitId,
         action: () => context.revertTo(id)
       },
       {
-        text: `进行比对`,
+        text: $_('graph.compare'),
         enabled: id !== context.currentCommitId,
         checked: id == context.currentDiffCommit,
         action: () => context.currentDiffCommit = (id == context.currentDiffCommit ? undefined : id)
@@ -114,10 +116,10 @@
                 <span class="label">{commit.attrs.label}</span>
               {/if}
               {#if commit.attrs.fileSaved}
-                <span class="remarks">文件保存</span>
+                <span class="remarks">{$_('boundary.fileSaved')}</span>
               {/if}
             {:else}
-              初始状态
+              {$_('graph.initial-state')}
             {/if}
           </span>
         </button>
@@ -137,7 +139,7 @@
   </svg>
 </div>
 
-<Collapsible header={'显示设置'}>
+<Collapsible header={$_('graph.boundary-display-options')}>
   <BoundarySelect bind:c={boundaryReactive} onChange={(b) => boundary.set(b)} />
 </Collapsible>
 

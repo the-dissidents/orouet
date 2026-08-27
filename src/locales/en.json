@@ -1,37 +1,61 @@
 {
-	"displayOptions": "display options",
-	"numericStyle": {
-		"label": "numeric style",
-		"lining": "lining",
-		"oldstyle": "old style",
-		"tabular": "tabular"
-	},
-	"emphasisStyle": "emphasis style",
-	"keywordStyle": "keyword style",
-	"justify": "justify",
-	"hyphenate": "hyphenate",
-	"sizeAdjustment": "size adjustment",
-	"ligatures": {
-		"label": "ligatures",
-		"common": "common",
-		"discretionary": "discretionary",
-		"historical": "historical",
-		"contextual": "contextual"
-	},
-	"italic": "italic",
-	"bold": "bold",
-	"smallCaps": "small caps",
-	"underline": "underline",
-	"emphasisMark": "emphasis mark",
-	"sperrsatz": "Sperrsatz",
-	"source": "source",
-	"target": "target",
-	"placeholderText": "enter text here",
-	"boundary": {
-		"delay": "delay",
-		"fileSaved": "file saved",
-		"focusedBlockChanged": "focused block changed",
-		"focusedClusterChanged": "focused cluster changed"
-	},
-	"seconds": "s"
+  "action": {
+    "load": "load",
+    "save": "save",
+    "save-as": "save as"
+  },
+  "bold": "bold",
+  "boundary": {
+    "delay": "delay",
+    "fileSaved": "file saved",
+    "focusedBlockChanged": "focused block changed",
+    "focusedClusterChanged": "focused cluster changed",
+    "has-label": "has label"
+  },
+  "displayOptions": "display options",
+  "emphasisMark": "emphasis mark",
+  "emphasisStyle": "emphasis style",
+  "go-back": "go back",
+  "hyphenate": "hyphenate",
+  "italic": "italic",
+  "justify": "justify",
+  "keywordStyle": "keyword style",
+  "ligatures": {
+    "common": "common",
+    "contextual": "contextual",
+    "discretionary": "discretionary",
+    "historical": "historical",
+    "label": "ligatures"
+  },
+  "msg": {
+    "compressed-orouet-document": "compressed orouët document"
+  },
+  "numericStyle": {
+    "label": "numeric style",
+    "lining": "lining",
+    "oldstyle": "old style",
+    "tabular": "tabular"
+  },
+  "placeholderText": "enter text here",
+  "search": {
+    "all": "all",
+    "case-sensitive": "case sensitive",
+    "current": "current",
+    "find": "find",
+    "find-and-replace": "find & replace",
+    "heading": "find & replace",
+    "next": "next",
+    "previous": "previous",
+    "replace": "replace",
+    "replacement-placeholder": "replacement",
+    "settings": "settings",
+    "term-placeholder": "term to find"
+  },
+  "seconds": "s",
+  "sizeAdjustment": "size adjustment",
+  "smallCaps": "small caps",
+  "source": "source",
+  "sperrsatz": "Sperrsatz",
+  "target": "target",
+  "underline": "underline"
 }

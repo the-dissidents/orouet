@@ -3,6 +3,7 @@
   import type { ProviderInfo } from "$lib/llm/ChatProvider";
   import { ConfigRow, ConfigTable } from "@the_dissidents/svelte-ui";
   import { ArrowLeftIcon, TriangleAlertIcon } from '@lucide/svelte';
+  import { _ } from "svelte-i18n";
 
   let { provider = $bindable(), onExit }: {
     provider: ProviderInfo,
@@ -14,19 +15,19 @@
   let preview = $state((await Secrets.get('llm-key'))?.slice(0, 6));
 </script>
 
-<h5>凭证</h5>
+<h5>{$_('chatsettings.credentials')}</h5>
 
 {#if !preview}
 <div class="warning">
   <TriangleAlertIcon/>
   <div>
-    未设置API密钥，将无法使用AI功能
+    {$_('chatsettings.key-not-set-d')}
   </div>
 </div>
 {/if}
 
 <ConfigTable>
-  <ConfigRow name={'提供商'}>
+  <ConfigRow name={$_('chatsettings.provider')}>
     <select bind:value={provider.type}>
       <option value="deepseek">DeepSeek</option>
       <!-- <option value="openai">OpenAI</option>
@@ -35,7 +36,7 @@
       <option value="dummy">Dummy</option>
     </select>
   </ConfigRow>
-  <ConfigRow name={'密钥'}>
+  <ConfigRow name={$_('chatsettings.key')}>
     {#if preview}
       <code>{preview}...</code>
       <button onclick={async () => {
@@ -43,7 +44,9 @@
         await Secrets.delete('llm-key');
         working = false;
         preview = undefined;
-      }} disabled={working}>{working ? '删除中' : '删除'}</button>
+      }} disabled={working}>
+        {working ? $_('chatsettings.deleting') : $_('chatsettings.delete')}
+      </button>
     {:else}
       <input type="text" bind:value={inputValue} />
       <button onclick={async () => {
@@ -52,7 +55,9 @@
         working = false;
         preview = inputValue.slice(0, 5);
         inputValue = '';
-      }} disabled={working}>{working ? '保存中' : '保存'}</button>
+      }} disabled={working}>
+        {working ? $_('chatsettings.saving') : $_('chatsettings.save')}
+      </button>
     {/if}
   </ConfigRow>
 </ConfigTable>
@@ -60,7 +65,7 @@
 <div>
   <button onclick={onExit} class="hlayout">
     <ArrowLeftIcon />
-    返回
+    {$_('go-back')}
   </button>
 </div>
 

@@ -10,7 +10,7 @@
     node: Cluster;
   }
 
-  const { context, node }: Props = $props();
+  const { node }: Props = $props();
   $effect(() => Debug.assert(node.type == PaneSchema.nodes.cluster));
 </script>
 

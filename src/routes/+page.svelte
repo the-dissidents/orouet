@@ -14,7 +14,7 @@
   import LocaleSelect from '$lib/component/LocaleSelect.svelte';
   import ChatPanel from '$lib/component/chat/ChatPanel.svelte';
 
-  import { _ } from 'svelte-i18n';
+  import { _, locales } from 'svelte-i18n';
   import { locale, getTextDirection } from '$lib/I18n.js';
 
   import { basename } from '@tauri-apps/api/path';
@@ -66,14 +66,14 @@
 
   async function load() {
     const filename = await dialog.open(
-      { filters: [{ name: 'compressed orouët document', extensions: ['orz', 'oro'] }] });
+      { filters: [{ name: $_('msg.compressed-orouet-document'), extensions: ['orz', 'oro'] }] });
     if (!filename) return;
 
     try {
       await readFrom(filename);
       path = filename;
     } catch (e) {
-      status = `读取存档出错：${e}`;
+      status = $_('msg.error-reading-archive');
       console.warn(e);
     }
   }
@@ -85,7 +85,7 @@
 
   async function saveAs() {
     const filename = await dialog.save(
-      { filters: [{ name: 'compressed orouët document', extensions: ['orz'] }] });
+      { filters: [{ name: $_('msg.compressed-orouet-document'), extensions: ['orz'] }] });
     if (!filename) return;
     await writeTo(filename);
     path = filename;
@@ -94,13 +94,13 @@
   async function readFrom(file: string) {
     const data = await Backend.readCompressed(file);
     ctx = DocumentContext.deserialize(JSON.parse(data));
-    status = `已读取：${file}`;
+    status = $_('msg.opened', { values: { file } });
   }
 
   async function writeTo(file: string) {
     const data = JSON.stringify(ctx.serialize());
     await Backend.saveCompressed(file, data);
-    status = `已保存：${file}`;
+    status = $_('msg.saved', { values: { file } });
     ctx.versionControl.addAttr({ fileSaved: true });
   }
 
@@ -112,16 +112,16 @@
   <div class="loading" out:fly>
     <div class="text">
       <div class="logo">orouët</div>
-      <div>正在加载用户设置</div>
+      <div>{$_('msg.loading-user-settings')}</div>
     </div>
   </div>
 {/await}
   <header id="titlebar">
     <div class="spacer" data-tauri-drag-region></div>
     <ButtonStrip>
-      <StripItem onclick={load}>打开</StripItem>
-      <StripItem onclick={save}>保存</StripItem>
-      <StripItem onclick={saveAs}>另存为</StripItem>
+      <StripItem onclick={load}>{$_('action.load')}</StripItem>
+      <StripItem onclick={save}>{$_('action.save')}</StripItem>
+      <StripItem onclick={saveAs}>{$_('action.save-as')}</StripItem>
       <StripItem onclick={() => console.log(ctx.serialize())}>test</StripItem>
     </ButtonStrip>
 
@@ -182,6 +182,12 @@
         <button onclick={() => {
           console.log(parseFencedCommands(testArea, ctx));
         }}>parseFencedCommands</button>
+
+        <select bind:value={$locale}>
+          {#each $locales as l}
+            <option value={l}>{l}</option>
+          {/each}
+        </select>
       </div>
       {/key}
     </div>
@@ -198,20 +204,20 @@
 
     {#if cluster}
       <div class="border">
-        <span class="label">段落：</span>{Cluster.indexFromPos(r)!+1} / {r.node(0).childCount}
+        <span class="label">{$_('status.cluster')}</span>{Cluster.indexFromPos(r)!+1} / {r.node(0).childCount}
       </div>
       {#if cluster.childCount > 1}
         <div class="border">
-          <span class="label">子段落：</span>{Block.indexFromPos(r)!+1} / {cluster.childCount}
+          <span class="label">{$_('status.block')}</span>{Block.indexFromPos(r)!+1} / {cluster.childCount}
         </div>
       {/if}
     {/if}
       <div class={{border: from !== to}}>
-        <span class="label">字符：</span>{columnPosition(r)}
+        <span class="label">{$_('status.column')}</span>{columnPosition(r)}
       </div>
       {#if from !== to}
         <div>
-          <span class="label">选中长度：</span>{r.doc.textBetween(from, to).length}
+          <span class="label">{$_('status.selection-length')}</span>{r.doc.textBetween(from, to).length}
         </div>
       {/if}
     {/if}

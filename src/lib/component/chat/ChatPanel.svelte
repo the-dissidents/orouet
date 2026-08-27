@@ -11,6 +11,7 @@
   import { Debug } from "$lib/details/Util";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import ChatSettings from "./ChatSettings.svelte";
+  import { _ } from "svelte-i18n";
 
   const { context }: { context: DocumentContext } = $props();
 
@@ -37,21 +38,21 @@
 {#if view == 'chat'}
   <fieldset>
     <label>
-      <span>当前对话</span>
+      <span>{$_('chat.current-session')}</span>
       <select bind:value={chat} onselect={() => {
         if (!chat) temporaryChat = new ChatSession();
       }}>
-        <option value={undefined}>新建聊天</option>
+        <option value={undefined}>{$_('chat.create-new-session')}</option>
         <hr>
       {#each context.chats as c}
-        <option value={c}>{c.title || '未命名聊天'}</option>
+        <option value={c}>{c.title || $_('chat.untitled-session')}</option>
       {/each}
       </select>
     </label>
     <label>
-      <span>当前模型</span>
+      <span>{$_('chat.model')}</span>
       <code>{provider?.modelName}</code>
-      <button onclick={() => view = 'settings'}>设置</button>
+      <button onclick={() => view = 'settings'}>{$_('chat.settings')}</button>
     </label>
   </fieldset>
   <hr>

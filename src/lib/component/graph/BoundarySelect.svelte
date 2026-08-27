@@ -27,7 +27,7 @@
     </label>
   </ConfigRow>
 
-  <ConfigRow name={"带有标签"}>
+  <ConfigRow name={$_('boundary.has-label')}>
     <input type='checkbox' bind:checked={c.hasLabel}>
   </ConfigRow>
 
