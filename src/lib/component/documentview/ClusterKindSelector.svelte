@@ -2,9 +2,9 @@
   import { Debug } from "$lib/details/Util";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { unbindEvents } from "@the_dissidents/svelte-ui";
-  import { Heading1Icon, Heading2Icon, Heading3Icon, Heading4Icon, Heading5Icon, Heading6Icon, QuoteIcon, TextAlignStartIcon } from "@lucide/svelte";
+  import { FeatherIcon, Heading1Icon, Heading2Icon, Heading3Icon, Heading4Icon, Heading5Icon, Heading6Icon, MegaphoneIcon, QuoteIcon, SpotlightIcon, TextAlignStartIcon } from "@lucide/svelte";
   import { Menu } from "@tauri-apps/api/menu";
-  import { Cluster, ClusterKinds, type ClusterKind } from "$lib/Schema";
+  import { Cluster, ClusterKind, ClusterKindCategories, ClusterKinds } from "$lib/Schema";
   import { Transform } from "prosemirror-transform";
 
   interface Props {
@@ -40,11 +40,23 @@
 {@const kind = getKind()}
   <button onclick={async () => {
     (await Menu.new({
-      items: ClusterKinds.map((x) => ({
-        text: x,
-        checked: kind == x,
-        action: () => kind !== x ? changeKindTo(x) : undefined
-      }))
+      items: [
+        ...ClusterKind.category('common').map((y) => ({
+          text: y,
+          checked: kind == y,
+          enabled: kind !== y,
+          action: () => changeKindTo(y)
+        })),
+        ...ClusterKindCategories.filter((x) => x != 'common').map((x) => ({
+          text: x,
+          items: ClusterKind.category(x).map((y) => ({
+            text: y,
+            checked: kind == y,
+            enabled: kind !== y,
+            action: () => changeKindTo(y)
+          }))
+        }))
+      ]
     })).popup();
   }}>
     {#if kind == 'h1'}
@@ -63,6 +75,14 @@
       <QuoteIcon />
     {:else if kind == 'text'}
       <TextAlignStartIcon />
+    {:else if kind == 'speaker'}
+      <MegaphoneIcon />
+    {:else if kind == 'stage-direction'}
+      <SpotlightIcon />
+    {:else if kind == 'poetry'}
+      <FeatherIcon />
+    {:else}
+      {kind satisfies never}
     {/if}
   </button>
 {/key}

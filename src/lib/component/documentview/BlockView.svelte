@@ -88,14 +88,9 @@
     }
   }
 
-  :global [data-placeholder-text] [data-block]::before {
+  :global .placeholder [data-block]::before {
     @include colorvars(color, disabled-text);
-    // padding: 9px 10px;
     line-height: normal;
-
-    // position: absolute;
-    // left: 0;
-    // top: 0;
 
     content: var(--placeholder-text);
     font-family: var(--ui-font-family);

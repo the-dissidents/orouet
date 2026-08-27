@@ -9,8 +9,25 @@ export function Id<T>() {
     return z.custom<Id<T>>((x) => typeof x === 'string');
 }
 
-export const ClusterKinds = ['text', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const;
-export type ClusterKind = (typeof ClusterKinds)[number];
+const ClusterKindCategory = {
+    heading: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+    common: ['text', 'blockquote', 'poetry'], // TODO: poetry inside blockquote how?
+    theaterInterview: ['speaker', 'stage-direction']
+} as const;
+
+export const ClusterKindCategories =
+    Object.keys(ClusterKindCategory) as (keyof typeof ClusterKindCategory)[];
+export const ClusterKinds = Object.values(ClusterKindCategory).flat();
+export type ClusterKind = (typeof ClusterKindCategory)[keyof typeof ClusterKindCategory][number];
+
+export const ClusterKind = {
+    categoryOf(k: ClusterKind) {
+        return Object.entries(ClusterKindCategory).find(([_, x]) => x.includes(k as never))![0];
+    },
+    category(cat: keyof typeof ClusterKindCategory) {
+        return ClusterKindCategory[cat];
+    },
+}
 
 export type Block = TypedNode<Node, { }>;
 export type Cluster = TypedNode<Block, { kind: ClusterKind, id: Id<Cluster> }>;
@@ -50,15 +67,17 @@ export function makeBlock(content: Fragment | Node | readonly Node[]) {
     return PaneSchema.nodes.block.createChecked({ }, content) as Block;
 }
 
-export function makeCluster(content: Block[], kind: ClusterKind, _id = id<Cluster>()) {
+export function makeCluster(content: readonly Block[], kind: ClusterKind, _id = id<Cluster>()) {
     return PaneSchema.nodes.cluster.createChecked({ kind, id: _id }, content) as Cluster;
 }
 
-export function makeClusterUnchecked(content: Block[], kind: ClusterKind, _id = id<Cluster>()) {
+export function makeClusterUnchecked(
+    content: readonly  Block[], kind: ClusterKind, _id = id<Cluster>()
+) {
     return PaneSchema.nodes.cluster.create({ kind, id: _id }, content) as Cluster;
 }
 
-export function makeDoc(content: Cluster[]) {
+export function makeDoc(content: readonly  Cluster[]) {
     const doc = PaneSchema.nodes.doc.createChecked({ }, content) as Doc;
     return doc;
 }

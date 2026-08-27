@@ -1,4 +1,8 @@
-onlyBuiltDependencies:
-  - esbuild
+minimumReleaseAge: 1440
 
-minimumReleaseAge: 0
+minimumReleaseAgeExclude:
+  - '@the_dissidents/*'
+
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true

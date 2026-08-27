@@ -97,7 +97,7 @@
         orient="auto">
         <path d="M 0 0 L 6 5 L 0 10" fill="none" />
       </marker>
-  </defs>
+    </defs>
 
     {#each layout.nodes as node (node.id)}
     {@const commit = context.versionControl.get(node.id)}

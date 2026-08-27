@@ -76,10 +76,26 @@
     }
 
     &[data-cluster-kind="blockquote"] {
-      background-color: #eee;
       font-size: 95%;
       border-radius: 5px;
       margin-inline: 1em;
+    }
+
+    &[data-cluster-kind="speaker"] [data-block] {
+      font-variant: small-caps;
+      padding-left: 0;
+      // margin-left: -0.5em;
+    }
+
+    &[data-cluster-kind="stage-direction"] [data-block] {
+      font-style: italic;
+      opacity: 0.8;
+      padding-block: 2px;
+    }
+
+    &[data-cluster-kind="poetry"] {
+      margin-left: 1em;
+      text-indent: 2em hanging each-line
     }
   }
 </style>

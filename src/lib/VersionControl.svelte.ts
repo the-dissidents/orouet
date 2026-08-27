@@ -172,21 +172,23 @@ export class VersionControl implements ReadonlyVersionControl {
     }
 
     add(c: Commit) {
-        const latest = this.get(this.latestCommit);
-        Debug.assert(!latest || c.attrs.timestamp > latest.attrs.timestamp);
-        Debug.assert(!this.#commits.has(c.id));
-        this.#commits.set(c.id, c);
-        this.#sorted.push(c.id);
+        const commit = $state(c);
 
-        switch (c.type) {
+        const latest = this.get(this.latestCommit);
+        Debug.assert(!latest || commit.attrs.timestamp > latest.attrs.timestamp);
+        Debug.assert(!this.#commits.has(commit.id));
+        this.#commits.set(commit.id, commit);
+        this.#sorted.push(commit.id);
+
+        switch (commit.type) {
             case "merge": break;
             case "delta":
-                const list = this.#forwardEdges.get(c.parent) ?? [];
-                list.push(c.id);
-                this.#forwardEdges.set(c.parent, list);
+                const list = this.#forwardEdges.get(commit.parent) ?? [];
+                list.push(commit.id);
+                this.#forwardEdges.set(commit.parent, list);
                 break;
             default:
-                c satisfies never;
+                commit satisfies never;
         }
     }
 

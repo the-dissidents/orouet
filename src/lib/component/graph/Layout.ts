@@ -73,7 +73,7 @@ export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
 
         children.forEach((child, i) => {
             const shift = i == 0 ? 0
-                : Math.max(0, ...range(child.topmostY, y).map((yx) => widths[yx] ?? 0)) + 1;
+                : Math.max(0, ...[...range(child.topmostY, y)].map((yx) => widths[yx] ?? 0)) + 1;
             child.deltaX = shift;
 
             let lastWx = 0;

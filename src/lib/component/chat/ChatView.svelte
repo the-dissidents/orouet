@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Debug, wait } from "$lib/details/Util";
   import type { ChatProvider, Message } from "$lib/llm/ChatProvider";
-  import { ChatSession } from "$lib/llm/ChatSession.svelte";
+  import { ChatSession, MessageWithMetadata } from "$lib/llm/ChatSession.svelte";
   import type { Attachment } from "svelte/attachments";
 
   import SvelteMarkdown from '@humanspeak/svelte-markdown';
@@ -10,6 +10,8 @@
   import { getSystemPrompt, parseFencedCommands, type FencedCommandResult } from "./SystemPrompt";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { LoremIpsum } from "lorem-ipsum";
+  import { scrollShadows, ScrollShadows } from "@the_dissidents/svelte-ui";
+  import { Timer } from "$lib/details/Timer.svelte";
 
   const { dc, chat, provider, beforeSubmit }: {
     dc: DocumentContext,
@@ -19,7 +21,7 @@
   } = $props();
 
   let input = $state('');
-
+  const messageTimer = new Timer(100);
   const lorem = new LoremIpsum();
 
   async function mockMessage(messageToSend: string) {
@@ -30,8 +32,11 @@
       modelName: 'mock',
       content: '',
       reasoning: '',
-      originalContent: ''
-    }) satisfies Message;
+      originalContent: '',
+      state: 'ok',
+      thinkingTime: 0,
+      totalTime: 0
+    }) satisfies MessageWithMetadata;
     chat.isStreaming = true;
     chat.messages.push(msg);
 
@@ -79,7 +84,14 @@
 
     const msg = mock
       ? await mockMessage(messageToSend)
-      : await chat.sendMessage(provider, messageToSend, { systemPrompt: getSystemPrompt(dc) });
+      : await chat.sendMessage(provider, messageToSend, {
+        systemPrompt: getSystemPrompt(dc),
+        onStateChanged(s) {
+          if (s == 'connecting') return;
+          if (s == 'reasoning') messageTimer.start();
+          else messageTimer.stop();
+        }
+      });
     if (!msg) return;
 
     const ret = parseFencedCommands(msg.content, dc);
@@ -143,12 +155,28 @@
       <div class="message-wrapper {message.role}">
         {#if message.role == 'assistant'}
           <span class="sender">{message.modelName}</span>
+
+          {#if message.state == 'connecting'}
+            <header>
+              正在连接
+            </header>
+          {/if}
+
           {#if message.reasoning}
             <details class="reasoning" open={true}>
-              <summary>显示思考过程</summary>
-              <div class="markdown">
-                <SvelteMarkdown source={message.reasoning} />
-              </div>
+              <summary>
+                {#if message.state == 'reasoning'}
+                  正在思考（{Math.floor(messageTimer.time / 1000)} 秒）
+                {:else}
+                  已思考（{Math.floor(message.thinkingTime / 1000)} 秒）
+                {/if}
+              </summary>
+              <ScrollShadows>
+                <div class="markdown" {@attach scrollShadows}>
+                  {message.reasoning}
+                  <!-- <SvelteMarkdown source={message.reasoning} /> -->
+                </div>
+              </ScrollShadows>
             </details>
           {/if}
         {/if}
@@ -167,9 +195,20 @@
                 <code>{cmd.name}</code>
                 <span>{ok ? '成功' : '错误'}</span>
               </summary>
-              <pre>{cmd.code}</pre>
+
+              <ScrollShadows>
+                <pre {@attach scrollShadows}>{cmd.code}</pre>
+              </ScrollShadows>
             </details>
           {/each}
+        {/if}
+
+        {#if message.role == 'assistant'}
+          {#if message.state == 'ok'}
+            <footer class="result">
+              用时 {Math.floor(message.totalTime / 1000)} 秒
+            </footer>
+          {/if}
         {/if}
       </div>
     {/each}
@@ -237,43 +276,10 @@
       }
     }
 
-    &.system {
-      summary {
-        display: flex;
-        align-items: center;
-        list-style: none;
-
-        code {
-          font-family: monospace;
-          font-weight: bold;
-        }
-
-        span {
-          font-size: 90%;
-          margin-left: 10px;
-          @include colorvars(color, disabled-text);
-        }
-
-        :global(.lucide) {
-          margin: 0 5px 0 0;
-          height: 0.8lh;
-          stroke-width: 2px;
-          @include colorvars(color, disabled-text);
-        }
-
-        &:hover {
-          @include colors(color, #007acc, #bde);
-        }
-
-        &.fail span {
-          @include colors(color, darkred, lightcoral);
-        }
-      }
-
-      pre {
-        // margin: 0;
-        white-space: pre-wrap;
-      }
+    footer {
+      font-size: 90%;
+      text-align: right;
+      @include colorvars(color, disabled-text);
     }
   }
 
@@ -284,18 +290,9 @@
     opacity: 0.8;
   }
 
-  details.reasoning {
+  details {
     margin-block: 5px;
     interpolate-size: allow-keywords;
-
-    summary {
-      list-style: none;
-      font-size: 80%;
-
-      &:hover {
-        @include colors(color, #007acc, #bde);
-      }
-    }
 
     &::details-content   {
       height: 0;
@@ -309,6 +306,63 @@
       border-left: 2px solid #bbb;
 
       height: auto;
+    }
+
+    .markdown, pre {
+      max-height: 300px;
+      overflow-y: scroll;
+    }
+
+    summary {
+      list-style: none;
+
+      display: flex;
+      align-items: center;
+
+      :global(.lucide) {
+        margin: 0 5px 0 0;
+        height: 0.8lh;
+        stroke-width: 2px;
+        @include colorvars(color, disabled-text);
+      }
+    }
+  }
+
+  details.reasoning {
+    summary {
+      font-size: 80%;
+
+      &:hover {
+        @include colors(color, #007acc, #bde);
+      }
+    }
+  }
+
+  details.command {
+    summary {
+      code {
+        font-family: monospace;
+        font-weight: bold;
+      }
+
+      span {
+        font-size: 90%;
+        margin-left: 10px;
+        @include colorvars(color, disabled-text);
+      }
+
+      &:hover {
+        @include colors(color, #007acc, #bde);
+      }
+
+      &.fail span {
+        @include colors(color, darkred, lightcoral);
+      }
+    }
+
+    pre {
+      white-space: pre-wrap;
+      margin: 0;
     }
   }
 
@@ -324,12 +378,15 @@
     font-size: 80%;
     opacity: 80%;
     line-height: 1.3;
+
+    contain: layout paint;
   }
 
   .content {
     white-space: pre-wrap;
     user-select: text;
     -webkit-user-select: text;
+    text-align: justify;
   }
 
   .empty-state {

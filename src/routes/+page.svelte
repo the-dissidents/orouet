@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { TextInitialIcon, GitGraphIcon, MessagesSquareIcon, FlaskConicalIcon } from '@lucide/svelte';
+  import { TextInitialIcon, GitGraphIcon, MessagesSquareIcon, FlaskConicalIcon, SearchIcon } from '@lucide/svelte';
   import { ButtonStrip, Resizer, StripRadioItem, Tooltip } from '@the_dissidents/svelte-ui';
 
   import { DocumentContext } from '$lib/DocumentContext.svelte';
@@ -29,11 +29,13 @@
 
   import text from '../data/kafka.txt?raw';
   import { getSystemPrompt, parseFencedCommands } from '$lib/component/chat/SystemPrompt';
+  import Search from '$lib/component/Search.svelte';
+
   let ctx = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
   ctx.source.language = ['de', null, null];
 
   let rightPane: HTMLElement | undefined = $state();
-  let page: 'format' | 'graph' | 'chat' | 'test' = $state('graph');
+  let page: 'format' | 'graph' | 'chat' | 'test' | 'search' = $state('graph');
 
   let chosen: 'source' | 'target' = $state('source');
   let editor = $state<Editor>();
@@ -119,7 +121,7 @@
     <span class="path" data-tauri-drag-region>
       {path !== '' ? await basename(path) : '未命名文档'}
     </span>
-    <div class="end" data-tauri-drag-region>
+    <div class="grow" data-tauri-drag-region>
     </div>
   </header>
   <main class="page">
@@ -136,13 +138,25 @@
         <Tooltip text='文本设置' position='bottom'>
           <StripRadioItem value='format'><TextInitialIcon /></StripRadioItem>
         </Tooltip>
+        <Tooltip text='查找与替换' position='bottom'>
+          <StripRadioItem value='search'><SearchIcon /></StripRadioItem>
+        </Tooltip>
         <Tooltip text='测试' position='bottom'>
           <StripRadioItem value='test'><FlaskConicalIcon /></StripRadioItem>
         </Tooltip>
       </ButtonStrip>
 
       {#key ctx}
-      {#if page == 'format'}
+      <div class="tool" class:show={page == 'graph'}>
+        <CommitGraph context={ctx}/>
+      </div>
+      <div class="tool" class:show={page == 'search'}>
+        <Search />
+      </div>
+      <div class="tool" class:show={page == 'chat'}>
+        <ChatPanel context={ctx} />
+      </div>
+      <div class="tool" class:show={page == 'format'}>
         <ButtonStrip bind:selectValue={chosen}>
           <StripRadioItem value='source'>{m.source()}</StripRadioItem>
           <StripRadioItem value='target'>{m.target()}</StripRadioItem>
@@ -154,19 +168,14 @@
         <DisplayOptions bind:value={ctx[chosen].options} />
         <textarea class="code"
           >{JSON.stringify(ctx[chosen].content.toJSON(), undefined, 2)}</textarea>
-      {:else if page == 'graph'}
-        <CommitGraph context={ctx}/>
-      {:else if page == 'chat'}
-        <ChatPanel context={ctx} />
-      {:else if page == 'test'}
+      </div>
+      <div class="tool" class:show={page == 'test'}>
         <button onclick={() => console.log(getSystemPrompt(ctx))}>system prompt</button>
         <textarea style="width: 100%; height: 15em" bind:value={testArea}></textarea>
         <button onclick={() => {
           console.log(parseFencedCommands(testArea, ctx));
         }}>parseFencedCommands</button>
-      {:else}
-        {page satisfies never}
-      {/if}
+      </div>
       {/key}
     </div>
   </main>
@@ -206,6 +215,14 @@
 @use "@the_dissidents/svelte-ui/uchu.scss";
 @use "../util.scss" as *;
 
+.tool {
+  display: none;
+
+  &.show {
+    display: contents;
+  }
+}
+
 .loading {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -239,9 +256,6 @@
 
   .spacer {
     width: 150px;
-  }
-  .end {
-    flex-grow: 1;
   }
   .path {
     margin-left: 10px;
@@ -308,8 +322,9 @@ main {
   margin: 0 0 0.5em 0;
 
   label .lucide {
-    width: 2.5em;
-    height: 2.5em;
+    width: 1.75em;
+    height: 1.75em;
+    padding: 0.25em;
   }
 }
 

@@ -29,11 +29,12 @@
   import { placeholder } from "./Placeholder";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { m } from "$lib/paraglide/messages.js";
-  import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, mergeClusterUpIfAtStart, noop, pasteHandler, redo, splitBlock, splitCluster, stopIfAcrossClusters, testCommand, undo } from "./Commands";
+  import { gotoNextBlockIfAtEnd, gotoPrevBlockIfAtStart, mergeBlockUpIfAtStart, mergeClusterUpIfAtStart, noop, redo, splitBlock, splitCluster, stopIfAcrossClusters, testCommand, undo } from "./Commands";
   import type { TextOptions } from "$lib/TextOptions";
   import { computeDiff, generateMarkers, linearize, type LinearizationOptions, type VisualMarker } from "$lib/details/Richdiff";
   import { diffPluginKey, diffVisualization } from "./Diffview";
   import { DebouncedTask } from "$lib/details/DebouncedTask";
+  import { pasteHandler } from "./PasteHandler";
 
   interface Props {
     role: 'source' | 'target',
@@ -102,10 +103,14 @@
           keymap({
             "Enter": chainCommands(stopIfAcrossClusters, deleteSelection, splitBlock),
             "Shift-Enter": chainCommands(stopIfAcrossClusters, deleteSelection, newlineInCode),
-            "Alt-Enter": role == 'source' ? chainCommands(deleteSelection, splitCluster) : noop,
+            "Alt-Enter": role == 'source'
+              ? chainCommands(deleteSelection, splitCluster)
+              : noop,
 
             "Backspace": chainCommands(stopIfAcrossClusters, deleteSelection, mergeBlockUpIfAtStart),
-            "Alt-Backspace": role == 'source' ? chainCommands(deleteSelection, mergeBlockUpIfAtStart, mergeClusterUpIfAtStart) : noop,
+            "Alt-Backspace": role == 'source'
+              ? chainCommands(deleteSelection, mergeBlockUpIfAtStart, mergeClusterUpIfAtStart)
+              : noop,
 
             "ArrowLeft": gotoPrevBlockIfAtStart,
             "ArrowRight": gotoNextBlockIfAtEnd,
@@ -118,7 +123,7 @@
             "Mod-b": keyword,
           }),
           placeholder(PaneSchema.nodes.block, m.placeholderText),
-          pasteHandler,
+          pasteHandler(role),
           diffVisualization([]),
         ]
       }),
@@ -196,7 +201,7 @@
     }
     &[#{$attr}=mark] {
       #{$tag} {
-        text-emphasis: filled dot;
+        text-emphasis: "•";
         text-emphasis-position: under;
       }
     }
