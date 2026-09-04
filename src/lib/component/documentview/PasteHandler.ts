@@ -1,4 +1,5 @@
-import { parseDOMDoc, PaneSchema, makeCluster, makeBlock, isCluster, Cluster } from "$lib/Schema";
+import { Debug, joinArray } from "$lib/details/Util";
+import { parseDOMDoc, PaneSchema, makeCluster, makeBlock, isCluster, Cluster, Block, ClusterKind } from "$lib/Schema";
 import { Fragment, Slice } from "prosemirror-model";
 import { Plugin, TextSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
@@ -14,7 +15,7 @@ function parseClipboard(data: DataTransfer, opts?: { forcePlaintext?: boolean })
         const html = data.getData('text/html');
         if (html) {
             const parsed = parseDOMDoc(parseHTML(html));
-            console.log(parsed);
+            console.log('parseClipboard: html', parsed);
 
             if (parsed.childCount == 0) return Fragment.empty;
             if (parsed.childCount == 1) {
@@ -28,6 +29,53 @@ function parseClipboard(data: DataTransfer, opts?: { forcePlaintext?: boolean })
                 return cluster.content;
             }
             // multiple clusters
+            let isSingleBlock = true, hasBlank = false;
+
+            type Group = {
+                blocks: Block[],
+                kind: ClusterKind
+            };
+
+            const grouped: Group[] = [];
+            let currentGroup: Group | undefined;
+            parsed.forEach((c) => {
+                if (c.childCount > 1) {
+                    isSingleBlock = false;
+                    return;
+                }
+                // 1 child
+                Debug.assert(c.childCount == 1);
+                if (c.child(0).content.size == 0) {
+                    hasBlank = true;
+                    if (currentGroup && currentGroup.blocks.length) {
+                        grouped.push(currentGroup);
+                        currentGroup = undefined;
+                    }
+                    return;
+                } else if (currentGroup && currentGroup.kind == c.attrs.kind) {
+                    currentGroup.blocks.push(c.child(0));
+                } else {
+                    if (currentGroup)
+                        grouped.push(currentGroup);
+                    currentGroup = {
+                        blocks: [c.child(0)],
+                        kind: c.attrs.kind
+                    };
+                }
+            });
+            if (currentGroup) grouped.push(currentGroup);
+
+            if (isSingleBlock && hasBlank) {
+                // merge clusters & blocks, use blank <p>s as cluster separator
+                const clusters: Cluster[] = grouped.map((group) =>
+                    makeCluster([makeBlock(joinArray(
+                        group.blocks.map((x) => x.content.content),
+                        [PaneSchema.text('\n')]
+                    ).flat())], group.kind)
+                );
+                return Fragment.from(clusters);
+            }
+
             return parsed.content;
         }
     }
@@ -37,6 +85,7 @@ function parseClipboard(data: DataTransfer, opts?: { forcePlaintext?: boolean })
 
     if (!text.includes('\n')) {
         // simple text
+        console.log('parseClipboard: single-block plain text');
         return Fragment.from(PaneSchema.text(text));
     }
 

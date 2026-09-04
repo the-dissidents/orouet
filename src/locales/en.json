@@ -8,14 +8,65 @@
   "boundary": {
     "delay": "delay",
     "fileSaved": "file saved",
-    "focusedBlockChanged": "focused block changed",
     "focusedClusterChanged": "focused cluster changed",
     "has-label": "has label"
+  },
+  "chat": {
+    "connecting": "connecting",
+    "create-new-session": "new chat",
+    "current-session": "current session",
+    "done-in-seconds": "done in {s} seconds",
+    "error": "error",
+    "model": "model",
+    "settings": "settings",
+    "success": "success",
+    "thinking-seconds": "thinking ({s} s)",
+    "thought-for-seconds": "thought for {s} s",
+    "type-below-to-start-a-conversation": "type below to start a conversation",
+    "untitled-session": "untitled session"
+  },
+  "chatsettings": {
+    "credentials": "credentials",
+    "delete": "delete",
+    "deleting": "deleting",
+    "key": "key",
+    "key-not-set-d": "API key not set; AI features will be unavailable",
+    "provider": "provider",
+    "save": "save",
+    "saving": "saving"
+  },
+  "clusterkind": {
+    "blockquote": "blockquote",
+    "category": {
+      "common": "common",
+      "heading": "heading",
+      "theaterInterview": "theater / interview"
+    },
+    "h1": "heading 1",
+    "h2": "heading 2",
+    "h3": "heading 3",
+    "h4": "heading 4",
+    "h5": "heading 5",
+    "h6": "heading 6",
+    "poetry": "poetry",
+    "speaker": "speaker",
+    "stage-direction": "stage direction",
+    "text": "text"
+  },
+  "commitlabel": {
+    "agentic-edit": "agentic edit"
   },
   "displayOptions": "display options",
   "emphasisMark": "emphasis mark",
   "emphasisStyle": "emphasis style",
   "go-back": "go back",
+  "graph": {
+    "boundary-display-options": "display options",
+    "compare": "compare",
+    "initial-state": "initial state",
+    "revert-to-this": "revert to this",
+    "time": "time: {t}"
+  },
   "hyphenate": "hyphenate",
   "italic": "italic",
   "justify": "justify",
@@ -27,8 +78,22 @@
     "historical": "historical",
     "label": "ligatures"
   },
+  "locselect": {
+    "automatic": "automatic",
+    "basic": "basic",
+    "generic": "generic",
+    "language": "language",
+    "moderate": "moderate",
+    "modern": "modern",
+    "n-a": "no data",
+    "variant": "variant"
+  },
   "msg": {
-    "compressed-orouet-document": "compressed orouët document"
+    "compressed-orouet-document": "compressed orouët document",
+    "error-reading-archive": "error reading archive",
+    "loading-user-settings": "loading user settings",
+    "opened": "opened: {file}",
+    "saved": "saved: {file}"
   },
   "numericStyle": {
     "label": "numeric style",
@@ -49,13 +114,20 @@
     "replace": "replace",
     "replacement-placeholder": "replacement",
     "settings": "settings",
-    "term-placeholder": "term to find"
+    "term-placeholder": "term to find",
+    "use-regexp": "use regexp"
   },
   "seconds": "s",
   "sizeAdjustment": "size adjustment",
   "smallCaps": "small caps",
   "source": "source",
   "sperrsatz": "Sperrsatz",
+  "status": {
+    "block": "block:",
+    "cluster": "cluster:",
+    "column": "column:",
+    "selection-length": "selection length:"
+  },
   "target": "target",
   "underline": "underline"
 }

@@ -33,6 +33,8 @@ export type Block = TypedNode<Node, { }>;
 export type Cluster = TypedNode<Block, { kind: ClusterKind, id: Id<Cluster> }>;
 export type Doc = TypedNode<Cluster>;
 
+export type Pointer<T> = [node: T, pos: number];
+
 export const Doc = z.codec(z.unknown(), z.custom<Doc>(), {
     decode: (v, cxt) => {
         const n = Node.fromJSON(PaneSchema, v);
@@ -122,8 +124,7 @@ export const PaneSchema = new Schema({
 });
 
 export const parseDOMDoc = (dom: Element | DocumentFragment): Doc => {
-    console.log(dom);
-
+    console.log('parseDOMDoc:', dom);
     if (dom.querySelector('div.cluster[data-kind]')) {
         const content: Cluster[] = [];
         function walk(e: Element | DocumentFragment) {
@@ -170,7 +171,9 @@ const parseDOMSingleClusters = (dom: Element | DocumentFragment): Cluster[] => {
     return content;
 };
 
-export const parseDOMCluster = (dom: Element | DocumentFragment, kind: ClusterKind): [Cluster] | [] => {
+export const parseDOMCluster = (
+    dom: Element | DocumentFragment, kind: ClusterKind
+): [Cluster] | [] => {
     const content: Block[] = [];
 
     function walk(e: Element | DocumentFragment) {
@@ -193,7 +196,7 @@ export const parseDOMBlock = (dom: Element | DocumentFragment): Block => {
             case 'em': case 'i':
                 marks.push(PaneSchema.marks.emphasis.create()); break;
             case 'strong': case 'b':
-                marks.push(PaneSchema.marks.strong.create()); break;
+                marks.push(PaneSchema.marks.keyword.create()); break;
             }
         }
         n.childNodes.forEach((c) => walk(c, [...marks]));
@@ -227,14 +230,25 @@ export const Cluster = {
         if (pos.depth !== 2) return null;
         return pos.node(1) as Cluster;
     },
-    findById(doc: Doc, id: Id<Cluster>): [cl: Cluster, pos: number] | null {
+    findById(doc: Doc, id: Id<Cluster>): Pointer<Cluster> | null {
         let result: [Cluster, number] | null = null;
         doc.forEach((n, pos) => {
             if (n.attrs.id == id) result = [n, pos];
         });
         return result;
     },
-    findByIndex(doc: Doc, i: number): [cl: Cluster, pos: number] | null {
+    findByIdPrefix(doc: Doc, id: IdBaseType): Pointer<Cluster> | null | 'ambiguous' {
+        let result: [Cluster, number] | null | 'ambiguous' = null;
+
+        doc.forEach((n, pos) => {
+            if (n.attrs.id.startsWith(id))
+                result = result !== null
+                    ? 'ambiguous'
+                    : [n, pos];
+        });
+        return result;
+    },
+    findByIndex(doc: Doc, i: number): Pointer<Cluster> | null {
         let result: [Cluster, number] | null = null;
         doc.forEach((n, pos, i1) => {
             if (i == i1) result = [n, pos];

@@ -27,3 +27,7 @@ export function* range(a: number, b: number, s = 1) {
 export function wait(t: number) {
     return new Promise<void>((r) => setTimeout(r, Math.floor(t)));
 }
+
+export function joinArray<T>(array: T[], ...join: T[]) {
+    return array.map((x, i) => i == array.length - 1 ? [x] : [x, ...join]).flat(1);
+}

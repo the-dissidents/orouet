@@ -7,7 +7,7 @@
   import SvelteMarkdown from '@humanspeak/svelte-markdown';
   import { SendIcon, SquareIcon, AstroidIcon } from '@lucide/svelte';
 
-  import { getSystemPrompt, parseFencedCommands, type FencedCommandResult } from "./SystemPrompt";
+  import { getSystemPrompt, parseFencedCommands, type AgenticResult } from "./SystemPrompt";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { LoremIpsum } from "lorem-ipsum";
   import { scrollShadows, ScrollShadows } from "@the_dissidents/svelte-ui";
@@ -189,7 +189,7 @@
           <SvelteMarkdown source={message.content} />
         </div>
         {:else if message.role == 'system'}
-        {@const ret = message.data as FencedCommandResult}
+        {@const ret = message.data as AgenticResult}
           {#each ret.commands as cmd}
           {@const ok = cmd.errors.length == 0}
             <details class="command">

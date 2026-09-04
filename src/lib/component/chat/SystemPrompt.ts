@@ -1,10 +1,10 @@
 import type { DocumentContext, LocaleId } from "$lib/DocumentContext.svelte";
 import { getInterlacedRepresentation } from "$lib/component/chat/DocRepresentation";
 import { getLocale } from "$lib/I18n";
-import { Cluster, ClusterKinds, id, parseDOMCluster, type ClusterKind, Id, Doc } from "$lib/Schema";
+import { ClusterKinds } from "$lib/Schema";
 import { Transform } from "prosemirror-transform";
 import type { Transforms } from "$lib/VersionControl.svelte";
-import type { Fragment } from "prosemirror-model";
+import { replaceClustersCommand } from "./commands/ReplaceClusters";
 
 function localeCode(id: LocaleId) {
     return id.filter((x) => !!x).join('-') || 'not specified';
@@ -29,8 +29,8 @@ Default UI locale: ${getLocale()}
 # Formatting
 
 - Do not output Markdown formatting (like **bold** or _italics_) when suggesting text modifications. The application uses a strict XML format to represent documents.
-- The document is split into <oro-cluster>'s that contain aligned pairs of <oro-source> and <oro-target> (i.e. original and translated text).
-- Each cluster has a persistent UUID and a kind. Available kinds: text, blockquote, h1 ... h6
+- The document is split into <cluster>'s that contain aligned pairs of <source> and <target> (i.e. original and translated text).
+- Each cluster has a persistent unique \`id\` (UUID truncated for ease of copying) and a \`kind\`. Available kinds: ${ClusterKinds.map((x) => `\`${x}\``).join(', ')}
 - A cluster can potentially be split into multiple paragraphs (<p>) in case the paragraph layout needs to be changed.
 - You can use the following inline formatting: emphasis (<em>), keyword (<strong>)
 
@@ -51,29 +51,32 @@ When the user asks you to modify the text, you MUST output your action in code f
 {{XML fragment}}
 \`\`\`
 
-Note that if the content contains backticks, the opening and ending fences can be arbitrarily lengthened, but the lengths must match.
+Note that the opening and ending fences can be arbitrarily lengthened (in case the content contains backticks), but the lengths must match.
 
 Currently available commands:
-- \`replace_clusters\`: Accepts any number of <oro-cluster>s. The UUID MUST match the original in the documents. In each cluster, one of <oro-source> and <oro-target> MAY be omitted if not modified.
+- \`replace_cluster(id)\`: Accepts at most one <source>, one <target> and one <kind>. Replaces the whole cluster.
 
 Example:
 
-\`\`\`replace_clusters
-<oro-cluster id="..." kind="...">
-<oro-target>
-<p>Modified paragraphs</p>
-<p>Modified paragraphs</p>
-</oro-target>
-</oro-cluster>
-<oro-cluster id="..." kind="...">
-<oro-target>
-<p>Modified paragraph in another cluster</p>
-</oro-target>
-</oro-cluster>
+\`\`\`replace_cluster(1a2b3c)
+<kind>h1</kind>
 \`\`\`
 
-\`\`\`replace_phrase
-<replace-term>
+\`\`\`replace_cluster(1a2b3c)
+<target>
+<p>Modified paragraphs</p>
+<p>Modified paragraphs</p>
+</target>
+\`\`\`
+
+\`\`\`replace_cluster(4d5e6f)
+<kind>blockquote</kind>
+<source>
+<p>Source modified</p>
+</source>
+<target>
+<p>And target also</p>
+</target>
 \`\`\`
 
 Fenced commands are detected and executed only after your message turn ends. If commands are detected, a system message will be generated containing the execution results (OK or error), available for your next turn.
@@ -90,103 +93,55 @@ If an instruction is unclear, you MUST ask the user about it and stop.
 `.trim();
 }
 
-export type FencedCommandError = {
-    type: 'invalid_id',
-    id: string
+export type CommandError = {
+    type: 'ambiguous_id_prefix',
+    arg: string
+} | {
+    type: 'invalid_id_prefix',
+    arg: string
 } | {
     type: 'syntax_error'
-    msg: string
+    message: string
 } | {
     type: 'invalid_command'
 };
 
-export type FencedCommandResultData = {
-    errors: FencedCommandError[],
+export type CommandResult = {
+    errors: CommandError[],
     transforms: undefined,
 } | {
     errors: [],
     transforms: Transforms
 };
 
-function replaceCluster(
-    tr: Transform, id: Id<Cluster>, content: Fragment
-): FencedCommandError | void {
-    const src = Cluster.findById(tr.doc as Doc, id);
-    if (!src) return { type: 'invalid_id', id };
-    const [c, pos] = src;
-    tr.replaceWith(pos + 1, pos + 1 + c.content.size, content);
-}
-
-function setClusterKind(
-    tr: Transform, id: Id<Cluster>, kind: ClusterKind
-): FencedCommandError | void {
-    const src = Cluster.findById(tr.doc as Doc, id);
-    if (!src) return { type: 'invalid_id', id };
-    const [c, pos] = src;
-    if (c.attrs.kind !== kind)
-        tr.setNodeAttribute(pos, 'kind', kind);
-}
-
-function doReplaceClusters(xml: string, tr: Transforms): FencedCommandResultData {
-    const parser = new DOMParser();
-    const doc: Element =
-        parser.parseFromString(`<root>${xml}</root>`, "application/xml").children[0];
-
-    const syntaxError = (msg: string): FencedCommandResultData => ({
-        errors: [{ type: 'syntax_error', msg }], transforms: undefined
-    });
-
-    const error = (e: FencedCommandError): FencedCommandResultData => ({
+export const CommandResult = {
+    syntaxError: (message: string): CommandResult => ({
+        errors: [{ type: 'syntax_error', message }], transforms: undefined
+    }),
+    error: (e: CommandError): CommandResult => ({
         errors: [e], transforms: undefined
-    });
+    })
+};
 
-    if (!doc || doc.querySelector("parsererror")) {
-        console.log(doc);
-        return syntaxError('parse error');
-    }
-
-    for (const c of doc.children) {
-        if (c.tagName.toLowerCase() !== 'oro-cluster')
-            return syntaxError(`expected oro-cluster, found '${c.tagName}'`);
-        const clusterId = id<Cluster>(c.getAttribute('id') ?? '');
-        if (!clusterId) return error({ type: 'invalid_id', id: clusterId });
-
-        let e: FencedCommandError | void;
-
-        const kind = c.getAttribute('kind');
-        if (kind) {
-            const k = kind as ClusterKind;
-            if (!ClusterKinds.includes(k))
-                return syntaxError(`invalid cluster kind '${c.tagName}'`);
-            if (e = setClusterKind(tr.source, clusterId, k)) return error(e);
-            if (e = setClusterKind(tr.target, clusterId, k)) return error(e);
-        }
-
-        for (const side of c.children) {
-            const name = side.tagName.toLowerCase();
-            const content = parseDOMCluster(side, 'text').at(0)?.content;
-            if (!content) return syntaxError(`cluster must contain at least one block`);
-            if (name == 'oro-source') {
-                if (e = replaceCluster(tr.source, clusterId, content)) return error(e);
-            } else if (name == 'oro-target') {
-                if (e = replaceCluster(tr.target, clusterId, content)) return error(e);
-            } else return syntaxError(`expected oro-source or oro-target, found '${name}'`);
-        }
-    }
-
-    return { errors: [], transforms: tr };
-}
-
-export type FencedCommandResult = {
+export type AgenticResult = {
     cleanedMessage: string,
-    commands: { index: number, name: string, code: string, errors: FencedCommandError[] }[],
+    commands: { index: number, name: string, code: string, errors: CommandError[] }[],
     system?: string,
     transforms?: Transforms
 };
 
-export function parseFencedCommands(msg: string, ctx: DocumentContext): FencedCommandResult {
-    const regex = /^(`+)(.+)\n((?:.|\n)+)\n\1$/gm;
-    const ret: FencedCommandResult = {
+export type Command = {
+    doc: string,
+    exec: (tr: Transforms, content: string, args: string) => CommandResult
+};
+
+const RegisteredCommands: Record<string, Command> = {
+    'replace_clusters': replaceClustersCommand
+};
+
+export function parseFencedCommands(msg: string, ctx: DocumentContext): AgenticResult {
+    const regex = /^(`+)(.+?)(?:\((.+?)\))?\n((?:.|\n)+?)\n\1$/gm;
+    const ret: AgenticResult = {
         cleanedMessage: '', commands: [], system: undefined,
         transforms: undefined,
     };
@@ -196,16 +151,14 @@ export function parseFencedCommands(msg: string, ctx: DocumentContext): FencedCo
     };
 
     let index = 0, hasError = false;
-    ret.cleanedMessage = msg.replaceAll(regex, (code, _, name, content) => {
+    ret.cleanedMessage = msg.replaceAll(regex, (code, _, name, args, content) => {
         let replacement = '';
-        if (name == 'replace_clusters') {
-            const result = doReplaceClusters(content, tr);
+        if (name in RegisteredCommands) {
+            const result = RegisteredCommands[name].exec(tr, content, args);
             ret.commands.push({ index, name, code, errors: result.errors });
             if (!result.transforms)
                 hasError = true;
             else tr = result.transforms;
-
-            index++;
         } else {
             replacement = code;
         }
