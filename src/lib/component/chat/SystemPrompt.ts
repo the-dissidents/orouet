@@ -4,7 +4,7 @@ import { getLocale } from "$lib/I18n";
 import { ClusterKinds } from "$lib/Schema";
 import { Transform } from "prosemirror-transform";
 import type { Transforms } from "$lib/VersionControl.svelte";
-import { replaceClustersCommand } from "./commands/ReplaceClusters";
+import { replaceClusterCommand } from "./commands/ReplaceClusters";
 
 function localeCode(id: LocaleId) {
     return id.filter((x) => !!x).join('-') || 'not specified';
@@ -54,30 +54,8 @@ When the user asks you to modify the text, you MUST output your action in code f
 Note that the opening and ending fences can be arbitrarily lengthened (in case the content contains backticks), but the lengths must match.
 
 Currently available commands:
-- \`replace_cluster(id)\`: Accepts at most one <source>, one <target> and one <kind>. Replaces the whole cluster.
-
-Example:
-
-\`\`\`replace_cluster(1a2b3c)
-<kind>h1</kind>
-\`\`\`
-
-\`\`\`replace_cluster(1a2b3c)
-<target>
-<p>Modified paragraphs</p>
-<p>Modified paragraphs</p>
-</target>
-\`\`\`
-
-\`\`\`replace_cluster(4d5e6f)
-<kind>blockquote</kind>
-<source>
-<p>Source modified</p>
-</source>
-<target>
-<p>And target also</p>
-</target>
-\`\`\`
+${Object.values(RegisteredCommands)
+    .map((x) => x.doc).join('\n\n')}
 
 Fenced commands are detected and executed only after your message turn ends. If commands are detected, a system message will be generated containing the execution results (OK or error), available for your next turn.
 
@@ -136,11 +114,11 @@ export type Command = {
 };
 
 const RegisteredCommands: Record<string, Command> = {
-    'replace_clusters': replaceClustersCommand
+    'replace_cluster': replaceClusterCommand
 };
 
 export function parseFencedCommands(msg: string, ctx: DocumentContext): AgenticResult {
-    const regex = /^(`+)(.+?)(?:\((.+?)\))?\n((?:.|\n)+?)\n\1$/gm;
+    const regex = /^(`+)([^`\n(]+?)(?:\((.+?)\))?\n((?:.*\n)+?)\1$/gm;
     const ret: AgenticResult = {
         cleanedMessage: '', commands: [], system: undefined,
         transforms: undefined,
@@ -152,6 +130,7 @@ export function parseFencedCommands(msg: string, ctx: DocumentContext): AgenticR
 
     let index = 0, hasError = false;
     ret.cleanedMessage = msg.replaceAll(regex, (code, _, name, args, content) => {
+        console.log(code, _, name, args, content);
         let replacement = '';
         if (name in RegisteredCommands) {
             const result = RegisteredCommands[name].exec(tr, content, args);
@@ -159,6 +138,7 @@ export function parseFencedCommands(msg: string, ctx: DocumentContext): AgenticR
             if (!result.transforms)
                 hasError = true;
             else tr = result.transforms;
+            index++;
         } else {
             replacement = code;
         }

@@ -186,6 +186,7 @@
 
         {#if message.role == 'assistant' || message.role == 'user'}
         <div class="content markdown">
+          <button onclick={() => console.log(message.content)}>dump</button>
           <SvelteMarkdown source={message.content} />
         </div>
         {:else if message.role == 'system'}

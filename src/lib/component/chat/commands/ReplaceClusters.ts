@@ -17,7 +17,7 @@ function setClusterKind(
         tr.setNodeAttribute(pos, 'kind', kind);
 }
 
-export const replaceClustersCommand: Command = {
+export const replaceClusterCommand: Command = {
     doc: `- \`replace_cluster(id)\`: Accepts at most one <source>, one <target> and one <kind>. Replaces the whole cluster.
 
 Example:
@@ -83,12 +83,14 @@ Example:
                     if (!content) return CommandResult.syntaxError(`<source> must contain at least one block`);
                     if (e = replaceCluster(tr.source, sc, content))
                         return CommandResult.error(e);
+                    break;
                 }
                 case 'target': {
                     const content = parseDOMCluster(c, 'text').at(0)?.content;
                     if (!content) return CommandResult.syntaxError(`<target> must contain at least one block`);
-                    if (e = replaceCluster(tr.target, sc, content))
+                    if (e = replaceCluster(tr.target, tc, content))
                         return CommandResult.error(e);
+                    break;
                 }
                 default: return CommandResult.syntaxError(`expected <source>, <target> or <kind>, found '${c.tagName}'`);
             }

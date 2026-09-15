@@ -199,6 +199,13 @@ export const parseDOMBlock = (dom: Element | DocumentFragment): Block => {
                 marks.push(PaneSchema.marks.keyword.create()); break;
             }
         }
+        if (n instanceof HTMLElement) {
+            if (n.style.fontStyle == 'italic') {
+                marks.push(PaneSchema.marks.emphasis.create());
+            } else if (['bold', '700', '800', '900'].includes(n.style.fontWeight)) {
+                marks.push(PaneSchema.marks.keyword.create());
+            }
+        }
         n.childNodes.forEach((c) => walk(c, [...marks]));
     }
     walk(dom);
@@ -246,6 +253,7 @@ export const Cluster = {
                     ? 'ambiguous'
                     : [n, pos];
         });
+        if (!result) console.warn('not found', doc, id);
         return result;
     },
     findByIndex(doc: Doc, i: number): Pointer<Cluster> | null {
