@@ -32,7 +32,10 @@
   .container {
     position: relative;
     padding-block: 5px;
-    border-bottom: 1px dashed;
+  }
+
+  :global(.ProseMirror div:not(:first-child) > .container) {
+    border-top: 1px dashed;
     @include colors(border-color, #ccc, #555);
   }
 

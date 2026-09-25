@@ -18,7 +18,6 @@ export function createNodeView<
 ): NodeViewConstructor {
     class N implements NodeView {
         constructor(node: Node, view: EditorView, getPos: () => number | undefined) {
-            this.dom.style.display = 'contents';
             const p = $state({ ...props, node, view, getPos } as Props & NodeViewProps);
             this.$props = p;
             this.component = mount(component, { target: this.dom, props: p });
