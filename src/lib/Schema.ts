@@ -123,6 +123,86 @@ export const PaneSchema = new Schema({
     }
 });
 
+// Elements whose computed `display` marks them as inline (or transparent); anything
+// else forms a paragraph boundary. Used when the element is attached to a live
+// document so getComputedStyle resolves real styles.
+const INLINE_DISPLAYS = new Set([
+    'inline', 'inline-block', 'inline-flex', 'inline-grid', 'inline-table',
+    'ruby', 'ruby-text', 'contents',
+]);
+
+// Fallback for detached DOM (pasted/XML-parsed fragments), where getComputedStyle
+// returns nothing: the standard block-level tags.
+const BLOCK_LEVEL_TAGS = new Set([
+    'address', 'article', 'aside', 'blockquote', 'center', 'dd', 'details',
+    'dialog', 'div', 'dl', 'dt', 'fieldset', 'figcaption', 'figure', 'footer',
+    'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hgroup', 'hr',
+    'li', 'main', 'nav', 'ol', 'p', 'pre', 'section', 'table', 'tfoot', 'ul',
+]);
+
+const isBlockElement = (el: Element): boolean => {
+    const display = getComputedStyle(el).display;
+    if (display) return !INLINE_DISPLAYS.has(display);
+    return BLOCK_LEVEL_TAGS.has(el.tagName.toLowerCase());
+};
+
+const clusterKindOf = (tagName: string): ClusterKind => {
+    switch (tagName.toLowerCase()) {
+    case 'blockquote': return 'blockquote';
+    case 'h1': case 'h2': case 'h3':
+    case 'h4': case 'h5': case 'h6':
+        return tagName.toLowerCase() as ClusterKind;
+    default: return 'text';
+    }
+};
+
+// blockquote and headings keep all their (possibly multi-paragraph) content as a
+// single block, matching how they are represented as a single cluster.
+const isAtomicBlock = (el: Element): boolean => {
+    const tag = el.tagName.toLowerCase();
+    return tag === 'blockquote' || /^h[1-6]$/.test(tag);
+};
+
+type BlockSource = { nodes: globalThis.Node[], kind: ClusterKind };
+
+// Segment a container into paragraphs. Consecutive text/inline nodes accumulate into
+// one block; each block-level element (by computed display, or tag fallback) starts a
+// new block. This handles old webpages where text is not wrapped in <p> consistently.
+const segmentBlocks = (container: globalThis.Node, defaultKind: ClusterKind): BlockSource[] => {
+    const blocks: BlockSource[] = [];
+    let inline: globalThis.Node[] = [];
+
+    const flush = (kind: ClusterKind) => {
+        if (inline.length > 0) {
+            blocks.push({ nodes: inline, kind });
+            inline = [];
+        }
+    };
+
+    const visit = (parent: globalThis.Node, kind: ClusterKind) => {
+        for (const child of parent.childNodes) {
+            if (child instanceof Text) {
+                if (child.nodeValue) inline.push(child);
+            } else if (child instanceof Element) {
+                if (isBlockElement(child)) {
+                    flush(kind);
+                    if (isAtomicBlock(child))
+                        blocks.push({ nodes: [child], kind: clusterKindOf(child.tagName) });
+                    else
+                        visit(child, clusterKindOf(child.tagName));
+                    flush(kind);
+                } else {
+                    inline.push(child);
+                }
+            }
+        }
+    };
+
+    visit(container, defaultKind);
+    flush(defaultKind);
+    return blocks;
+};
+
 export const parseDOMDoc = (dom: Element | DocumentFragment): Doc => {
     console.log('parseDOMDoc:', dom);
     if (dom.querySelector('div.cluster[data-kind]')) {
@@ -142,51 +222,19 @@ export const parseDOMDoc = (dom: Element | DocumentFragment): Doc => {
 };
 
 // parse like a single cluster but then make each block a new cluster
-const parseDOMSingleClusters = (dom: Element | DocumentFragment): Cluster[] => {
-    const content: Cluster[] = [];
-
-    function walk(e: Element | DocumentFragment) {
-        if (e instanceof Element) {
-            let ok = false;
-            ([
-                ['p', 'text'],
-                ['blockquote', 'blockquote'],
-                ['h1', 'h1'], ['h2', 'h2'], ['h3', 'h3'],
-                ['h4', 'h4'], ['h5', 'h5'], ['h6', 'h6']
-            ] as const).forEach(([a, b]) => {
-                if (ok || !e.matches(a)) return;
-                content.push(makeCluster([parseDOMBlock(e)], b));
-                ok = true;
-            })
-            if (ok) return;
-        }
-        [...e.children].forEach((c) => walk(c));
-    }
-    walk(dom);
-
-    if (content.length == 0) {
-        // attempt to treat the whole as inline
-        content.push(makeCluster([parseDOMBlock(dom)], 'text'));
-    }
-    return content;
-};
+const parseDOMSingleClusters = (dom: Element | DocumentFragment): Cluster[] =>
+    segmentBlocks(dom, 'text').map(({ nodes, kind }) =>
+        makeCluster([parseDOMBlock(nodes)], kind));
 
 export const parseDOMCluster = (
     dom: Element | DocumentFragment, kind: ClusterKind
 ): [Cluster] | [] => {
-    const content: Block[] = [];
-
-    function walk(e: Element | DocumentFragment) {
-        if (e instanceof Element && e.matches('p'))
-            content.push(parseDOMBlock(e));
-        else
-            [...e.children].forEach((e) => walk(e));
-    }
-    walk(dom);
+    const content = segmentBlocks(dom, kind).map(({ nodes }) => parseDOMBlock(nodes));
     return content.length > 0 ? [makeCluster(content, kind)] : [];
 };
 
-export const parseDOMBlock = (dom: Element | DocumentFragment): Block => {
+export const parseDOMBlock = (dom: globalThis.Node | readonly globalThis.Node[]): Block => {
+    const nodes = Array.isArray(dom) ? dom : [dom];
     const content: Node[] = [];
     function walk(n: globalThis.Node, marks: Mark[] = []) {
         if (n instanceof Text && n.nodeValue)
@@ -208,7 +256,7 @@ export const parseDOMBlock = (dom: Element | DocumentFragment): Block => {
         }
         n.childNodes.forEach((c) => walk(c, [...marks]));
     }
-    walk(dom);
+    nodes.forEach((n) => walk(n));
     return makeBlock(content);
 }
 
