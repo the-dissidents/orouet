@@ -99,6 +99,10 @@ export const PaneSchema = new Schema({
         },
         cluster: {
             content: "block+",
+            // Preserve whitespace when ProseMirror re-reads the DOM (e.g. after
+            // IME composition spans a whole cluster), so soft line breaks aren't
+            // collapsed to spaces.
+            whitespace: 'pre',
             attrs: {
                 // allow dummy values for correctly parsing HTML
                 id: { default: 'dummy', validate: (x) => typeof x == 'string' },
@@ -110,7 +114,8 @@ export const PaneSchema = new Schema({
             }, 0],
         },
         doc: {
-            content: "cluster*"
+            content: "cluster*",
+            whitespace: 'pre',
         }
     },
     marks: {
@@ -182,7 +187,7 @@ const segmentBlocks = (container: globalThis.Node, defaultKind: ClusterKind): Bl
     const visit = (parent: globalThis.Node, kind: ClusterKind) => {
         for (const child of parent.childNodes) {
             if (child instanceof Text) {
-                if (child.nodeValue) inline.push(child);
+                if (child.nodeValue?.trim()) inline.push(child);
             } else if (child instanceof Element) {
                 if (isBlockElement(child)) {
                     flush(kind);
@@ -237,8 +242,9 @@ export const parseDOMBlock = (dom: globalThis.Node | readonly globalThis.Node[])
     const nodes = Array.isArray(dom) ? dom : [dom];
     const content: Node[] = [];
     function walk(n: globalThis.Node, marks: Mark[] = []) {
-        if (n instanceof Text && n.nodeValue)
+        if (n instanceof Text && n.nodeValue?.trim()) {
             content.push(PaneSchema.text(n.nodeValue, marks));
+        }
         if (n instanceof Element) {
             switch (n.tagName.toLowerCase()) {
             case 'em': case 'i':

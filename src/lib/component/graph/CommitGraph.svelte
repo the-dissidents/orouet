@@ -79,6 +79,10 @@
         checked: id == context.currentDiffCommit,
         action: () => context.currentDiffCommit = (id == context.currentDiffCommit ? undefined : id)
       },
+      {
+        text: 'dump layout',
+        action: () => console.log(layout)
+      }
     ]});
     m.popup();
   }

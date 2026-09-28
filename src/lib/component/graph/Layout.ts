@@ -119,8 +119,9 @@ export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
     // maxX is just the global width at that Y level
     const globalWidths = nodeMap.get(vc.initialCommit)?.widths;
     Debug.assert(!!globalWidths);
-    for (const node of nodes)
-        node.maxX = globalWidths[node.y];
+    for (const node of nodes) {
+        node.maxX = Math.max(1, globalWidths[node.y] ?? 0);
+    }
 
     return { nodes, edges };
 }

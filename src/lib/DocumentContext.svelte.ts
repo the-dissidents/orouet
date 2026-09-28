@@ -131,7 +131,12 @@ export class DocumentContext {
         const decoded = z.decode(SerializedDocumentContext, s);
         const c = new DocumentContext(
             decoded.source, decoded.target, VersionControl.deserialize(decoded.vc));
-        c.#currentCommit = decoded.currentCommit;
+        if (c.versionControl.has(decoded.currentCommit))
+            c.#currentCommit = decoded.currentCommit;
+        else {
+            console.warn('repairing document: currentCommit', decoded.currentCommit, 'not found, using', c.versionControl.latestCommit);
+            c.#currentCommit = c.versionControl.latestCommit;
+        }
         c.#chats = decoded.chats.map((x) => ChatSession.deserialize(x));
         return c;
     }
@@ -151,13 +156,24 @@ export class DocumentContext {
     ) {
         Debug.assert(source.content.type === PaneSchema.topNodeType);
         Debug.assert(target.content.type === PaneSchema.topNodeType);
-        Debug.assert(source.content.childCount === target.content.childCount);
+
+        const clustersMatch =
+            source.content.childCount === target.content.childCount
+            && [...range(0, source.content.childCount)].every((i) =>
+                source.content.child(i).attrs.id === target.content.child(i).attrs.id);
+
+        if (!clustersMatch) {
+            console.warn("repairing document, history may be lost");
+            const tr = balanceTargetClusters(source.content, new Transform(target.content));
+            target.content = tr.doc as Doc;
+            this.#vc = new VersionControl(id());
+        } else {
+            this.#vc = vc;
+        }
 
         this.source = $state(source);
         this.target = $state(target);
-
-        this.#vc = vc;
-        this.#currentCommit = $state(vc.initialCommit);
+        this.#currentCommit = $state(this.#vc.initialCommit);
     }
 
     /** If clusters are added to or removed from source, this will automatically apply corresponding changes in target */

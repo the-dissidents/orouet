@@ -105,6 +105,7 @@ export interface ReadonlyVersionControl {
     get<C extends Commit>(id: Id<C>): C | undefined;
     forwardLinks(id: Id<Commit>): Id<Commit>[];
 
+    has(id: Id<Commit>): boolean;
     isDelta(id: Id<Commit>): id is Id<DeltaCommit>;
 }
 
@@ -138,7 +139,21 @@ export class VersionControl implements ReadonlyVersionControl {
 
     static deserialize(s: SerializedVersionControl) {
         const vc = new VersionControl(s.initialCommit);
-        s.commits.forEach((c) => vc.add(c as Commit));
+        const known = new Set<Id<Commit>>([s.initialCommit, ...s.commits.map((c) => c.id)]);
+        const seen = new Set<Id<Commit>>();
+        for (const raw of s.commits) {
+            const c = raw as Commit;
+            if (seen.has(c.id)) {
+                console.warn('repairing document: dropping duplicate commit', c.id);
+                continue;
+            }
+            seen.add(c.id);
+            if (c.type === 'delta' && !known.has(c.parent)) {
+                console.warn('repairing document: re-parenting commit', c.id, 'to', s.initialCommit);
+                c.parent = s.initialCommit;
+            }
+            vc.add(c);
+        }
         return vc;
     }
 
@@ -157,6 +172,10 @@ export class VersionControl implements ReadonlyVersionControl {
     forwardLinks(id: Id<Commit>): Id<Commit>[] {
         Debug.assert(this.#commits.has(id) || id === this.initialCommit);
         return this.#forwardEdges.get(id) ?? [];
+    }
+
+    has(id: Id<Commit>): boolean {
+        return id === this.initialCommit || this.#commits.has(id);
     }
 
     isDelta(id: Id<Commit>): id is Id<DeltaCommit> {

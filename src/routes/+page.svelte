@@ -177,6 +177,7 @@
           >{JSON.stringify(ctx[chosen].content.toJSON(), undefined, 2)}</textarea>
       </div>
       <div class="tool" class:show={page == 'test'}>
+        <button onclick={() => console.log(ctx.versionControl)}>dump vcs</button>
         <button onclick={() => console.log(getSystemPrompt(ctx))}>system prompt</button>
         <textarea style="width: 100%; height: 15em" bind:value={testArea}></textarea>
         <button onclick={() => {

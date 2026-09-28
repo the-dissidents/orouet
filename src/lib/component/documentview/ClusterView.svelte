@@ -43,7 +43,7 @@
     &[data-cluster-kind="h1"] [data-block] {
       @extend %heading;
       font-weight: 600;
-      font-size: 200%;
+      font-size: 160%;
       letter-spacing: -0.015em;
       text-align: center !important;
     }
@@ -51,19 +51,19 @@
     &[data-cluster-kind="h2"] [data-block] {
       @extend %heading;
       font-weight: 600;
-      font-size: 162.5%;
+      font-size: 145%;
     }
 
     &[data-cluster-kind="h3"] [data-block] {
       @extend %heading;
       font-weight: 600;
-      font-size: 137.5%;
+      font-size: 130%;
     }
 
     &[data-cluster-kind="h4"] [data-block] {
       @extend %heading;
       font-weight: 600;
-      font-size: 112.5%;
+      font-size: 115%;
       text-align: center !important;
     }
 
