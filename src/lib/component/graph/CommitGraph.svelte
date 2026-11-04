@@ -110,7 +110,7 @@
       <foreignObject width="100%" height={Y_STEP}
           x='0' y={(node.y-0.5) * Y_STEP + PADDING}>
         <button tabindex="0" onclick={() => onClickRow(node.id, commit)}>
-          <span class="label" style:padding-left='{node.maxX * X_STEP + RADIUS + PADDING + 10}px'>
+          <span class="label" style:padding-left='{(node.maxX + 1) * X_STEP + RADIUS + PADDING}px'>
             <span class='hash'>
               {node.id.substring(0, 7)}
             </span>

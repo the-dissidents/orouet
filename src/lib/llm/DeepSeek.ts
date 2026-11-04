@@ -36,7 +36,7 @@ function toMsg(m: Message): OpenAIMessage {
 export class DeepSeekProvider implements ChatProvider {
     private openai: OpenAI;
 
-    modelName: 'deepseek-v4-flash' | 'deepseek-v4-pro' = 'deepseek-v4-pro';
+    modelName: 'deepseek-flash' | 'deepseek-v4-pro' = 'deepseek-flash';
     systemPrompt: string = '';
 
     get info() {

@@ -77,7 +77,7 @@ export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
             child.deltaX = shift;
 
             let lastWx = 0;
-            for (let yx = child.topmostY; yx <= y; yx++) {
+            for (let yx = child.topmostY; yx <= child.y; yx++) {
                 // use last value to bridge gaps
                 const wx = child.widths[yx] ?? lastWx;
                 lastWx = wx;
@@ -120,7 +120,7 @@ export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
     const globalWidths = nodeMap.get(vc.initialCommit)?.widths;
     Debug.assert(!!globalWidths);
     for (const node of nodes) {
-        node.maxX = Math.max(1, globalWidths[node.y] ?? 0);
+        node.maxX = globalWidths[node.y] ?? 0;
     }
 
     return { nodes, edges };

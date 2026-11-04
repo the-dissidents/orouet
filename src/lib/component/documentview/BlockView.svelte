@@ -34,7 +34,7 @@
   :global [data-block] {
     display: block;
 
-    font-family: 'Text', 'Text-Chinese', 'Times New Roman', serif;
+    font-family: 'Text', 'Times New Roman', 'Text-Chinese', serif;
     font-weight: 400;
     text-autospace: normal;
     line-height: normal;
