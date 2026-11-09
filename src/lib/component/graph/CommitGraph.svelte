@@ -110,7 +110,9 @@
       {
         text: $_('graph.revert-to-this'),
         enabled: id !== context.currentCommitId,
-        action: () => context.revertTo(id)
+        action: () => {
+          void context.revertTo(id).catch((e) => console.warn('revert failed', e));
+        }
       },
       {
         text: $_('graph.compare'),

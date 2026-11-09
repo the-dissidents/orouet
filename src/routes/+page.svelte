@@ -37,8 +37,7 @@
   import { getSystemPrompt, parseFencedCommands } from '$lib/component/chat/SystemPrompt';
   import Search from '$lib/component/Search.svelte';
 
-  let ctx = $state(DocumentContext.fromTestClusters(text.trim().split('\n\n')));
-  ctx.source.language = ['de', null, null];
+  let ctx = $state<DocumentContext>();
 
   let rightPane: HTMLElement | undefined = $state();
   let page: 'format' | 'graph' | 'chat' | 'test' | 'search' = $state('graph');
@@ -58,20 +57,25 @@
       wait(500),
       Memorized.init(),
     ]);
+    ctx = await DocumentContext.createDemo(text.trim().split('\n\n'));
+    ctx.source.language = ['de', null, null];
   }
 
-  onDestroy(async () => {
+  onDestroy(() => {
     Memorized.save();
+    void ctx?.save().catch((e) => console.warn('failed to save on close', e));
   });
 
   async function load() {
     const filename = await dialog.open(
-      { filters: [{ name: $_('msg.compressed-orouet-document'), extensions: ['orz', 'oro'] }] });
+      { filters: [{ name: $_('msg.compressed-orouet-document'), extensions: ['orouet', 'orz', 'oro'] }] });
     if (!filename) return;
 
     try {
       await readFrom(filename);
-      path = filename;
+      // Legacy .orz files are imported into memory; the next Save should
+      // prompt for a new .orouet path rather than overwrite the archive.
+      path = filename.endsWith('.orouet') ? filename : '';
     } catch (e) {
       status = $_('msg.error-reading-archive');
       console.warn(e);
@@ -79,29 +83,48 @@
   }
 
   async function save() {
-    if (!path) saveAs();
-    await writeTo(path);
+    if (!ctx) return;
+    if (!path) {
+      await saveAs();
+      return;
+    }
+    try {
+      await ctx.save();
+      status = $_('msg.saved', { values: { file: path } });
+    } catch (e) {
+      status = `${$_('msg.error')}: ${e}`;
+      console.warn(e);
+    }
   }
 
   async function saveAs() {
+    if (!ctx) return;
     const filename = await dialog.save(
-      { filters: [{ name: $_('msg.compressed-orouet-document'), extensions: ['orz'] }] });
+      { filters: [{ name: $_('msg.compressed-orouet-document'), extensions: ['orouet'] }] });
     if (!filename) return;
-    await writeTo(filename);
-    path = filename;
+    try {
+      await ctx.saveAs(filename);
+      path = filename;
+      status = $_('msg.saved', { values: { file: filename } });
+    } catch (e) {
+      status = `${$_('msg.error')}: ${e}`;
+      console.warn(e);
+    }
   }
 
   async function readFrom(file: string) {
-    const data = await Backend.readCompressed(file);
-    ctx = DocumentContext.deserialize(JSON.parse(data));
+    // Keep any queued writes from the previous document out of the new
+    // document's state before replacing the open connection.
+    await ctx?.flush();
+    if (file.endsWith('.orouet')) {
+      ctx = await DocumentContext.open(file);
+    } else {
+      // Legacy .orz archives are imported into an in-memory SQLite document;
+      // saving with a .orouet path persists them in the new format.
+      const data = await Backend.readCompressed(file);
+      ctx = await DocumentContext.importLegacy(JSON.parse(data));
+    }
     status = $_('msg.opened', { values: { file } });
-  }
-
-  async function writeTo(file: string) {
-    const data = JSON.stringify(ctx.serialize());
-    await Backend.saveCompressed(file, data);
-    status = $_('msg.saved', { values: { file } });
-    ctx.versionControl.addAttr({ fileSaved: true });
   }
 
   let testArea = $state('');
@@ -116,13 +139,14 @@
     </div>
   </div>
 {/await}
+  {#if ctx}
   <header id="titlebar">
     <div class="spacer" data-tauri-drag-region></div>
     <ButtonStrip>
       <StripItem onclick={load}>{$_('action.load')}</StripItem>
       <StripItem onclick={save}>{$_('action.save')}</StripItem>
       <StripItem onclick={saveAs}>{$_('action.save-as')}</StripItem>
-      <StripItem onclick={() => console.log(ctx.serialize())}>test</StripItem>
+      <StripItem onclick={() => console.log('# commits:', ctx!.commitCount)}>test</StripItem>
     </ButtonStrip>
 
     <span class="path" data-tauri-drag-region>
@@ -177,11 +201,13 @@
           >{JSON.stringify(ctx[chosen].content.toJSON(), undefined, 2)}</textarea>
       </div>
       <div class="tool" class:show={page == 'test'}>
-        <button onclick={() => console.log(ctx.versionControl)}>dump vcs</button>
-        <button onclick={() => console.log(getSystemPrompt(ctx))}>system prompt</button>
+        <button onclick={() => {
+          console.log('# commits:', ctx!.commitCount)
+        }}>info</button>
+        <button onclick={() => console.log(getSystemPrompt(ctx!))}>system prompt</button>
         <textarea style="width: 100%; height: 15em" bind:value={testArea}></textarea>
         <button onclick={() => {
-          console.log(parseFencedCommands(testArea, ctx));
+          console.log(parseFencedCommands(testArea, ctx!));
         }}>parseFencedCommands</button>
 
         <select bind:value={$locale}>
@@ -223,6 +249,7 @@
       {/if}
     {/if}
   </footer>
+  {/if}
 </div>
 
 <style lang="scss">

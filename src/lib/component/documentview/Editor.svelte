@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Resizer } from "@the_dissidents/svelte-ui";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
+  import type { Doc } from "$lib/Schema";
   import DocView from "./DocView.svelte";
   import { Memorized } from "$lib/details/Memorized.svelte";
   import * as z from "zod/v4-mini";
@@ -14,9 +15,25 @@
 
   let leftPane: HTMLElement | undefined = $state();
   let source = $state<DocView>(), target = $state<DocView>();
-  let diffDocs = $derived(dc.currentDiffCommit
-    ? dc.getDocsAtCommit(dc.currentDiffCommit)
-    : { source: undefined, target: undefined });
+  let diffDocs = $state<{ source?: Doc, target?: Doc }>({});
+
+  $effect(() => {
+    const cid = dc.currentDiffCommit;
+    let cancelled = false;
+
+    if (!cid) {
+      diffDocs = {};
+      return;
+    }
+
+    dc.getDocsAtCommit(cid)
+      .then((docs) => {
+        if (!cancelled) diffDocs = docs;
+      })
+      .catch((e) => console.warn('failed to load diff docs', e));
+
+    return () => { cancelled = true; };
+  });
 
   const leftSize = Memorized.$('left-size', z.string(), '33vw');
 

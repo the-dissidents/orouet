@@ -18,6 +18,8 @@ export function isBoundary(
     direction: 'forward' | 'backward',
     condition: BoundaryCondition = {}
 ) {
+    if (current === vc.initialCommit) return true;
+
     const from = vc.get(current);
     if (!from)
         return direction == 'forward';

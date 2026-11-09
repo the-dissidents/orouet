@@ -89,17 +89,17 @@ export const undo: (dc: DocumentContext) => Command = (dc) => () => {
         if (!c || c.type != 'delta') break;
         id = c.parent;
     } while (!isBoundary(dc.versionControl, id, 'backward', historyBoundary));
-    dc.revertTo(id);
+    void dc.revertTo(id).catch((e) => console.warn('undo failed', e));
     return true;
 };
 
 export const redo: (dc: DocumentContext) => Command = (dc) => () => {
     let id = dc.currentCommitId;
     do {
-        const c = dc.versionControl.forwardLinks(dc.currentCommitId);
+        const c = dc.versionControl.forwardLinks(id);
         if (c.length != 1) return false;
         id = c[0];
     } while (!isBoundary(dc.versionControl, id, 'forward', historyBoundary));
-    dc.revertTo(id);
+    void dc.revertTo(id).catch((e) => console.warn('redo failed', e));
     return true;
 };

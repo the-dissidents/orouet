@@ -1,12 +1,14 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
 import { Debug, range } from "./details/Util";
 import { Doc, Id, id, makeBlock, makeCluster, makeDoc, PaneSchema, type Block, type Cluster } from "./Schema";
-import { Commit, SerializedVersionControl, VersionControl, type DeltaCommit, type Docs, type ReadonlyVersionControl, type Steps, type Transforms } from "./VersionControl.svelte";
-import { Transform } from "prosemirror-transform";
+import { Commit, SerializedVersionControl, type DeltaCommit, type Docs, type Steps, type Transforms } from "./VersionControl.svelte";
+import { Step, Transform } from "prosemirror-transform";
 import { DefaultOptions, TextOptions } from "./TextOptions";
 import * as z from "zod/v4-mini";
 import { LanguageCodes, type LanguageCode } from "../data/LocaleData";
 import { ChatSession, SerializedChatSession } from "./llm/ChatSession.svelte";
+import { VcsBackend, type VcsSnapshot } from "./Backend";
+import { SqliteVersionControl } from "./SqliteVersionControl";
 
 export const LocaleId = z.tuple([
     z.nullable(z.enum(Object.keys(LanguageCodes) as LanguageCode[])),
@@ -42,6 +44,19 @@ function transformToSteps(tr?: Transform): Steps | undefined {
             (s, i) => s.invert(tr!.docs[i])
         ).reverse()
     } : undefined;
+}
+
+type WireSteps = {
+    steps: unknown[];
+    invertedSteps: unknown[];
+};
+
+function wireSteps(v: unknown): WireSteps | undefined {
+    if (!v || typeof v !== 'object') return undefined;
+    const o = v as Partial<WireSteps>;
+    return Array.isArray(o.steps) && Array.isArray(o.invertedSteps)
+        ? { steps: o.steps, invertedSteps: o.invertedSteps }
+        : undefined;
 }
 
 export function balanceTargetClusters(source: Doc, targetTr: Transform) {
@@ -107,10 +122,15 @@ export class DocumentContext {
     currentDiffCommit = $state<Id<Commit>>();
 
     #currentCommit: Id<Commit>;
-    #vc: VersionControl;
+    #vc: SqliteVersionControl;
     #chats = $state<ChatSession[]>([]);
+    #path: string | undefined;
+    #lastTimestamp = 0;
 
     get chats() { return this.#chats; }
+    get path() { return this.#path; }
+    get commitCount() { return this.#vc.commitCount; }
+    get docId() { return this.#vc.docId; }
 
     /** Used to notify editors to apply transforms *before* `source` or `target` changes. Dispatched by this class. */
     readonly onTransform = new EventHost<[cid: Id<Commit>, ts: Partial<Transforms>]>();
@@ -118,43 +138,12 @@ export class DocumentContext {
     /** Fired after `source` or `target` changed. Dispatched by the editors.  */
     readonly onDocumentChanged = new EventHost<[]>();
 
-    serialize(): SerializedDocumentContextJSON {
-        return z.encode(SerializedDocumentContext, {
-            version: 1,
-            source: this.source,
-            target: this.target,
-            currentCommit: this.#currentCommit,
-            vc: this.#vc.serialize(),
-            chats: this.#chats.map((x) => x.serialize()),
-        });
-    }
-
-    static deserialize(s: SerializedDocumentContextJSON) {
-        const decoded = z.decode(SerializedDocumentContext, s);
-        const c = new DocumentContext(
-            decoded.source, decoded.target, VersionControl.deserialize(decoded.vc));
-        if (c.versionControl.has(decoded.currentCommit))
-            c.#currentCommit = decoded.currentCommit;
-        else {
-            console.warn('repairing document: currentCommit', decoded.currentCommit, 'not found, using', c.versionControl.latestCommit);
-            c.#currentCommit = c.versionControl.latestCommit;
-        }
-        c.#chats = decoded.chats.map((x) => ChatSession.deserialize(x));
-        return c;
-    }
-
-    get currentCommitId() {
-        return this.#currentCommit;
-    }
-
-    get versionControl(): ReadonlyVersionControl {
-        return this.#vc;
-    }
-
     private constructor(
         source: Text,
         target: Text,
-        vc = new VersionControl(id())
+        vc: SqliteVersionControl,
+        currentCommit: Id<Commit>,
+        chats: ChatSession[] = [],
     ) {
         Debug.assert(source.content.type === PaneSchema.topNodeType);
         Debug.assert(target.content.type === PaneSchema.topNodeType);
@@ -168,14 +157,103 @@ export class DocumentContext {
             console.warn("repairing document, history may be lost");
             const tr = balanceTargetClusters(source.content, new Transform(target.content));
             target.content = tr.doc as Doc;
-            this.#vc = new VersionControl(id());
-        } else {
-            this.#vc = vc;
         }
 
         this.source = $state(source);
         this.target = $state(target);
-        this.#currentCommit = $state(this.#vc.initialCommit);
+        this.#vc = vc;
+        this.#currentCommit = $state(currentCommit);
+        this.#chats = chats;
+    }
+
+    static async open(path: string) {
+        return await DocumentContext.#fromSnapshot(await VcsBackend.open(path));
+    }
+
+    static async createDemo(clusters: string[]) {
+        const { source, target } = DocumentContext.#demoTexts(clusters);
+        const snapshot = await VcsBackend.create(
+            z.encode(Text, source),
+            z.encode(Text, target),
+            [],
+        );
+        return DocumentContext.#fromSnapshot(snapshot);
+    }
+
+    static async fromTestClusters(clusters: string[]) {
+        return await DocumentContext.createDemo(clusters);
+    }
+
+    static async importLegacy(s: SerializedDocumentContextJSON) {
+        // Validate with the existing schema (and its repair warnings) before
+        // handing the raw JSON to Rust for one-time import.
+        z.decode(SerializedDocumentContext, s);
+        return await DocumentContext.#fromSnapshot(await VcsBackend.importLegacy(s));
+    }
+
+    static async #fromSnapshot(snapshot: VcsSnapshot) {
+        const source = z.decode(Text, snapshot.source as any);
+        const target = z.decode(Text, snapshot.target as any);
+        const chats = Array.isArray(snapshot.chats)
+            ? snapshot.chats.map((x) => ChatSession.deserialize(x as SerializedChatSession))
+            : [];
+        const vc = new SqliteVersionControl(snapshot);
+        const ctx = new DocumentContext(
+            source,
+            target,
+            vc,
+            snapshot.currentCommit as Id<Commit>,
+            chats,
+        );
+        ctx.#path = snapshot.path ?? undefined;
+
+        // The checkpoint may lag behind currentCommit after a crash. Replay
+        // only the commits between checkpoint and current.
+        if (snapshot.checkpointCommit !== snapshot.currentCommit) {
+            const trs = await ctx.#pathTransform(
+                snapshot.checkpointCommit as Id<Commit>,
+                snapshot.currentCommit as Id<Commit>,
+            );
+            if (trs) {
+                ctx.source.content = trs.source.doc as Doc;
+                ctx.target.content = trs.target.doc as Doc;
+            }
+        }
+        return ctx;
+    }
+
+    static #demoTexts(s: string[]) {
+        const clusters = s.map((x) => {
+            const _id = id<Cluster>();
+            return [
+                makeCluster([makeBlock(PaneSchema.text(x.trim()))], 'text', _id),
+                makeCluster([makeBlock([])], 'text', _id),
+            ];
+        });
+        return {
+            source: {
+                content: makeDoc(clusters.map((x) => x[0])),
+                options: DefaultOptions.en,
+                language: ['en', null, null] as LocaleId,
+            } satisfies Text,
+            target: {
+                content: makeDoc(clusters.map((x) => x[1])),
+                options: DefaultOptions.zh,
+                language: ['zh', null, 'CN'] as LocaleId,
+            } satisfies Text,
+        };
+    }
+
+    get currentCommitId() {
+        return this.#currentCommit;
+    }
+
+    get versionControl() {
+        return this.#vc;
+    }
+
+    async flush() {
+        await this.#vc.flush();
     }
 
     /** If clusters are added to or removed from source, this will automatically apply corresponding changes in target */
@@ -189,7 +267,7 @@ export class DocumentContext {
     ) {
         Debug.assert(!!(trs.source?.steps.length || trs.target?.steps.length));
 
-        const _id = opts?.cid ?? id();
+        const _id = opts?.cid ?? id<DeltaCommit>();
         if (trs.source) {
             const newTr = new Transform(trs.target?.doc ?? this.target.content);
             balanceTargetClusters(trs.source.doc as Doc, newTr);
@@ -205,11 +283,13 @@ export class DocumentContext {
             }
         }
 
-        this.#vc.add({
+        const timestamp = Math.max(Date.now(), this.#lastTimestamp + 1);
+        this.#lastTimestamp = timestamp;
+        this.#vc.append({
             type: 'delta',
             id: _id,
             attrs: {
-                timestamp: Date.now(),
+                timestamp,
                 currentCluster: this.currentCluster
             },
             source: transformToSteps(trs.source),
@@ -222,21 +302,18 @@ export class DocumentContext {
         this.#currentCommit = _id;
     }
 
-    revertTo(cid: Id<Commit>) {
-        const result = this.#vc.transform({
-            source: this.source.content,
-            target: this.target.content
-        }, this.#currentCommit, cid);
+    async revertTo(cid: Id<Commit>) {
+        await this.#vc.flush();
+        const result = await this.#pathTransform(this.#currentCommit, cid);
         Debug.assert(!!result);
         this.onTransform.dispatch(cid, result);
         this.#currentCommit = cid;
+        this.#vc.setCurrent(cid);
     }
 
-    getDocsAtCommit(cid: Id<Commit>) {
-        const result = this.#vc.transform({
-            source: this.source.content,
-            target: this.target.content
-        }, this.#currentCommit, cid);
+    async getDocsAtCommit(cid: Id<Commit>) {
+        await this.#vc.flush();
+        const result = await this.#pathTransform(this.#currentCommit, cid);
         Debug.assert(!!result);
         return {
             source: result.source.doc as Doc,
@@ -244,25 +321,56 @@ export class DocumentContext {
         } satisfies Docs;
     }
 
-    static fromTestClusters(s: string[]) {
-        const clusters = s.map((x) => {
-            const _id = id<Cluster>();
-            return [
-                makeCluster([makeBlock(PaneSchema.text(x.trim()))], 'text', _id),
-                makeCluster([makeBlock([])], 'text', _id),
-            ];
-        });
-        return new DocumentContext(
-            {
-                content: makeDoc(clusters.map((x) => x[0])),
-                options: DefaultOptions.en,
-                language: ['en', null, null]
-            },
-            {
-                content: makeDoc(clusters.map((x) => x[1])),
-                options: DefaultOptions.zh,
-                language: ['zh', null, 'CN']
-            }
+    async #pathTransform(from: Id<Commit>, to: Id<Commit>): Promise<Transforms | null> {
+        const segments = await this.#vc.planPath(from, to);
+        const result: Transforms = {
+            source: new Transform(this.source.content),
+            target: new Transform(this.target.content),
+        };
+
+        for (const segment of segments) {
+            const source = wireSteps(segment.source);
+            const target = wireSteps(segment.target);
+            const sourceSteps = segment.direction === 'backward'
+                ? source?.invertedSteps
+                : source?.steps;
+            const targetSteps = segment.direction === 'backward'
+                ? target?.invertedSteps
+                : target?.steps;
+
+            for (const raw of sourceSteps ?? [])
+                result.source.step(Step.fromJSON(PaneSchema, raw));
+            for (const raw of targetSteps ?? [])
+                result.target.step(Step.fromJSON(PaneSchema, raw));
+        }
+
+        return result;
+    }
+
+    async save() {
+        await this.#vc.flush();
+        await VcsBackend.saveCheckpoint(
+            this.docId,
+            this.#currentCommit,
+            z.encode(Text, this.source),
+            z.encode(Text, this.target),
+            this.#chats.map((x) => x.serialize()),
         );
+        this.#vc.addAttr({ fileSaved: true });
+        await this.#vc.flush();
+    }
+
+    async saveAs(path: string) {
+        await this.#vc.flush();
+        await VcsBackend.saveCheckpoint(
+            this.docId,
+            this.#currentCommit,
+            z.encode(Text, this.source),
+            z.encode(Text, this.target),
+            this.#chats.map((x) => x.serialize()),
+        );
+        await VcsBackend.saveAs(this.docId, path);
+        this.#path = path;
+        await this.save();
     }
 }
