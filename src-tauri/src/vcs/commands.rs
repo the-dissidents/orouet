@@ -47,7 +47,7 @@ pub fn vcs_create(
     target: Value,
     chats: Value,
 ) -> Result<OpenSnapshot, String> {
-    let doc = VcsDocument::create(path, source, target, chats)?;
+    let doc = VcsDocument::create(path, &source, &target, &chats)?;
     let result = doc.snapshot()?;
     *state.open.lock().map_err(|_| "VCS state poisoned")? = Some(doc);
     Ok(result)
@@ -68,7 +68,7 @@ pub fn vcs_import(
     state: State<'_, VcsState>,
     document: ImportDocument,
 ) -> Result<OpenSnapshot, String> {
-    let doc = VcsDocument::import(document)?;
+    let doc = VcsDocument::import(&document)?;
     let result = doc.snapshot()?;
     *state.open.lock().map_err(|_| "VCS state poisoned")? = Some(doc);
     Ok(result)

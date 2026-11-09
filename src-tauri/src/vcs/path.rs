@@ -35,7 +35,7 @@ pub(super) fn plan_path(
         return Err(format!("commit {to} does not exist"));
     }
 
-    let parent_of = |id: &str| -> Option<String> { parents.get(id).and_then(|p| p.clone()) };
+    let parent_of = |id: &str| -> Option<String> { parents.get(id).and_then(Option::clone) };
 
     // Walk the `from` side once and collect its ancestors. Then walk `to`
     // upwards until the paths meet. This is O(depth) and needs no stored

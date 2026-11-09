@@ -1,3 +1,5 @@
+#![allow(clippy::missing_errors_doc)]
+
 use std::path::PathBuf;
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -30,9 +32,9 @@ impl VcsDocument {
 
     pub fn create(
         path: Option<String>,
-        source: Value,
-        target: Value,
-        chats: Value,
+        source: &Value,
+        target: &Value,
+        chats: &Value,
     ) -> Result<Self, String> {
         let conn = match &path {
             Some(path) => {
@@ -53,7 +55,7 @@ impl VcsDocument {
         let initial = new_id();
         let timestamp = now_ms();
         insert_root(&conn, &initial, timestamp).map_err(|e| e.to_string())?;
-        insert_document(&conn, &id, &initial, &source, &target, &chats, timestamp)
+        insert_document(&conn, &id, &initial, source, target, chats, timestamp)
             .map_err(|e| e.to_string())?;
 
         Ok(Self {
@@ -71,10 +73,10 @@ impl VcsDocument {
     /// Import normalized legacy history into an in-memory SQLite document.
     /// The frontend owns the legacy JSON interpretation and repair rules; this
     /// only performs the bulk insert and derived-column updates.
-    pub fn import(document: ImportDocument) -> Result<Self, String> {
+    pub fn import(document: &ImportDocument) -> Result<Self, String> {
         let conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
         ensure_schema(&conn).map_err(|e| e.to_string())?;
-        let (id, initial) = import_document_into(&conn, &document)?;
+        let (id, initial) = import_document_into(&conn, document)?;
 
         Ok(Self {
             id,
