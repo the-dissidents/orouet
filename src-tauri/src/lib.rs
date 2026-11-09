@@ -1,5 +1,5 @@
 mod archive;
-mod vcs;
+pub mod vcs;
 
 #[allow(clippy::missing_panics_doc)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
