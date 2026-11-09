@@ -48,23 +48,11 @@ pub(super) fn ensure_schema(conn: &Connection) -> rusqlite::Result<()> {
             current_cluster  TEXT,
             file_saved       INTEGER NOT NULL DEFAULT 0,
             selection_set    INTEGER NOT NULL DEFAULT 0,
-            depth            INTEGER NOT NULL DEFAULT 0,
-            child_count      INTEGER NOT NULL DEFAULT 0,
-            first_child_id   TEXT,
             source_steps     TEXT,
             target_steps     TEXT
         );
 
-        CREATE INDEX IF NOT EXISTS commit_parent_idx ON commits(parent_id);
-        CREATE INDEX IF NOT EXISTS commit_depth_idx ON commits(depth);
-
-        CREATE TABLE IF NOT EXISTS commit_parent (
-            child_id  TEXT NOT NULL,
-            parent_id TEXT NOT NULL,
-            position  INTEGER NOT NULL DEFAULT 0,
-          PRIMARY KEY (child_id, parent_id)
-        );
-        CREATE INDEX IF NOT EXISTS commit_parent_parent_idx ON commit_parent(parent_id);
+        CREATE INDEX IF NOT EXISTS commits_parent_idx ON commits(parent_id);
         ",
     )
 }
@@ -76,7 +64,7 @@ pub(super) fn document_exists(conn: &Connection) -> rusqlite::Result<bool> {
 
 pub(super) fn insert_root(conn: &Connection, id: &str, timestamp: i64) -> rusqlite::Result<()> {
     conn.execute(
-        "INSERT INTO commits (id, kind, parent_id, timestamp, depth) VALUES (?1, 'root', NULL, ?2, 0)",
+        "INSERT INTO commits (id, kind, parent_id, timestamp) VALUES (?1, 'root', NULL, ?2)",
         params![id, timestamp],
     )?;
     Ok(())
@@ -121,14 +109,13 @@ fn summary_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CommitSummary> 
             file_saved: row.get::<_, i64>("file_saved")? != 0,
             selection_set: row.get::<_, i64>("selection_set")? != 0,
         },
-        depth: row.get("depth")?,
     })
 }
 
 pub(super) fn load_summaries(conn: &Connection) -> rusqlite::Result<Vec<CommitSummary>> {
     let mut stmt = conn.prepare(
         "SELECT seq, id, kind, parent_id, timestamp, label, current_cluster,
-                file_saved, selection_set, depth
+                file_saved, selection_set
          FROM commits ORDER BY seq ASC",
     )?;
     let rows = stmt.query_map([], summary_from_row)?;

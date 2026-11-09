@@ -6,15 +6,10 @@ use super::document::{append_commit_into, import_document_into};
 use super::model::{CommitAttrs, ImportCommit, ImportDocument, NewCommit};
 use super::path::plan_path;
 
-fn add_delta(conn: &Connection, id: &str, parent: &str, depth: i64) {
+fn add_delta(conn: &Connection, id: &str, parent: &str) {
     conn.execute(
-        "INSERT INTO commits (id, kind, parent_id, timestamp, depth)
-             VALUES (?1, 'delta', ?2, ?3, ?4)",
-        params![id, parent, depth, depth],
-    )
-    .unwrap();
-    conn.execute(
-        "INSERT INTO commit_parent (child_id, parent_id, position) VALUES (?1, ?2, 0)",
+        "INSERT INTO commits (id, kind, parent_id, timestamp)
+             VALUES (?1, 'delta', ?2, 0)",
         params![id, parent],
     )
     .unwrap();
@@ -25,9 +20,9 @@ fn schema_and_paths() {
     let conn = Connection::open_in_memory().unwrap();
     ensure_schema(&conn).unwrap();
     insert_root(&conn, "initial", 0).unwrap();
-    add_delta(&conn, "c1", "initial", 1);
-    add_delta(&conn, "c2", "c1", 2);
-    add_delta(&conn, "b1", "initial", 1);
+    add_delta(&conn, "c1", "initial");
+    add_delta(&conn, "c2", "c1");
+    add_delta(&conn, "b1", "initial");
 
     let summaries = load_summaries(&conn).unwrap();
     assert_eq!(summaries.len(), 4);
@@ -102,20 +97,6 @@ fn import_bulk_inserts_and_indexes() {
 
     let summaries = load_summaries(&conn).unwrap();
     assert_eq!(summaries.len(), 4);
-    assert_eq!(
-        summaries.iter().map(|s| s.depth).collect::<Vec<_>>(),
-        vec![0, 1, 2, 1]
-    );
-
-    let (child_count, first_child): (i64, String) = conn
-        .query_row(
-            "SELECT child_count, first_child_id FROM commits WHERE id = 'initial'",
-            [],
-            |r| Ok((r.get(0)?, r.get(1)?)),
-        )
-        .unwrap();
-    assert_eq!(child_count, 2);
-    assert_eq!(first_child, "c1");
 
     let path = plan_path(&conn, "c2", "b1").unwrap();
     assert_eq!(
@@ -150,7 +131,7 @@ fn import_rejects_unknown_parent() {
 }
 
 #[test]
-fn append_updates_counters_and_current() {
+fn append_updates_current() {
     let conn = Connection::open_in_memory().unwrap();
     ensure_schema(&conn).unwrap();
     insert_root(&conn, "initial", 0).unwrap();
@@ -177,7 +158,6 @@ fn append_updates_counters_and_current() {
     };
     let summary = append_commit_into(&conn, first).unwrap();
     assert_eq!(summary.id, "c1");
-    assert_eq!(summary.depth, 1);
 
     let second = NewCommit {
         id: "c2".into(),
@@ -190,58 +170,10 @@ fn append_updates_counters_and_current() {
         target: Some(serde_json::json!({ "steps": [], "invertedSteps": [] })),
     };
     let summary = append_commit_into(&conn, second).unwrap();
-    assert_eq!(summary.depth, 2);
-
-    let (children, first_child): (i64, String) = conn
-        .query_row(
-            "SELECT child_count, first_child_id FROM commits WHERE id = 'initial'",
-            [],
-            |r| Ok((r.get(0)?, r.get(1)?)),
-        )
-        .unwrap();
-    assert_eq!((children, first_child.as_str()), (1, "c1"));
+    assert_eq!(summary.id, "c2");
 
     let current: String = conn
         .query_row("SELECT current_commit FROM document", [], |r| r.get(0))
         .unwrap();
     assert_eq!(current, "c2");
-}
-
-#[test]
-fn recursive_depth_update() {
-    let conn = Connection::open_in_memory().unwrap();
-    ensure_schema(&conn).unwrap();
-    insert_root(&conn, "initial", 0).unwrap();
-    add_delta(&conn, "c1", "initial", 1);
-    add_delta(&conn, "c2", "c1", 2);
-    add_delta(&conn, "c3", "c2", 3);
-
-    // Same statement used by import_document_into after inserting all rows.
-    conn.execute(
-        "WITH RECURSIVE d(id, depth) AS (
-                 SELECT id, 0 FROM commits WHERE id = ?1
-                 UNION ALL
-                 SELECT c.id, d.depth + 1 FROM commits c JOIN d ON c.parent_id = d.id
-             )
-             UPDATE commits SET depth = COALESCE((SELECT depth FROM d WHERE d.id = commits.id), 0)",
-        params!["initial"],
-    )
-    .unwrap();
-
-    let depths: Vec<(String, i64)> = {
-        let mut stmt = conn
-            .prepare("SELECT id, depth FROM commits ORDER BY seq")
-            .unwrap();
-        let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
-        rows.map(|r| r.unwrap()).collect()
-    };
-    assert_eq!(
-        depths,
-        vec![
-            ("initial".into(), 0),
-            ("c1".into(), 1),
-            ("c2".into(), 2),
-            ("c3".into(), 3),
-        ]
-    );
 }

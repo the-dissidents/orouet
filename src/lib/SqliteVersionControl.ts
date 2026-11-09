@@ -27,7 +27,6 @@ export type CommitSummary = {
         selectionSet?: boolean;
     };
     seq: number;
-    depth: number;
 };
 
 type WireSteps = {
@@ -55,7 +54,6 @@ function fromWire(s: VcsCommitSummary): CommitSummary {
             selectionSet: s.attrs.selectionSet,
         },
         seq: s.seq,
-        depth: s.depth,
     };
 }
 
@@ -143,16 +141,12 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
             throw new Error('merge commits are not supported yet');
         }
         const parent = commit.parent;
-        const parentDepth = parent
-            ? this.#summaries.get(parent)?.depth ?? 0
-            : 0;
         const summary: CommitSummary = {
             id: commit.id,
             parent,
             type: commit.type,
             attrs: { ...commit.attrs },
             seq: this.#sorted.length + 1,
-            depth: parentDepth + 1,
         };
 
         this.#summaries.set(summary.id, summary);

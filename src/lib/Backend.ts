@@ -25,7 +25,6 @@ export type VcsCommitSummary = {
     type: 'root' | 'delta' | 'merge';
     attrs: VcsCommitAttrs;
     seq: number;
-    depth: number;
 };
 
 export type VcsSnapshot = {

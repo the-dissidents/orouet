@@ -30,11 +30,11 @@ function snapshot(): VcsSnapshot {
         chats: [],
         summaries: [
             {
-                id: 'initial', type: 'root', seq: 1, depth: 0,
+                id: 'initial', type: 'root', seq: 1,
                 attrs: { timestamp: 0 },
             },
             {
-                id: 'c1', parent: 'initial', type: 'delta', seq: 2, depth: 1,
+                id: 'c1', parent: 'initial', type: 'delta', seq: 2,
                 attrs: { timestamp: 1 },
             },
         ],

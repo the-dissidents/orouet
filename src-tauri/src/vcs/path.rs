@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use rusqlite::{params, Connection};
 use serde_json::Value;
@@ -11,23 +11,17 @@ pub(super) fn plan_path(
     to: &str,
 ) -> Result<Vec<PathSegment>, String> {
     let mut stmt = conn
-        .prepare("SELECT id, parent_id, depth FROM commits")
+        .prepare("SELECT id, parent_id FROM commits")
         .map_err(|e| e.to_string())?;
     let mut parents: HashMap<String, Option<String>> = HashMap::new();
-    let mut depths: HashMap<String, i64> = HashMap::new();
     let rows = stmt
         .query_map([], |r| {
-            Ok((
-                r.get::<_, String>(0)?,
-                r.get::<_, Option<String>>(1)?,
-                r.get::<_, i64>(2)?,
-            ))
+            Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?))
         })
         .map_err(|e| e.to_string())?;
     for row in rows {
-        let (id, parent, depth) = row.map_err(|e| e.to_string())?;
-        parents.insert(id.clone(), parent);
-        depths.insert(id, depth);
+        let (id, parent) = row.map_err(|e| e.to_string())?;
+        parents.insert(id, parent);
     }
     drop(stmt);
 
@@ -43,23 +37,26 @@ pub(super) fn plan_path(
 
     let parent_of = |id: &str| -> Option<String> { parents.get(id).and_then(|p| p.clone()) };
 
-    let mut a = from.to_string();
-    let mut b = to.to_string();
-    let mut da = *depths.get(&a).unwrap_or(&0);
-    let mut db = *depths.get(&b).unwrap_or(&0);
-    while da > db {
-        a = parent_of(&a).ok_or_else(|| "broken parent chain".to_string())?;
-        da -= 1;
+    // Walk the `from` side once and collect its ancestors. Then walk `to`
+    // upwards until the paths meet. This is O(depth) and needs no stored
+    // depth column.
+    let mut ancestors: HashSet<String> = HashSet::new();
+    let mut cursor = from.to_string();
+    loop {
+        ancestors.insert(cursor.clone());
+        match parent_of(&cursor) {
+            Some(parent) => cursor = parent,
+            None => break,
+        }
     }
-    while db > da {
-        b = parent_of(&b).ok_or_else(|| "broken parent chain".to_string())?;
-        db -= 1;
-    }
-    while a != b {
-        a = parent_of(&a).ok_or_else(|| "broken parent chain".to_string())?;
-        b = parent_of(&b).ok_or_else(|| "broken parent chain".to_string())?;
-    }
-    let lca = a;
+
+    let mut cursor = to.to_string();
+    let lca = loop {
+        if ancestors.contains(&cursor) {
+            break cursor;
+        }
+        cursor = parent_of(&cursor).ok_or_else(|| "commits are not connected".to_string())?;
+    };
 
     let mut backward: Vec<String> = Vec::new();
     let mut cursor = from.to_string();

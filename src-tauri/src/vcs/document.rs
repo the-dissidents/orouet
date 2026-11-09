@@ -312,8 +312,8 @@ pub(super) fn import_document_into(
         conn.execute(
             "INSERT INTO commits
                 (id, kind, parent_id, timestamp, label, current_cluster,
-                 file_saved, selection_set, depth, source_steps, target_steps)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9, ?10)",
+                 file_saved, selection_set, source_steps, target_steps)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             params![
                 commit.id,
                 commit.kind,
@@ -328,31 +328,7 @@ pub(super) fn import_document_into(
             ],
         )
         .map_err(|e| e.to_string())?;
-        conn.execute(
-            "INSERT INTO commit_parent (child_id, parent_id, position) VALUES (?1, ?2, 0)",
-            params![commit.id, commit.parent],
-        )
-        .map_err(|e| e.to_string())?;
     }
-
-    // Recompute depth and child counters after all rows exist.
-    conn.execute(
-        "WITH RECURSIVE d(id, depth) AS (
-             SELECT id, 0 FROM commits WHERE id = ?1
-             UNION ALL
-             SELECT c.id, d.depth + 1 FROM commits c JOIN d ON c.parent_id = d.id
-         )
-         UPDATE commits SET depth = COALESCE((SELECT depth FROM d WHERE d.id = commits.id), 0)",
-        params![initial],
-    )
-    .map_err(|e| e.to_string())?;
-    conn.execute(
-        "UPDATE commits SET
-             child_count = (SELECT COUNT(*) FROM commits c WHERE c.parent_id = commits.id),
-             first_child_id = (SELECT c.id FROM commits c WHERE c.parent_id = commits.id ORDER BY c.seq LIMIT 1)",
-        [],
-    )
-    .map_err(|e| e.to_string())?;
 
     // The frontend normally supplies a valid current commit; keep a small
     // fallback so opening an imported document never fails on this alone.
@@ -398,16 +374,16 @@ pub(super) fn append_commit_into(
     conn: &Connection,
     commit: NewCommit,
 ) -> Result<CommitSummary, String> {
-    let parent_depth: i64 = conn
+    let parent_exists: bool = conn
         .query_row(
-            "SELECT depth FROM commits WHERE id = ?1",
+            "SELECT EXISTS(SELECT 1 FROM commits WHERE id = ?1)",
             params![commit.parent],
             |r| r.get(0),
         )
-        .optional()
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| format!("parent commit {} does not exist", commit.parent))?;
-    let depth = parent_depth + 1;
+        .map_err(|e| e.to_string())?;
+    if !parent_exists {
+        return Err(format!("parent commit {} does not exist", commit.parent));
+    }
 
     let source_steps = commit
         .source
@@ -425,8 +401,8 @@ pub(super) fn append_commit_into(
     conn.execute(
         "INSERT INTO commits
             (id, kind, parent_id, timestamp, label, current_cluster,
-             file_saved, selection_set, depth, source_steps, target_steps)
-         VALUES (?1, 'delta', ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+             file_saved, selection_set, source_steps, target_steps)
+         VALUES (?1, 'delta', ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         params![
             commit.id,
             commit.parent,
@@ -435,22 +411,9 @@ pub(super) fn append_commit_into(
             commit.attrs.current_cluster,
             i64::from(commit.attrs.file_saved),
             i64::from(commit.attrs.selection_set),
-            depth,
             source_steps,
             target_steps
         ],
-    )
-    .map_err(|e| e.to_string())?;
-    conn.execute(
-        "INSERT OR IGNORE INTO commit_parent (child_id, parent_id, position) VALUES (?1, ?2, 0)",
-        params![commit.id, commit.parent],
-    )
-    .map_err(|e| e.to_string())?;
-    conn.execute(
-        "UPDATE commits SET child_count = child_count + 1,
-                           first_child_id = COALESCE(first_child_id, ?1)
-         WHERE id = ?2",
-        params![commit.id, commit.parent],
     )
     .map_err(|e| e.to_string())?;
     conn.execute(
@@ -472,6 +435,5 @@ pub(super) fn append_commit_into(
         kind: "delta".into(),
         attrs: commit.attrs,
         seq,
-        depth,
     })
 }

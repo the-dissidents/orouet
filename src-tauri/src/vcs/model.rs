@@ -26,7 +26,6 @@ pub struct CommitSummary {
     pub kind: String,
     pub attrs: CommitAttrs,
     pub seq: i64,
-    pub depth: i64,
 }
 
 #[derive(Deserialize, Debug)]

@@ -1,3 +1,5 @@
+#![allow(clippy::missing_errors_doc)]
+
 use std::sync::{Mutex, MutexGuard};
 
 use serde_json::Value;
