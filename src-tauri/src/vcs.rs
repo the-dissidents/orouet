@@ -111,8 +111,7 @@ pub struct OpenSnapshot {
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0)
+        .map_or(0, |d| d.as_millis() as i64)
 }
 
 fn new_id() -> String {
@@ -123,7 +122,7 @@ fn new_id() -> String {
 
 fn ensure_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        r#"
+        r"
         PRAGMA journal_mode = WAL;
         PRAGMA foreign_keys = ON;
         PRAGMA busy_timeout = 5000;
@@ -165,10 +164,10 @@ fn ensure_schema(conn: &Connection) -> rusqlite::Result<()> {
             child_id  TEXT NOT NULL,
             parent_id TEXT NOT NULL,
             position  INTEGER NOT NULL DEFAULT 0,
-            PRIMARY KEY (child_id, parent_id)
+          PRIMARY KEY (child_id, parent_id)
         );
         CREATE INDEX IF NOT EXISTS commit_parent_parent_idx ON commit_parent(parent_id);
-        "#,
+        ",
     )
 }
 
@@ -312,6 +311,7 @@ fn open_existing(path: &str) -> Result<OpenDocument, String> {
 }
 
 #[tauri::command(async)]
+#[allow(clippy::needless_pass_by_value)]
 pub fn vcs_create(
     state: tauri::State<'_, VcsState>,
     path: Option<String>,
@@ -353,8 +353,9 @@ pub fn vcs_create(
 }
 
 #[tauri::command(async)]
-pub fn vcs_open(state: tauri::State<'_, VcsState>, path: String) -> Result<OpenSnapshot, String> {
-    let doc = open_existing(&path)?;
+#[allow(clippy::needless_pass_by_value)]
+pub fn vcs_open(state: tauri::State<'_, VcsState>, path: &str) -> Result<OpenSnapshot, String> {
+    let doc = open_existing(path)?;
     let result = snapshot(&doc)?;
     *state.open.lock().map_err(|_| "VCS state poisoned")? = Some(doc);
     Ok(result)
@@ -406,8 +407,7 @@ fn import_document_into(conn: &Connection, document: &Value) -> Result<(String, 
         let mut parent = commit
             .get("parent")
             .and_then(Value::as_str)
-            .map(str::to_string)
-            .unwrap_or_else(|| initial.clone());
+            .map_or_else(|| initial.clone(), str::to_string);
         if !known.contains(&parent) {
             parent = initial.clone();
         }
@@ -441,8 +441,8 @@ fn import_document_into(conn: &Connection, document: &Value) -> Result<(String, 
                 attrs.timestamp,
                 attrs.label,
                 attrs.current_cluster,
-                attrs.file_saved as i64,
-                attrs.selection_set as i64,
+                i64::from(attrs.file_saved),
+                i64::from(attrs.selection_set),
                 source_steps,
                 target_steps
             ],
@@ -521,6 +521,7 @@ fn import_document_into(conn: &Connection, document: &Value) -> Result<(String, 
 /// SQLite document. This keeps `.orz` files readable while the runtime uses
 /// SQLite everywhere.
 #[tauri::command(async)]
+#[allow(clippy::needless_pass_by_value)]
 pub fn vcs_import(
     state: tauri::State<'_, VcsState>,
     document: Value,
@@ -576,8 +577,8 @@ fn append_commit_into(conn: &Connection, commit: NewCommit) -> Result<CommitSumm
             commit.attrs.timestamp,
             commit.attrs.label,
             commit.attrs.current_cluster,
-            commit.attrs.file_saved as i64,
-            commit.attrs.selection_set as i64,
+            i64::from(commit.attrs.file_saved),
+            i64::from(commit.attrs.selection_set),
             depth,
             source_steps,
             target_steps
@@ -620,12 +621,13 @@ fn append_commit_into(conn: &Connection, commit: NewCommit) -> Result<CommitSumm
 }
 
 #[tauri::command(async)]
+#[allow(clippy::needless_pass_by_value)]
 pub fn vcs_append(
     state: tauri::State<'_, VcsState>,
-    doc_id: String,
+    doc_id: &str,
     commit: NewCommit,
 ) -> Result<CommitSummary, String> {
-    let mut guard = take_open(&state, &doc_id)?;
+    let mut guard = take_open(&state, doc_id)?;
     let doc = guard
         .as_mut()
         .ok_or_else(|| "no document is open".to_string())?;
@@ -633,13 +635,14 @@ pub fn vcs_append(
 }
 
 #[tauri::command(async)]
+#[allow(clippy::needless_pass_by_value)]
 pub fn vcs_update_attrs(
     state: tauri::State<'_, VcsState>,
-    doc_id: String,
-    id: String,
+    doc_id: &str,
+    id: &str,
     attrs: UpdateAttrs,
 ) -> Result<(), String> {
-    let mut guard = take_open(&state, &doc_id)?;
+    let mut guard = take_open(&state, doc_id)?;
     let doc = guard
         .as_mut()
         .ok_or_else(|| "no document is open".to_string())?;
@@ -668,8 +671,8 @@ pub fn vcs_update_attrs(
         params![
             attrs.label.or(label),
             attrs.current_cluster.or(current_cluster),
-            attrs.file_saved.unwrap_or(file_saved != 0) as i64,
-            attrs.selection_set.unwrap_or(selection_set != 0) as i64,
+            i64::from(attrs.file_saved.unwrap_or(file_saved != 0)),
+            i64::from(attrs.selection_set.unwrap_or(selection_set != 0)),
             id
         ],
     )
@@ -678,12 +681,13 @@ pub fn vcs_update_attrs(
 }
 
 #[tauri::command(async)]
+#[allow(clippy::needless_pass_by_value)]
 pub fn vcs_set_current(
     state: tauri::State<'_, VcsState>,
-    doc_id: String,
-    id: String,
+    doc_id: &str,
+    id: &str,
 ) -> Result<(), String> {
-    let mut guard = take_open(&state, &doc_id)?;
+    let mut guard = take_open(&state, doc_id)?;
     let doc = guard
         .as_mut()
         .ok_or_else(|| "no document is open".to_string())?;
@@ -708,15 +712,16 @@ pub fn vcs_set_current(
 }
 
 #[tauri::command(async)]
+#[allow(clippy::needless_pass_by_value)]
 pub fn vcs_save_checkpoint(
     state: tauri::State<'_, VcsState>,
-    doc_id: String,
-    current_commit: String,
-    source: Value,
-    target: Value,
-    chats: Value,
+    doc_id: &str,
+    current_commit: &str,
+    source: &str,
+    target: &str,
+    chats: &str,
 ) -> Result<(), String> {
-    let mut guard = take_open(&state, &doc_id)?;
+    let mut guard = take_open(&state, doc_id)?;
     let doc = guard
         .as_mut()
         .ok_or_else(|| "no document is open".to_string())?;
@@ -726,9 +731,9 @@ pub fn vcs_save_checkpoint(
                  source_json = ?1, target_json = ?2, chats_json = ?3,
                  current_commit = ?4, checkpoint_commit = ?4, updated_at = ?5",
             params![
-                serde_json::to_string(&source).unwrap_or_else(|_| "null".into()),
-                serde_json::to_string(&target).unwrap_or_else(|_| "null".into()),
-                serde_json::to_string(&chats).unwrap_or_else(|_| "[]".into()),
+                serde_json::to_string(source).unwrap_or_else(|_| "null".into()),
+                serde_json::to_string(target).unwrap_or_else(|_| "null".into()),
+                serde_json::to_string(chats).unwrap_or_else(|_| "[]".into()),
                 current_commit,
                 now_ms()
             ],
@@ -826,22 +831,24 @@ fn plan_path_conn(conn: &Connection, from: &str, to: &str) -> Result<Vec<PathSeg
 }
 
 #[tauri::command(async)]
+#[allow(clippy::needless_pass_by_value)]
 pub fn vcs_plan_path(
     state: tauri::State<'_, VcsState>,
-    doc_id: String,
-    from: String,
-    to: String,
+    doc_id: &str,
+    from: &str,
+    to: &str,
 ) -> Result<Vec<PathSegment>, String> {
-    let guard = take_open(&state, &doc_id)?;
+    let guard = take_open(&state, doc_id)?;
     let doc = guard
         .as_ref()
         .ok_or_else(|| "no document is open".to_string())?;
-    plan_path_conn(&doc.conn, &from, &to)
+    plan_path_conn(&doc.conn, from, to)
 }
 
 #[tauri::command(async)]
-pub fn vcs_count(state: tauri::State<'_, VcsState>, doc_id: String) -> Result<i64, String> {
-    let guard = take_open(&state, &doc_id)?;
+#[allow(clippy::needless_pass_by_value)]
+pub fn vcs_count(state: tauri::State<'_, VcsState>, doc_id: &str) -> Result<i64, String> {
+    let guard = take_open(&state, doc_id)?;
     let doc = guard
         .as_ref()
         .ok_or_else(|| "no document is open".to_string())?;
@@ -857,18 +864,19 @@ pub fn vcs_count(state: tauri::State<'_, VcsState>, doc_id: String) -> Result<i6
 }
 
 #[tauri::command(async)]
+#[allow(clippy::needless_pass_by_value)]
 pub fn vcs_save_as(
     state: tauri::State<'_, VcsState>,
-    doc_id: String,
-    path: String,
+    doc_id: &str,
+    path: &str,
 ) -> Result<OpenSnapshot, String> {
-    let mut guard = take_open(&state, &doc_id)?;
+    let mut guard = take_open(&state, doc_id)?;
     let doc = guard
         .as_mut()
         .ok_or_else(|| "no document is open".to_string())?;
 
     let target = PathBuf::from(&path);
-    if doc.path.as_ref().map(|p| p == &target).unwrap_or(false) {
+    if doc.path.as_ref().is_some_and(|p| p == &target) {
         return snapshot(doc);
     }
     if target.exists() {
@@ -878,10 +886,10 @@ pub fn vcs_save_as(
         .execute("VACUUM INTO ?1", params![path])
         .map_err(|e| format!("failed to save {path}: {e}"))?;
 
-    let mut next = open_existing(&path)?;
+    let mut next = open_existing(path)?;
     // Preserve the frontend-facing document id so callers do not need to
     // re-open anything.
-    next.id = doc.id.clone();
+    next.id.clone_from(&doc.id);
     let result = snapshot(&next)?;
     *guard = Some(next);
     Ok(result)
