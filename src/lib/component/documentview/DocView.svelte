@@ -144,6 +144,7 @@
         if (tr.docChanged) {
           // this should be the only place that assigns to Text.content!
           dc[role].content = tr.doc as Doc;
+          // FIXME: is it right to dispatch this before adding the transform?
           dc.onDocumentChanged.dispatch();
           if (!tr.getMeta('is_system'))
             dc.addTransform({ [role]: tr }, { internal: true });

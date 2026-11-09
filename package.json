@@ -7,6 +7,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri"
@@ -48,6 +50,7 @@
     "@types/babel__core": "^7.20.5",
     "@types/babel__helper-plugin-utils": "^7.10.3",
     "cldr-core": "^48.2.0",
+    "jest-extended": "^7.0.0",
     "magic-string": "^0.30.21",
     "sass-embedded": "^1.99.0",
     "svelte": "^5.0.0",
@@ -55,6 +58,7 @@
     "typescript": "~6.0.2",
     "vite": "^7.0.0",
     "vite-plugin-inspect": "^11.3.3",
+    "vitest": "^5.1.0",
     "zimmerframe": "^1.1.4"
   }
 }

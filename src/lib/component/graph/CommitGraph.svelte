@@ -9,25 +9,64 @@
 <script lang="ts">
   import { formatAbsoluteDate, formatFullDate } from "$lib/details/DateFormat";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
-  import { graphLayout, type EdgeType } from "./Layout";
+  import { graphLayout, type EdgeType, type GraphLayout } from "./Layout";
+  import { GraphLayoutCache } from "./Cache";
   import type { Commit } from "$lib/VersionControl.svelte";
-  import { Collapsible } from "@the_dissidents/svelte-ui";
+  import { Collapsible, unbindEvents } from "@the_dissidents/svelte-ui";
   import BoundarySelect from "./BoundarySelect.svelte";
   import { Memorized } from "$lib/details/Memorized.svelte";
   import { BoundaryCondition } from "$lib/Boundary";
   import type { Id } from "$lib/Schema";
   import { Menu } from "@tauri-apps/api/menu";
+  import { onDestroy, onMount, untrack } from "svelte";
 
   import { _ } from "svelte-i18n";
 
   const { context }: {
-    context: DocumentContext
+    context: DocumentContext,
   } = $props();
 
   let boundaryReactive = $state($boundary);
-  boundary.subscribe((v) => boundaryReactive = v);
 
-  const layout = $derived(graphLayout(context, boundaryReactive));
+  // Prevent the layout graph from being deeply reactive since it's only updated a a whole
+  let layout = $state.raw<GraphLayout>({ nodes: [], edges: [] });
+
+  // svelte-ignore state_referenced_locally
+  let layoutCache = new GraphLayoutCache(context.versionControl);
+  $effect(() => {
+    const ctx = context;
+    untrack(() => {
+      layoutCache = new GraphLayoutCache(ctx.versionControl);
+    });
+  });
+
+  let scheduled = false;
+  function scheduleRelayout() {
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(() => {
+      scheduled = false;
+      layoutCache.setCondition(boundaryReactive);
+      layout = graphLayout(context, layoutCache);
+    });
+  }
+
+  const listener = {};
+  onMount(() => {
+    context.versionControl.onChanged.bind(listener, (change) => {
+      layoutCache.notify(change);
+      scheduleRelayout();
+    });
+    context.onTransform.bind(listener, scheduleRelayout);
+    return () => unbindEvents(listener);
+  });
+
+  const unsubscribeBoundary = boundary.subscribe((v) => {
+    layoutCache.setCondition(v);
+    boundaryReactive = v;
+    scheduleRelayout();
+  });
+  onDestroy(unsubscribeBoundary);
 
   const X_STEP = 12; // Lane width
   const Y_STEP = 30; // Row height
@@ -77,7 +116,10 @@
         text: $_('graph.compare'),
         enabled: id !== context.currentCommitId,
         checked: id == context.currentDiffCommit,
-        action: () => context.currentDiffCommit = (id == context.currentDiffCommit ? undefined : id)
+        action: () => {
+          context.currentDiffCommit = (id == context.currentDiffCommit ? undefined : id);
+          scheduleRelayout();
+        }
       },
       {
         text: 'dump layout',

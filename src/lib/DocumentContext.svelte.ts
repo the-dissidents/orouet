@@ -112,8 +112,10 @@ export class DocumentContext {
 
     get chats() { return this.#chats; }
 
-    /** Used to notify editors to apply transforms */
+    /** Used to notify editors to apply transforms *before* `source` or `target` changes. Dispatched by this class. */
     readonly onTransform = new EventHost<[cid: Id<Commit>, ts: Partial<Transforms>]>();
+
+    /** Fired after `source` or `target` changed. Dispatched by the editors.  */
     readonly onDocumentChanged = new EventHost<[]>();
 
     serialize(): SerializedDocumentContextJSON {

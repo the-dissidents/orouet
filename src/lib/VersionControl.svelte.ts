@@ -1,6 +1,7 @@
 import { Step, Transform } from "prosemirror-transform";
-import { Id, PaneSchema, type Block, type Cluster, type Doc } from "./Schema";
+import { Id, PaneSchema, type Cluster, type Doc } from "./Schema";
 import { Debug } from "./details/Util";
+import { EventHost } from "@the_dissidents/svelte-ui";
 import { SvelteMap } from "svelte/reactivity";
 import * as z from "zod/v4-mini";
 
@@ -95,10 +96,17 @@ export type Transforms = {
     target: Transform
 };
 
+export type VersionControlChange =
+    | { type: 'add', id: Id<Commit>, parent?: Id<Commit> }
+    | { type: 'attrs', id: Id<Commit> };
+
 export interface ReadonlyVersionControl {
     readonly initialCommit: Id<Commit>;
     readonly latestCommit: Id<Commit>;
     readonly sortedCommits: readonly Id<Commit>[];
+
+    /** Fired after commits are added or commit attributes change. */
+    readonly onChanged: EventHost<[change: VersionControlChange]>;
 
     addAttr(attr: Partial<CommitBase['attrs']>): boolean;
 
@@ -118,6 +126,8 @@ export const SerializedVersionControl = z.object({
 export type SerializedVersionControl = z.infer<typeof SerializedVersionControl>;
 
 export class VersionControl implements ReadonlyVersionControl {
+    readonly onChanged = new EventHost<[change: VersionControlChange]>();
+
     #commits = new SvelteMap<Id<Commit>, Commit>();
     #forwardEdges = new SvelteMap<Id<Commit>, Id<DeltaCommit>[]>();
 
@@ -184,9 +194,11 @@ export class VersionControl implements ReadonlyVersionControl {
 
     addAttr(attr: Partial<CommitBase['attrs']>) {
         if (this.latestCommit == this.initialCommit) return false;
-        const latest = this.get(this.latestCommit);
+        const id = this.latestCommit;
+        const latest = this.get(id);
         Debug.assert(!!latest);
         Object.assign(latest.attrs, attr);
+        this.onChanged.dispatch({ type: 'attrs', id });
         return true;
     }
 
@@ -209,6 +221,12 @@ export class VersionControl implements ReadonlyVersionControl {
             default:
                 commit satisfies never;
         }
+
+        this.onChanged.dispatch({
+            type: 'add',
+            id: commit.id,
+            parent: commit.type === 'delta' ? commit.parent : undefined,
+        });
     }
 
     // modifies `trs`

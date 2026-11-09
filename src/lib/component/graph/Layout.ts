@@ -1,8 +1,8 @@
-import { isBoundary, type BoundaryCondition } from "$lib/Boundary";
-import { Debug, range } from "$lib/details/Util";
-import type { DocumentContext } from "$lib/DocumentContext.svelte";
+import { type BoundaryCondition } from "$lib/Boundary";
+import { Debug } from "$lib/details/Util";
 import type { Id } from "$lib/Schema";
-import type { Commit } from "$lib/VersionControl.svelte";
+import type { Commit, ReadonlyVersionControl } from "$lib/VersionControl.svelte";
+import { GraphLayoutCache } from "./Cache";
 
 export type PositionedNode = {
     id: Id<Commit>,
@@ -10,10 +10,18 @@ export type PositionedNode = {
     maxX: number,
 };
 
+type Widths = Record<number, number>;
+
 type Node = PositionedNode & {
-    widths: Record<number, number>,
+    widths: Widths,
+    /**
+     * True when `widths` has an explicit value for every row in
+     * `[topmostY, y]`, so it can be reused by a parent without copying.
+     */
+    dense: boolean,
     topmostY: number,
     deltaX: number,
+    children: Node[],
 };
 
 export type EdgeType = 'children' | 'merging' | 'merged';
@@ -24,7 +32,21 @@ export type GraphEdge = {
     type: EdgeType
 };
 
-export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
+export type GraphLayout = {
+    nodes: PositionedNode[],
+    edges: GraphEdge[],
+};
+
+/** The subset of `DocumentContext` that graph layout actually needs. */
+export type GraphLayoutContext = {
+    readonly versionControl: ReadonlyVersionControl,
+    readonly currentCommitId: Id<Commit>,
+    readonly currentDiffCommit?: Id<Commit>,
+};
+
+export function graphLayout(
+    c: GraphLayoutContext, cache: GraphLayoutCache,
+): GraphLayout {
     const vc = c.versionControl;
 
     // recent on top
@@ -32,48 +54,115 @@ export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
     const nodeMap = new Map<Id<Commit>, Node>();
     const nodes: Node[] = [];
 
-    const skipped = new Set<Id<Commit>>();
-    const realChildren = new Map<Id<Commit>, Id<Commit>[]>();
+    cache.ensureInitialized();
+    const boundarySet = cache.boundarySet;
 
-    // process skipping
-    for (const id of commits) {
-        if (skipped.has(id) || !vc.isDelta(id)) continue;
-        const commit = vc.get(id)!;
-        let p = commit.parent;
-        while (!isBoundary(vc, p, 'forward', b)
-            && p !== c.currentDiffCommit
-            && p !== c.currentCommitId
-        ) {
-            skipped.add(p);
-            Debug.assert(vc.isDelta(p));
-            p = vc.get(p)!.parent;
+    // Current commit and diff target are visible regardless of boundaries.
+    // They change far more often than the history, so they are handled as a
+    // per-call overlay rather than part of the persistent cache.
+    const forced = new Set<Id<Commit>>([c.currentCommitId]);
+    if (c.currentDiffCommit) forced.add(c.currentDiffCommit);
+
+    const isVisible = (id: Id<Commit>) =>
+        id === vc.initialCommit || boundarySet.has(id) || forced.has(id);
+
+    // Non-boundary commits in a forced node's segment attach to that node.
+    const forcedAncestor = new Map<Id<Commit>, Id<Commit>>();
+    for (const f of forced) {
+        if (f === vc.initialCommit || boundarySet.has(f)) continue;
+
+        const stack = [...vc.forwardLinks(f)];
+        while (stack.length > 0) {
+            const id = stack.pop()!;
+            if (id === vc.initialCommit
+                || boundarySet.has(id)
+                || forced.has(id)
+                || forcedAncestor.has(id)) continue;
+
+            forcedAncestor.set(id, f);
+            stack.push(...vc.forwardLinks(id));
         }
-        const children = realChildren.get(p) ?? [];
-        children.push(id);
-        realChildren.set(p, children);
     }
 
-    // helper
-    function getChildren(id: Id<Commit>) {
-        return (realChildren.get(id) ?? []).map((x) => {
-            Debug.assert(nodeMap.has(x));
-            return nodeMap.get(x)!;
-        });
+    const visibleAncestor = (id: Id<Commit>): Id<Commit> => {
+        if (isVisible(id)) return id;
+        const forcedBy = forcedAncestor.get(id);
+        if (forcedBy !== undefined) return forcedBy;
+        return cache.baseAncestor(id);
+    };
+
+    // process skipping
+    const visibleChildren = new Map<Id<Commit>, Id<Commit>[]>();
+    for (const id of commits) {
+        if (id === vc.initialCommit || !isVisible(id)) continue;
+        const commit = vc.get(id);
+        // Merge commits are not supported yet
+        if (!commit || commit.type !== 'delta') continue;
+
+        const parent = visibleAncestor(commit.parent);
+        const children = visibleChildren.get(parent) ?? [];
+        children.push(id);
+        visibleChildren.set(parent, children);
     }
 
     // modified Reingold-Tilford with right contour only
     // A bit of this was written by Gemini 3 Pro
     let y = 0;
     for (const id of commits) {
-        if (skipped.has(id)) continue;
+        if (!isVisible(id)) continue;
+        // The initial commit has no commit object, and non-delta commits are not supported yet
+        if (id !== vc.initialCommit && !vc.isDelta(id)) continue;
 
-        // recent branches to the left
-        const children = getChildren(id).sort((a, b) => a.topmostY - b.topmostY);
-        const widths: Record<number, number> = { [y]: 0 };
+        // children in insertion order, for edge traversal
+        // the layout pass needs children ordered by their topmost row
+        const children = (visibleChildren.get(id) ?? []).map((childId) => {
+            const child = nodeMap.get(childId);
+            Debug.assert(!!child);
+            return child;
+        });
 
-        children.forEach((child, i) => {
-            const shift = i == 0 ? 0
-                : Math.max(0, ...[...range(child.topmostY, y)].map((yx) => widths[yx] ?? 0)) + 1;
+        // children in display order (longest-lived on the left)
+        const ordered = children.slice().sort((a, b) => a.topmostY - b.topmostY);
+
+        // The first child has shift 0, so its width map is also this node's
+        // width map (plus the new row). Reuse it instead of copying.
+        let widths: Widths;
+        let dense: boolean;
+        if (ordered.length === 0) {
+            widths = { [y]: 0 };
+            dense = true;
+        } else {
+            // inherit the first child's widths map and fill its gaps
+            widths = ordered[0].widths;
+            if (!ordered[0].dense) {
+                let lastWx = 0;
+                for (let yx = ordered[0].topmostY; yx <= ordered[0].y; yx++) {
+                    const wx = widths[yx] ?? lastWx;
+                    lastWx = wx;
+                    widths[yx] = wx;
+                }
+            }
+
+            // add a default width at the y-level of this node
+            widths[y] = 0;
+
+            // Only a single child directly adjacent to this row leaves no
+            // gaps. Multiple children can leave gaps between their spans.
+            dense = ordered.length === 1 && ordered[0].y + 1 === y;
+        }
+
+        ordered.forEach((child, i) => {
+            if (i === 0) {
+                child.deltaX = 0;
+                return;
+            }
+
+            let maxWidth = 0;
+            for (let yx = child.topmostY; yx < y; yx++) {
+                const w = widths[yx];
+                if (w !== undefined && w > maxWidth) maxWidth = w;
+            }
+            const shift = maxWidth + 1;
             child.deltaX = shift;
 
             let lastWx = 0;
@@ -81,33 +170,43 @@ export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
                 // use last value to bridge gaps
                 const wx = child.widths[yx] ?? lastWx;
                 lastWx = wx;
+                const w = wx + shift;
 
-                if (yx in widths)
-                    widths[yx] = Math.max(widths[yx], wx + shift);
-                else
-                    widths[yx] = wx + shift;
+                const existing = widths[yx];
+                widths[yx] = existing === undefined ? w : Math.max(existing, w);
             }
         });
 
-        const topmostY = Math.min(y, ...children.map((x) => x.topmostY));
-        const node: Node = { id, x: 0, y, widths, topmostY, deltaX: 0, maxX: 0 };
+        let topmostY = y;
+        for (const child of children)
+            if (child.topmostY < topmostY) topmostY = child.topmostY;
+
+        const node: Node = {
+            id, x: 0, y, maxX: 0,
+            widths, dense, topmostY, deltaX: 0, children,
+        };
         nodeMap.set(id, node);
         nodes.push(node);
         y++;
     }
 
+    // resolve x positions and emit edges
     const edges: GraphEdge[] = [];
-    function resolveX(id: Id<Commit>, currentX: number) {
-        const node = nodeMap.get(id);
-        Debug.assert(!!node);
-        node.x = currentX;
+    const initial = nodeMap.get(vc.initialCommit);
+    Debug.assert(!!initial);
 
-        for (const child of getChildren(id)) {
-            resolveX(child.id, currentX + child.deltaX);
-            edges.push({ from: node, to: child, type: 'children' });
+    // don't use recursion here as we can break the call stack limit
+    type StackItem = { node: Node, x: number }
+    const stack: StackItem[] = [{ node: initial, x: 0 }];
+    let item: StackItem | undefined;
+    while ((item = stack.pop())) {
+        item.node.x = item.x;
+        for (let i = item.node.children.length - 1; i >= 0; i--) {
+            const child = item.node.children[i];
+            edges.push({ from: item.node, to: child, type: 'children' });
+            stack.push({ node: child, x: item.x + child.deltaX });
         }
     }
-    resolveX(vc.initialCommit, 0);
 
     if (c.currentDiffCommit) {
         const orig = nodeMap.get(c.currentDiffCommit);
@@ -117,8 +216,7 @@ export function graphLayout(c: DocumentContext, b: BoundaryCondition) {
     }
 
     // maxX is just the global width at that Y level
-    const globalWidths = nodeMap.get(vc.initialCommit)?.widths;
-    Debug.assert(!!globalWidths);
+    const globalWidths = initial.widths;
     for (const node of nodes) {
         node.maxX = globalWidths[node.y] ?? 0;
     }

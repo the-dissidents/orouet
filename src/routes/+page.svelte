@@ -155,7 +155,7 @@
 
       {#key ctx}
       <div class="tool" class:show={page == 'graph'}>
-        <CommitGraph context={ctx}/>
+        <CommitGraph context={ctx} />
       </div>
       <div class="tool" class:show={page == 'search'}>
         <Search context={ctx} {editor} />
