@@ -9,4 +9,7 @@ mod tests;
 
 pub use commands::*;
 pub use document::VcsDocument;
-pub use model::{CommitAttrs, CommitSummary, NewCommit, OpenSnapshot, PathSegment, UpdateAttrs};
+pub use model::{
+    CommitAttrs, CommitSummary, ImportCommit, ImportDocument, NewCommit, OpenSnapshot, PathSegment,
+    UpdateAttrs,
+};

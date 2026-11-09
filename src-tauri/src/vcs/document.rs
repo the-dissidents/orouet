@@ -6,7 +6,9 @@ use serde_json::Value;
 use super::db::{
     document_exists, ensure_schema, insert_document, insert_root, load_summaries, new_id, now_ms,
 };
-use super::model::{CommitAttrs, CommitSummary, NewCommit, OpenSnapshot, PathSegment, UpdateAttrs};
+use super::model::{
+    CommitSummary, ImportDocument, NewCommit, OpenSnapshot, PathSegment, UpdateAttrs,
+};
 use super::path::plan_path;
 
 /// A single version-controlled document backed by SQLite.
@@ -66,13 +68,13 @@ impl VcsDocument {
         open_existing(path)
     }
 
-    /// Import a version-1 `SerializedDocumentContext` JSON object into an
-    /// in-memory SQLite document. This keeps `.orz` files readable while the
-    /// runtime uses SQLite everywhere.
-    pub fn import(document: &Value) -> Result<Self, String> {
+    /// Import normalized legacy history into an in-memory SQLite document.
+    /// The frontend owns the legacy JSON interpretation and repair rules; this
+    /// only performs the bulk insert and derived-column updates.
+    pub fn import(document: ImportDocument) -> Result<Self, String> {
         let conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
         ensure_schema(&conn).map_err(|e| e.to_string())?;
-        let (id, initial) = import_document_into(&conn, document)?;
+        let (id, initial) = import_document_into(&conn, &document)?;
 
         Ok(Self {
             id,
@@ -262,94 +264,73 @@ fn open_existing(path: &str) -> Result<VcsDocument, String> {
 
 pub(super) fn import_document_into(
     conn: &Connection,
-    document: &Value,
+    document: &ImportDocument,
 ) -> Result<(String, String), String> {
-    let source = document.get("source").cloned().unwrap_or(Value::Null);
-    let target = document.get("target").cloned().unwrap_or(Value::Null);
-    let chats = document
-        .get("chats")
-        .cloned()
-        .unwrap_or_else(|| Value::Array(vec![]));
-    let vc = document.get("vc").cloned().unwrap_or(Value::Null);
-    let initial = vc
-        .get("initialCommit")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "legacy archive has no initial commit".to_string())?
-        .to_string();
-    let commits = vc
-        .get("commits")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-
+    let initial = document.initial_commit.as_str();
     let timestamp = now_ms();
-    insert_root(conn, &initial, timestamp).map_err(|e| e.to_string())?;
+    insert_root(conn, initial, timestamp).map_err(|e| e.to_string())?;
 
-    let known: std::collections::HashSet<String> = commits
+    // The frontend has already deduplicated ids and repaired unknown parents.
+    // Validate the payload so a malformed import fails loudly instead of
+    // silently producing a disconnected graph.
+    let known: std::collections::HashSet<&str> = document
+        .commits
         .iter()
-        .filter_map(|c| c.get("id").and_then(Value::as_str).map(str::to_string))
-        .chain(std::iter::once(initial.clone()))
+        .map(|c| c.id.as_str())
+        .chain(std::iter::once(initial))
         .collect();
 
-    for commit in &commits {
-        let id = commit
-            .get("id")
-            .and_then(Value::as_str)
-            .ok_or_else(|| "legacy commit has no id".to_string())?;
-        if id == initial {
+    for commit in &document.commits {
+        if commit.id == initial {
             continue;
         }
-        let kind = commit
-            .get("type")
-            .and_then(Value::as_str)
-            .unwrap_or("delta");
-        let mut parent = commit
-            .get("parent")
-            .and_then(Value::as_str)
-            .map_or_else(|| initial.clone(), str::to_string);
-        if !known.contains(&parent) {
-            parent = initial.clone();
+        if commit.kind != "delta" && commit.kind != "merge" {
+            return Err(format!(
+                "commit {} has invalid kind {}",
+                commit.id, commit.kind
+            ));
         }
-        let attrs: CommitAttrs = commit
-            .get("attrs")
-            .cloned()
-            .map(serde_json::from_value)
-            .transpose()
-            .map_err(|e| e.to_string())?
-            .unwrap_or_default();
+        if !known.contains(commit.parent.as_str()) {
+            return Err(format!(
+                "commit {} has unknown parent {}",
+                commit.id, commit.parent
+            ));
+        }
         let source_steps = commit
-            .get("source")
+            .source
+            .as_ref()
             .map(serde_json::to_string)
             .transpose()
             .map_err(|e| e.to_string())?;
         let target_steps = commit
-            .get("target")
+            .target
+            .as_ref()
             .map(serde_json::to_string)
             .transpose()
             .map_err(|e| e.to_string())?;
 
         conn.execute(
-            "INSERT OR IGNORE INTO commits
+            "INSERT INTO commits
                 (id, kind, parent_id, timestamp, label, current_cluster,
                  file_saved, selection_set, depth, source_steps, target_steps)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9, ?10)",
             params![
-                id,
-                kind,
-                parent,
-                attrs.timestamp,
-                attrs.label,
-                attrs.current_cluster,
-                i64::from(attrs.file_saved),
-                i64::from(attrs.selection_set),
+                commit.id,
+                commit.kind,
+                commit.parent,
+                commit.attrs.timestamp,
+                commit.attrs.label,
+                commit.attrs.current_cluster,
+                i64::from(commit.attrs.file_saved),
+                i64::from(commit.attrs.selection_set),
                 source_steps,
                 target_steps
             ],
         )
         .map_err(|e| e.to_string())?;
         conn.execute(
-            "INSERT OR IGNORE INTO commit_parent (child_id, parent_id, position) VALUES (?1, ?2, 0)",
-            params![id, parent],
+            "INSERT INTO commit_parent (child_id, parent_id, position) VALUES (?1, ?2, 0)",
+            params![commit.id, commit.parent],
         )
         .map_err(|e| e.to_string())?;
     }
@@ -373,15 +354,12 @@ pub(super) fn import_document_into(
     )
     .map_err(|e| e.to_string())?;
 
-    let requested_current = document
-        .get("currentCommit")
-        .and_then(Value::as_str)
-        .unwrap_or(&initial)
-        .to_string();
+    // The frontend normally supplies a valid current commit; keep a small
+    // fallback so opening an imported document never fails on this alone.
     let current: String = conn
         .query_row(
             "SELECT id FROM commits WHERE id = ?1",
-            params![requested_current],
+            params![&document.current_commit],
             |r| r.get(0),
         )
         .optional()
@@ -392,7 +370,7 @@ pub(super) fn import_document_into(
                 [],
                 |r| r.get(0),
             )
-            .unwrap_or(initial.clone())
+            .unwrap_or_else(|_| initial.to_string())
         });
 
     let doc_id = new_id();
@@ -405,15 +383,15 @@ pub(super) fn import_document_into(
             doc_id,
             initial,
             current,
-            serde_json::to_string(&source).unwrap_or_else(|_| "null".into()),
-            serde_json::to_string(&target).unwrap_or_else(|_| "null".into()),
-            serde_json::to_string(&chats).unwrap_or_else(|_| "[]".into()),
+            serde_json::to_string(&document.source).unwrap_or_else(|_| "null".into()),
+            serde_json::to_string(&document.target).unwrap_or_else(|_| "null".into()),
+            serde_json::to_string(&document.chats).unwrap_or_else(|_| "[]".into()),
             timestamp
         ],
     )
     .map_err(|e| e.to_string())?;
 
-    Ok((doc_id, initial))
+    Ok((doc_id, initial.to_string()))
 }
 
 pub(super) fn append_commit_into(

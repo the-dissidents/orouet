@@ -41,6 +41,30 @@ pub struct NewCommit {
     pub target: Option<Value>,
 }
 
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportCommit {
+    pub id: String,
+    pub parent: String,
+    pub kind: String,
+    pub attrs: CommitAttrs,
+    #[serde(default)]
+    pub source: Option<Value>,
+    #[serde(default)]
+    pub target: Option<Value>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportDocument {
+    pub initial_commit: String,
+    pub current_commit: String,
+    pub source: Value,
+    pub target: Value,
+    pub chats: Value,
+    pub commits: Vec<ImportCommit>,
+}
+
 #[derive(Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAttrs {

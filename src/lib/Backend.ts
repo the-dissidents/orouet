@@ -55,6 +55,24 @@ export type VcsNewCommit = {
     target?: unknown;
 };
 
+export type VcsImportCommit = {
+    id: string;
+    parent: string;
+    kind: 'delta' | 'merge';
+    attrs: VcsCommitAttrs;
+    source?: unknown;
+    target?: unknown;
+};
+
+export type VcsImportDocument = {
+    initialCommit: string;
+    currentCommit: string;
+    source: unknown;
+    target: unknown;
+    chats: unknown;
+    commits: VcsImportCommit[];
+};
+
 export const VcsBackend = {
     async create(
         source: unknown, target: unknown, chats: unknown, path?: string,
@@ -68,7 +86,7 @@ export const VcsBackend = {
         return await invoke<VcsSnapshot>('vcs_open', {path});
     },
 
-    async importLegacy(document: unknown) {
+    async importLegacy(document: VcsImportDocument) {
         return await invoke<VcsSnapshot>('vcs_import', {document});
     },
 

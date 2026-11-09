@@ -8,6 +8,7 @@ import * as z from "zod/v4-mini";
 import { LanguageCodes, type LanguageCode } from "../data/LocaleData";
 import { ChatSession, SerializedChatSession } from "./llm/ChatSession.svelte";
 import { VcsBackend, type VcsSnapshot } from "./Backend";
+import { normalizeLegacyImport, type LegacyDocument } from "./LegacyImport";
 import { SqliteVersionControl } from "./SqliteVersionControl";
 
 export const LocaleId = z.tuple([
@@ -185,10 +186,12 @@ export class DocumentContext {
     }
 
     static async importLegacy(s: SerializedDocumentContextJSON) {
-        // Validate with the existing schema (and its repair warnings) before
-        // handing the raw JSON to Rust for one-time import.
+        // Validate with the existing schema, then normalize/repair the legacy
+        // JSON here before sending a typed bulk-import payload to Rust.
         z.decode(SerializedDocumentContext, s);
-        return await DocumentContext.#fromSnapshot(await VcsBackend.importLegacy(s));
+        const { document, warnings } = normalizeLegacyImport(s as unknown as LegacyDocument);
+        for (const warning of warnings) console.warn(warning);
+        return await DocumentContext.#fromSnapshot(await VcsBackend.importLegacy(document));
     }
 
     static async #fromSnapshot(snapshot: VcsSnapshot) {

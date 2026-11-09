@@ -4,7 +4,9 @@ use serde_json::Value;
 use tauri::State;
 
 use super::document::VcsDocument;
-use super::model::{CommitSummary, NewCommit, OpenSnapshot, PathSegment, UpdateAttrs};
+use super::model::{
+    CommitSummary, ImportDocument, NewCommit, OpenSnapshot, PathSegment, UpdateAttrs,
+};
 
 /// IPC-side state for the single currently-open document.
 pub struct VcsState {
@@ -60,8 +62,11 @@ pub fn vcs_open(state: State<'_, VcsState>, path: &str) -> Result<OpenSnapshot, 
 
 #[tauri::command(async)]
 #[allow(clippy::needless_pass_by_value)]
-pub fn vcs_import(state: State<'_, VcsState>, document: Value) -> Result<OpenSnapshot, String> {
-    let doc = VcsDocument::import(&document)?;
+pub fn vcs_import(
+    state: State<'_, VcsState>,
+    document: ImportDocument,
+) -> Result<OpenSnapshot, String> {
+    let doc = VcsDocument::import(document)?;
     let result = doc.snapshot()?;
     *state.open.lock().map_err(|_| "VCS state poisoned")? = Some(doc);
     Ok(result)

@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use super::db::{ensure_schema, insert_document, insert_root, load_summaries};
 use super::document::{append_commit_into, import_document_into};
-use super::model::{CommitAttrs, NewCommit};
+use super::model::{CommitAttrs, ImportCommit, ImportDocument, NewCommit};
 use super::path::plan_path;
 
 fn add_delta(conn: &Connection, id: &str, parent: &str, depth: i64) {
@@ -64,33 +64,32 @@ fn schema_and_paths() {
 }
 
 #[test]
-fn legacy_import_repairs_and_indexes() {
-    use serde_json::json;
-
+fn import_bulk_inserts_and_indexes() {
     let conn = Connection::open_in_memory().unwrap();
     ensure_schema(&conn).unwrap();
-    let document = json!({
-        "version": 1,
-        "source": null,
-        "target": null,
-        "currentCommit": "c2",
-        "chats": [],
-        "vc": {
-            "version": 1,
-            "initialCommit": "initial",
-            "commits": [
-                { "type": "delta", "id": "c1", "parent": "initial",
-                  "attrs": { "timestamp": 1 },
-                  "source": { "steps": [], "invertedSteps": [] } },
-                { "type": "delta", "id": "c2", "parent": "c1",
-                  "attrs": { "timestamp": 2 },
-                  "source": { "steps": [], "invertedSteps": [] } },
-                // Unknown parent must be repaired to the initial commit.
-                { "type": "delta", "id": "orphan", "parent": "missing",
-                  "attrs": { "timestamp": 3 } }
-            ]
-        }
-    });
+    let commit = |id: &str, parent: &str, timestamp: i64| ImportCommit {
+        id: id.into(),
+        parent: parent.into(),
+        kind: "delta".into(),
+        attrs: CommitAttrs {
+            timestamp,
+            ..Default::default()
+        },
+        source: Some(serde_json::json!({ "steps": [], "invertedSteps": [] })),
+        target: None,
+    };
+    let document = ImportDocument {
+        initial_commit: "initial".into(),
+        current_commit: "c2".into(),
+        source: Value::Null,
+        target: Value::Null,
+        chats: Value::Array(vec![]),
+        commits: vec![
+            commit("c1", "initial", 1),
+            commit("c2", "c1", 2),
+            commit("b1", "initial", 3),
+        ],
+    };
 
     let (doc_id, initial) = import_document_into(&conn, &document).unwrap();
     assert!(!doc_id.is_empty());
@@ -118,17 +117,36 @@ fn legacy_import_repairs_and_indexes() {
     assert_eq!(child_count, 2);
     assert_eq!(first_child, "c1");
 
-    let path = plan_path(&conn, "c2", "orphan").unwrap();
+    let path = plan_path(&conn, "c2", "b1").unwrap();
     assert_eq!(
         path.iter()
             .map(|s| (s.id.as_str(), s.direction.as_str()))
             .collect::<Vec<_>>(),
-        vec![
-            ("c2", "backward"),
-            ("c1", "backward"),
-            ("orphan", "forward")
-        ]
+        vec![("c2", "backward"), ("c1", "backward"), ("b1", "forward")]
     );
+}
+
+#[test]
+fn import_rejects_unknown_parent() {
+    let conn = Connection::open_in_memory().unwrap();
+    ensure_schema(&conn).unwrap();
+    let document = ImportDocument {
+        initial_commit: "initial".into(),
+        current_commit: "initial".into(),
+        source: Value::Null,
+        target: Value::Null,
+        chats: Value::Array(vec![]),
+        commits: vec![ImportCommit {
+            id: "orphan".into(),
+            parent: "missing".into(),
+            kind: "delta".into(),
+            attrs: CommitAttrs::default(),
+            source: None,
+            target: None,
+        }],
+    };
+
+    assert!(import_document_into(&conn, &document).is_err());
 }
 
 #[test]
