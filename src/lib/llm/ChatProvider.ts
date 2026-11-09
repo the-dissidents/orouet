@@ -1,42 +1,9 @@
 import * as z from 'zod/v4-mini';
 import { DeepSeekProvider } from './DeepSeek';
 import { DummyProvider } from './Dummy';
+import type { Message } from './ChatSchema';
 
-export const AssistantMessage = z.object({
-    role: z.literal('assistant'),
-    modelName: z.string(),
-    reasoning: z.optional(z.string()),
-    content: z.string(),
-    originalContent: z.optional(z.string()),
-    // toolCalls: z.object({
-    //     name: z.string(),
-    //     args: z.string()
-    // }),
-});
-
-export const UserMessage = z.object({
-    role: z.enum(['user']),
-    content: z.string(),
-});
-
-export const SystemMessage = z.object({
-    role: z.literal('system'),
-    data: z.optional(z.unknown()),
-    message: z.string(),
-});
-
-export const Message = z.union([
-    AssistantMessage,
-    UserMessage,
-    SystemMessage
-    // z.object({
-    //     role: z.literal('tool'),
-    //     id: z.string(),
-    //     content: z.string(),
-    // })
-]);
-
-export type Message = z.infer<typeof Message>;
+export type { Message } from './ChatSchema';
 
 // export type Tool<Z extends z.ZodMiniType = z.ZodMiniType> = {
 //     name: string,

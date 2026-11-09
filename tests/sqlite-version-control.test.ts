@@ -25,8 +25,8 @@ function snapshot(): VcsSnapshot {
         initialCommit: 'initial',
         currentCommit: 'c1',
         checkpointCommit: 'c1',
-        source: null,
-        target: null,
+        source: null as never,
+        target: null as never,
         chats: [],
         summaries: [
             {

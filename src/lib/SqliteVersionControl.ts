@@ -9,6 +9,7 @@ import type {
 } from "./VersionControl.svelte";
 import {
     VcsBackend,
+    type StepsJson,
     type VcsCommitAttrs,
     type VcsCommitSummary,
     type VcsPathSegment,
@@ -29,12 +30,7 @@ export type CommitSummary = {
     seq: number;
 };
 
-type WireSteps = {
-    steps: unknown[];
-    invertedSteps: unknown[];
-};
-
-function encodeSteps(steps?: Steps): WireSteps | undefined {
+function encodeSteps(steps?: Steps): StepsJson | undefined {
     return steps ? {
         steps: steps.steps.map((s) => s.toJSON()),
         invertedSteps: steps.invertedSteps.map((s) => s.toJSON()),

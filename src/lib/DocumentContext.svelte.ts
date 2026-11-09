@@ -3,29 +3,15 @@ import { Debug, range } from "./details/Util";
 import { Doc, Id, id, makeBlock, makeCluster, makeDoc, PaneSchema, type Block, type Cluster } from "./Schema";
 import { Commit, SerializedVersionControl, type DeltaCommit, type Docs, type Steps, type Transforms } from "./VersionControl.svelte";
 import { Step, Transform } from "prosemirror-transform";
-import { DefaultOptions, TextOptions } from "./TextOptions";
+import { DefaultOptions } from "./TextOptions";
 import * as z from "zod/v4-mini";
-import { LanguageCodes, type LanguageCode } from "../data/LocaleData";
 import { ChatSession, SerializedChatSession } from "./llm/ChatSession.svelte";
 import { VcsBackend, type VcsSnapshot } from "./Backend";
 import { normalizeLegacyImport, type LegacyDocument } from "./LegacyImport";
 import { SqliteVersionControl } from "./SqliteVersionControl";
+import { LocaleId, Text } from "./TextSchema";
 
-export const LocaleId = z.tuple([
-    z.nullable(z.enum(Object.keys(LanguageCodes) as LanguageCode[])),
-    z.nullable(z.string()),
-    z.nullable(z.string()),
-]);
-
-export type LocaleId = z.infer<typeof LocaleId>;
-
-export const Text = z.object({
-    content: Doc,
-    language: z._default(LocaleId, ['en', null, null]),
-    options: TextOptions
-});
-
-export type Text = z.infer<typeof Text>;
+export { LocaleId, Text };
 
 const SerializedDocumentContext = z.object({
     version: z.literal(1),
@@ -45,19 +31,6 @@ function transformToSteps(tr?: Transform): Steps | undefined {
             (s, i) => s.invert(tr!.docs[i])
         ).reverse()
     } : undefined;
-}
-
-type WireSteps = {
-    steps: unknown[];
-    invertedSteps: unknown[];
-};
-
-function wireSteps(v: unknown): WireSteps | undefined {
-    if (!v || typeof v !== 'object') return undefined;
-    const o = v as Partial<WireSteps>;
-    return Array.isArray(o.steps) && Array.isArray(o.invertedSteps)
-        ? { steps: o.steps, invertedSteps: o.invertedSteps }
-        : undefined;
 }
 
 export function balanceTargetClusters(source: Doc, targetTr: Transform) {
@@ -173,11 +146,7 @@ export class DocumentContext {
 
     static async createDemo(clusters: string[]) {
         const { source, target } = DocumentContext.#demoTexts(clusters);
-        const snapshot = await VcsBackend.create(
-            z.encode(Text, source),
-            z.encode(Text, target),
-            [],
-        );
+        const snapshot = await VcsBackend.create(source, target, []);
         return DocumentContext.#fromSnapshot(snapshot);
     }
 
@@ -195,11 +164,9 @@ export class DocumentContext {
     }
 
     static async #fromSnapshot(snapshot: VcsSnapshot) {
-        const source = z.decode(Text, snapshot.source as any);
-        const target = z.decode(Text, snapshot.target as any);
-        const chats = Array.isArray(snapshot.chats)
-            ? snapshot.chats.map((x) => ChatSession.deserialize(x as SerializedChatSession))
-            : [];
+        const source = snapshot.source;
+        const target = snapshot.target;
+        const chats = snapshot.chats.map((x) => ChatSession.deserialize(x));
         const vc = new SqliteVersionControl(snapshot);
         const ctx = new DocumentContext(
             source,
@@ -332,14 +299,12 @@ export class DocumentContext {
         };
 
         for (const segment of segments) {
-            const source = wireSteps(segment.source);
-            const target = wireSteps(segment.target);
             const sourceSteps = segment.direction === 'backward'
-                ? source?.invertedSteps
-                : source?.steps;
+                ? segment.source?.invertedSteps
+                : segment.source?.steps;
             const targetSteps = segment.direction === 'backward'
-                ? target?.invertedSteps
-                : target?.steps;
+                ? segment.target?.invertedSteps
+                : segment.target?.steps;
 
             for (const raw of sourceSteps ?? [])
                 result.source.step(Step.fromJSON(PaneSchema, raw));
@@ -355,8 +320,8 @@ export class DocumentContext {
         await VcsBackend.saveCheckpoint(
             this.docId,
             this.#currentCommit,
-            z.encode(Text, this.source),
-            z.encode(Text, this.target),
+            this.source,
+            this.target,
             this.#chats.map((x) => x.serialize()),
         );
         this.#vc.addAttr({ fileSaved: true });
@@ -368,8 +333,8 @@ export class DocumentContext {
         await VcsBackend.saveCheckpoint(
             this.docId,
             this.#currentCommit,
-            z.encode(Text, this.source),
-            z.encode(Text, this.target),
+            this.source,
+            this.target,
             this.#chats.map((x) => x.serialize()),
         );
         await VcsBackend.saveAs(this.docId, path);

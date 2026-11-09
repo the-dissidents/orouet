@@ -1,5 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getPassword, setPassword, deletePassword } from "tauri-plugin-keyring-api";
+import * as z from "zod/v4-mini";
+
+import { Text } from "./TextSchema";
+import { SerializedChatSession } from "./llm/ChatSchema";
 
 export const Backend = {
     async saveCompressed(path: string, content: string) {
@@ -11,86 +15,130 @@ export const Backend = {
     },
 }
 
-export type VcsCommitAttrs = {
-    timestamp: number;
-    label?: string;
-    currentCluster?: string;
-    fileSaved?: boolean;
-    selectionSet?: boolean;
-};
+const StepJson = z.looseObject({
+    stepType: z.string(),
+});
 
-export type VcsCommitSummary = {
-    id: string;
-    parent?: string;
-    type: 'root' | 'delta' | 'merge';
-    attrs: VcsCommitAttrs;
-    seq: number;
-};
+const StepsJsonSchema = z.object({
+    steps: z.array(StepJson),
+    invertedSteps: z.array(StepJson),
+});
 
-export type VcsSnapshot = {
-    docId: string;
-    path?: string | null;
-    initialCommit: string;
-    currentCommit: string;
-    checkpointCommit: string;
-    source: unknown;
-    target: unknown;
-    chats: unknown;
-    summaries: VcsCommitSummary[];
-};
+export type StepsJson = z.infer<typeof StepsJsonSchema>;
 
-export type VcsPathSegment = {
-    id: string;
-    direction: 'forward' | 'backward';
-    source?: unknown;
-    target?: unknown;
-};
+const VcsCommitAttrsSchema = z.object({
+    timestamp: z.number(),
+    label: z.optional(z.string()),
+    currentCluster: z.optional(z.string()),
+    fileSaved: z.optional(z.boolean()),
+    selectionSet: z.optional(z.boolean()),
+});
 
-export type VcsNewCommit = {
-    id: string;
-    parent: string;
-    attrs: VcsCommitAttrs;
-    source?: unknown;
-    target?: unknown;
-};
+export type VcsCommitAttrs = z.infer<typeof VcsCommitAttrsSchema>;
 
-export type VcsImportCommit = {
-    id: string;
-    parent: string;
-    kind: 'delta' | 'merge';
-    attrs: VcsCommitAttrs;
-    source?: unknown;
-    target?: unknown;
-};
+const VcsCommitSummarySchema = z.object({
+    id: z.string(),
+    parent: z.optional(z.string()),
+    type: z.enum(['root', 'delta', 'merge']),
+    attrs: VcsCommitAttrsSchema,
+    seq: z.number(),
+});
 
-export type VcsImportDocument = {
-    initialCommit: string;
-    currentCommit: string;
-    source: unknown;
-    target: unknown;
-    chats: unknown;
-    commits: VcsImportCommit[];
-};
+export type VcsCommitSummary = z.infer<typeof VcsCommitSummarySchema>;
+
+const VcsSnapshotSchema = z.object({
+    docId: z.string(),
+    path: z.optional(z.nullable(z.string())),
+    initialCommit: z.string(),
+    currentCommit: z.string(),
+    checkpointCommit: z.string(),
+    source: Text,
+    target: Text,
+    chats: z.array(SerializedChatSession),
+    summaries: z.array(VcsCommitSummarySchema),
+});
+
+export type VcsSnapshot = z.infer<typeof VcsSnapshotSchema>;
+
+const VcsPathSegmentSchema = z.object({
+    id: z.string(),
+    direction: z.enum(['forward', 'backward']),
+    source: z.optional(StepsJsonSchema),
+    target: z.optional(StepsJsonSchema),
+});
+
+export type VcsPathSegment = z.infer<typeof VcsPathSegmentSchema>;
+
+const VcsPathSegmentsSchema = z.array(VcsPathSegmentSchema);
+
+const VcsNewCommitSchema = z.object({
+    id: z.string(),
+    parent: z.string(),
+    attrs: VcsCommitAttrsSchema,
+    source: z.optional(StepsJsonSchema),
+    target: z.optional(StepsJsonSchema),
+});
+
+export type VcsNewCommit = z.input<typeof VcsNewCommitSchema>;
+
+const VcsImportCommitSchema = z.object({
+    id: z.string(),
+    parent: z.string(),
+    kind: z.enum(['delta', 'merge']),
+    attrs: VcsCommitAttrsSchema,
+    source: z.optional(StepsJsonSchema),
+    target: z.optional(StepsJsonSchema),
+});
+
+export type VcsImportCommit = z.input<typeof VcsImportCommitSchema>;
+
+const VcsImportDocumentSchema = z.object({
+    initialCommit: z.string(),
+    currentCommit: z.string(),
+    source: Text,
+    target: Text,
+    chats: z.array(SerializedChatSession),
+    commits: z.array(VcsImportCommitSchema),
+});
+
+export type VcsImportDocument = z.input<typeof VcsImportDocumentSchema>;
 
 export const VcsBackend = {
     async create(
-        source: unknown, target: unknown, chats: unknown, path?: string,
+        source: Text,
+        target: Text,
+        chats: SerializedChatSession[],
+        path?: string,
     ) {
-        return await invoke<VcsSnapshot>('vcs_create', {
-            path: path ?? null, source, target, chats,
+        const data = await invoke<z.input<typeof VcsSnapshotSchema>>('vcs_create', {
+            path: path ?? null,
+            source: z.encode(Text, source),
+            target: z.encode(Text, target),
+            chats,
         });
+        return z.decode(VcsSnapshotSchema, data);
     },
 
     async open(path: string) {
-        return await invoke<VcsSnapshot>('vcs_open', {path});
+        const data = await invoke<z.input<typeof VcsSnapshotSchema>>('vcs_open', {path});
+        return z.decode(VcsSnapshotSchema, data);
     },
 
     async importLegacy(document: VcsImportDocument) {
-        return await invoke<VcsSnapshot>('vcs_import', {document});
+        const decoded = z.decode(VcsImportDocumentSchema, document);
+        const data = await invoke<z.input<typeof VcsSnapshotSchema>>('vcs_import', {
+            document: {
+                ...decoded,
+                source: z.encode(Text, decoded.source),
+                target: z.encode(Text, decoded.target),
+            },
+        });
+        return z.decode(VcsSnapshotSchema, data);
     },
 
     async append(docId: string, commit: VcsNewCommit) {
-        return await invoke<VcsCommitSummary>('vcs_append', {docId, commit});
+        const data = await invoke<z.input<typeof VcsCommitSummarySchema>>('vcs_append', {docId, commit});
+        return z.decode(VcsCommitSummarySchema, data);
     },
 
     async updateAttrs(
@@ -106,25 +154,32 @@ export const VcsBackend = {
     async saveCheckpoint(
         docId: string,
         currentCommit: string,
-        source: unknown,
-        target: unknown,
-        chats: unknown,
+        source: Text,
+        target: Text,
+        chats: SerializedChatSession[],
     ) {
         await invoke<void>('vcs_save_checkpoint', {
-            docId, currentCommit, source, target, chats,
+            docId,
+            currentCommit,
+            source: z.encode(Text, source),
+            target: z.encode(Text, target),
+            chats,
         });
     },
 
     async planPath(docId: string, from: string, to: string) {
-        return await invoke<VcsPathSegment[]>('vcs_plan_path', {docId, from, to});
+        const data = await invoke<z.input<typeof VcsPathSegmentsSchema>>('vcs_plan_path', {docId, from, to});
+        return z.decode(VcsPathSegmentsSchema, data);
     },
 
     async count(docId: string) {
-        return await invoke<number>('vcs_count', {docId});
+        const data = await invoke<number>('vcs_count', {docId});
+        return z.decode(z.number(), data);
     },
 
     async saveAs(docId: string, path: string) {
-        return await invoke<VcsSnapshot>('vcs_save_as', {docId, path});
+        const data = await invoke<z.input<typeof VcsSnapshotSchema>>('vcs_save_as', {docId, path});
+        return z.decode(VcsSnapshotSchema, data);
     },
 }
 

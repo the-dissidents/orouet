@@ -1,4 +1,11 @@
-import type { VcsCommitAttrs, VcsImportCommit, VcsImportDocument } from "./Backend";
+import type {
+    StepsJson,
+    VcsCommitAttrs,
+    VcsImportCommit,
+    VcsImportDocument,
+} from "./Backend";
+import type { TextJSON } from "./TextSchema";
+import type { SerializedChatSession } from "./llm/ChatSchema";
 
 /**
  * Loose shape of a version-1 `.orz` document. The frontend intentionally
@@ -11,8 +18,8 @@ export type LegacyCommit = {
     id: string;
     parent?: string;
     attrs: VcsCommitAttrs;
-    source?: unknown;
-    target?: unknown;
+    source?: StepsJson;
+    target?: StepsJson;
 };
 
 export type LegacyDocument = {
@@ -92,9 +99,9 @@ export function normalizeLegacyImport(source: LegacyDocument): NormalizedLegacyI
         document: {
             initialCommit: initial,
             currentCommit,
-            source: source.source ?? null,
-            target: source.target ?? null,
-            chats: source.chats ?? [],
+            source: source.source as TextJSON,
+            target: source.target as TextJSON,
+            chats: (source.chats ?? []) as SerializedChatSession[],
             commits,
         },
         warnings,

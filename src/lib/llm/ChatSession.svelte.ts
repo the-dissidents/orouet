@@ -1,30 +1,17 @@
-import * as z from 'zod/v4-mini';
-import { AssistantMessage, SystemMessage, UserMessage, type ChatProvider } from './ChatProvider';
+import type { ChatProvider } from './ChatProvider';
+import {
+    MessageWithMetadata,
+    ResponseMetadata,
+    ResponseState,
+    SerializedChatSession,
+} from './ChatSchema';
 
-export const ResponseState = z.enum(['connecting', 'reasoning', 'responding', 'ok', 'error']);
-export type ResponseState = z.infer<typeof ResponseState>;
-
-export const ResponseMetadata = z.object({
-    state: z._default(ResponseState, 'ok'),
-    thinkingTime: z._default(z.number(), 0),
-    totalTime: z._default(z.number(), 0),
-});
-
-export const MessageWithMetadata = z.union([
-    z.extend(AssistantMessage, ResponseMetadata.shape),
-    UserMessage,
-    SystemMessage
-]);
-
-export type MessageWithMetadata = z.infer<typeof MessageWithMetadata>;
-
-export const SerializedChatSession = z.object({
-    title: z.string(),
-    messages: z.array(MessageWithMetadata),
-    // providerInfo: ProviderInfo
-});
-
-export type SerializedChatSession = z.infer<typeof SerializedChatSession>;
+export {
+    MessageWithMetadata,
+    ResponseMetadata,
+    ResponseState,
+    SerializedChatSession,
+};
 
 export class ChatSession {
     title = $state<string>('');
