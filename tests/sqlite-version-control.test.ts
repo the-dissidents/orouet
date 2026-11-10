@@ -21,19 +21,20 @@ const id = <T>(value: string) => value as Id<T>;
 function snapshot(): VcsSnapshot {
     return {
         docId: 'doc',
-        initialCommit: id<Commit>('initial'),
-        currentCommit: id<Commit>('c1'),
-        checkpointCommit: id<Commit>('c1'),
+        initialCommit: id<Commit>('1'),
+        currentCommit: id<Commit>('2'),
+        checkpointCommit: id<Commit>('2'),
+        nextSeq: 3,
         source: null as never,
         target: null as never,
         chats: [],
         summaries: [
             {
-                id: id<Commit>('initial'), type: 'root', seq: 1,
+                id: id<Commit>('1'), type: 'root', seq: 1,
                 attrs: { timestamp: 0 },
             },
             {
-                id: id<Commit>('c1'), parent: id<Commit>('initial'), type: 'delta', seq: 2,
+                id: id<Commit>('2'), parent: id<Commit>('1'), type: 'delta', seq: 2,
                 attrs: { timestamp: 1 },
             },
         ],
@@ -57,12 +58,12 @@ describe("SqliteVersionControl", () => {
     it("loads summaries and keeps the initial commit object-less", () => {
         const vc = new SqliteVersionControl(snapshot());
 
-        expect(vc.sortedCommits).toEqual(['initial', 'c1']);
+        expect(vc.sortedCommits).toEqual(['1', '2']);
         expect(vc.commitCount).toBe(1);
         expect(vc.get(vc.initialCommit)).toBeUndefined();
-        expect(vc.get(id<Commit>('c1'))).toMatchObject({
+        expect(vc.get(id<Commit>('2'))).toMatchObject({
             type: 'delta',
-            parent: 'initial',
+            parent: '1',
             attrs: { timestamp: 1 },
         });
     });
@@ -72,11 +73,11 @@ describe("SqliteVersionControl", () => {
         const changes: string[] = [];
         vc.onChanged.bind({}, (change) => { changes.push(change.type); });
 
-        vc.append(commit('c2', 'c1', 2));
+        vc.append(commit('3', '2', 2));
 
         // The graph/editor can see the new commit before IPC completes.
-        expect(vc.sortedCommits).toEqual(['initial', 'c1', 'c2']);
-        expect(vc.forwardLinks(id<Commit>('c1'))).toEqual(['c2']);
+        expect(vc.sortedCommits).toEqual(['1', '2', '3']);
+        expect(vc.forwardLinks(id<Commit>('2'))).toEqual(['3']);
         expect(changes).toEqual(['add']);
         expect(mocks.append).not.toHaveBeenCalled();
 
@@ -84,8 +85,8 @@ describe("SqliteVersionControl", () => {
 
         expect(mocks.append).toHaveBeenCalledOnce();
         expect(mocks.append).toHaveBeenCalledWith('doc', {
-            id: 'c2',
-            parent: 'c1',
+            id: '3',
+            parent: '2',
             attrs: { timestamp: 2 },
         });
     });
@@ -94,21 +95,21 @@ describe("SqliteVersionControl", () => {
         const vc = new SqliteVersionControl(snapshot());
 
         expect(vc.addAttr({ fileSaved: true })).toBe(true);
-        expect(vc.get(id<Commit>('c1'))?.attrs.fileSaved).toBe(true);
+        expect(vc.get(id<Commit>('2'))?.attrs.fileSaved).toBe(true);
 
-        vc.setCurrent(id<Commit>('initial'));
+        vc.setCurrent(id<Commit>('1'));
         await vc.flush();
 
-        expect(mocks.updateAttrs).toHaveBeenCalledWith('doc', 'c1', { fileSaved: true });
-        expect(mocks.setCurrent).toHaveBeenCalledWith('doc', 'initial');
+        expect(mocks.updateAttrs).toHaveBeenCalledWith('doc', '2', { fileSaved: true });
+        expect(mocks.setCurrent).toHaveBeenCalledWith('doc', '1');
     });
 
     it("delegates path planning to the backend", async () => {
         const vc = new SqliteVersionControl(snapshot());
-        const path = [{ id: 'c2', direction: 'forward' }] as never;
+        const path = [{ id: '3', direction: 'forward' }] as never;
         mocks.planPath.mockResolvedValueOnce(path);
 
-        await expect(vc.planPath(id<Commit>('c1'), id<Commit>('c2')))
+        await expect(vc.planPath(id<Commit>('2'), id<Commit>('3')))
             .resolves.toEqual(path);
     });
 });

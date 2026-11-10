@@ -28,9 +28,9 @@ pub(super) fn ensure_schema(conn: &Connection) -> rusqlite::Result<()> {
 
         CREATE TABLE IF NOT EXISTS document (
             id                TEXT PRIMARY KEY,
-            initial_commit    TEXT NOT NULL,
-            current_commit    TEXT NOT NULL,
-            checkpoint_commit TEXT NOT NULL,
+            initial_commit    INTEGER NOT NULL,
+            current_commit    INTEGER NOT NULL,
+            checkpoint_commit INTEGER NOT NULL,
             source_json       TEXT NOT NULL,
             target_json       TEXT NOT NULL,
             chats_json        TEXT NOT NULL DEFAULT '[]',
@@ -40,9 +40,8 @@ pub(super) fn ensure_schema(conn: &Connection) -> rusqlite::Result<()> {
 
         CREATE TABLE IF NOT EXISTS commits (
             seq              INTEGER PRIMARY KEY AUTOINCREMENT,
-            id               TEXT NOT NULL UNIQUE,
             kind             TEXT NOT NULL,
-            parent_id        TEXT,
+            parent_id        INTEGER,
             timestamp        INTEGER NOT NULL,
             label            TEXT,
             current_cluster  TEXT,
@@ -62,18 +61,18 @@ pub(super) fn document_exists(conn: &Connection) -> rusqlite::Result<bool> {
     Ok(count > 0)
 }
 
-pub(super) fn insert_root(conn: &Connection, id: &str, timestamp: i64) -> rusqlite::Result<()> {
+pub(super) fn insert_root(conn: &Connection, timestamp: i64) -> rusqlite::Result<i64> {
     conn.execute(
-        "INSERT INTO commits (id, kind, parent_id, timestamp) VALUES (?1, 'root', NULL, ?2)",
-        params![id, timestamp],
+        "INSERT INTO commits (kind, parent_id, timestamp) VALUES ('root', NULL, ?1)",
+        params![timestamp],
     )?;
-    Ok(())
+    Ok(conn.last_insert_rowid())
 }
 
 pub(super) fn insert_document(
     conn: &Connection,
     id: &str,
-    initial: &str,
+    initial: i64,
     source: &Value,
     target: &Value,
     chats: &Value,
@@ -97,9 +96,9 @@ pub(super) fn insert_document(
 }
 
 fn commit_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<VcsCommit> {
-    let id: String = row.get("id")?;
-    let kind: String = row.get("kind")?;
     let seq: i64 = row.get("seq")?;
+    let id = seq.to_string();
+    let kind: String = row.get("kind")?;
     let attrs = CommitAttrs {
         timestamp: row.get("timestamp")?,
         label: row.get("label")?,
@@ -111,7 +110,7 @@ fn commit_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<VcsCommit> {
         "root" => Ok(VcsCommit::Root { id, attrs, seq }),
         "delta" => Ok(VcsCommit::Delta {
             id,
-            parent: row.get("parent_id")?,
+            parent: row.get::<_, i64>("parent_id")?.to_string(),
             attrs,
             seq,
         }),
@@ -122,7 +121,7 @@ fn commit_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<VcsCommit> {
 
 pub(super) fn load_summaries(conn: &Connection) -> rusqlite::Result<Vec<VcsCommit>> {
     let mut stmt = conn.prepare(
-        "SELECT seq, id, kind, parent_id, timestamp, label, current_cluster,
+        "SELECT seq, kind, parent_id, timestamp, label, current_cluster,
                 file_saved, selection_set
          FROM commits ORDER BY seq ASC",
     )?;

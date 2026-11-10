@@ -5,7 +5,7 @@ import type { Commit, ReadonlyVersionControl } from "$lib/Backend";
 import { GraphLayoutCache } from "./Cache";
 
 export type PositionedNode = {
-    id: Id<Commit>,
+    commit: Commit,
     x: number, y: number,
     maxX: number,
 };
@@ -182,7 +182,7 @@ export function graphLayout(
             if (child.topmostY < topmostY) topmostY = child.topmostY;
 
         const node: Node = {
-            id, x: 0, y, maxX: 0,
+            commit: vc.get(id)!, x: 0, y, maxX: 0,
             widths, dense, topmostY, deltaX: 0, children,
         };
         nodeMap.set(id, node);

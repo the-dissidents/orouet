@@ -149,15 +149,12 @@
       </marker>
     </defs>
 
-    {#each layout.nodes as node (node.id)}
-    {@const commit = context.versionControl.get(node.id)}
+    {#each layout.nodes as node (node.commit.id)}
+    {@const commit = node.commit}
       <foreignObject width="100%" height={Y_STEP}
           x='0' y={(node.y-0.5) * Y_STEP + PADDING}>
-        <button tabindex="0" onclick={() => onClickRow(node.id, commit)}>
+        <button tabindex="0" onclick={() => onClickRow(commit.id, commit)}>
           <span class="label" style:padding-left='{(node.maxX + 1) * X_STEP + RADIUS + PADDING}px'>
-            <span class='hash'>
-              {node.id.substring(0, 7)}
-            </span>
             {#if commit}
               {formatAbsoluteDate(new Date(commit.attrs.timestamp))}
               {#if commit.attrs.label}
@@ -179,8 +176,8 @@
         d={generatePath(edge.type, edge.from.x, edge.from.y, edge.to.x, edge.to.y)} />
     {/each}
 
-    {#each layout.nodes as node (node.id)}
-      <circle class={{node: true, current: node.id == context.currentCommitId}} r={RADIUS}
+    {#each layout.nodes as node (node.commit.id)}
+      <circle class={{node: true, current: node.commit.id == context.currentCommitId}} r={RADIUS}
         cx={node.x * X_STEP + PADDING}
         cy={node.y * Y_STEP + PADDING} />
     {/each}

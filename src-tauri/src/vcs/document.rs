@@ -1,5 +1,7 @@
 #![allow(clippy::missing_errors_doc)]
 
+use std::collections::HashMap;
+
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::Value;
 use std::path::PathBuf;
@@ -14,7 +16,7 @@ use super::path::plan_path;
 pub struct VcsDocument {
     id: String,
     path: Option<PathBuf>,
-    initial_commit: String,
+    initial_commit: i64,
     conn: Connection,
 }
 
@@ -45,10 +47,9 @@ impl VcsDocument {
         ensure_schema(&conn).map_err(|e| e.to_string())?;
 
         let id = new_id();
-        let initial = new_id();
         let timestamp = now_ms();
-        insert_root(&conn, &initial, timestamp).map_err(|e| e.to_string())?;
-        insert_document(&conn, &id, &initial, source, target, chats, timestamp)
+        let initial = insert_root(&conn, timestamp).map_err(|e| e.to_string())?;
+        insert_document(&conn, &id, initial, source, target, chats, timestamp)
             .map_err(|e| e.to_string())?;
 
         Ok(Self {
@@ -89,8 +90,8 @@ impl VcsDocument {
                         r.get::<_, String>(0)?,
                         r.get::<_, String>(1)?,
                         r.get::<_, String>(2)?,
-                        r.get::<_, String>(3)?,
-                        r.get::<_, String>(4)?,
+                        r.get::<_, i64>(3)?,
+                        r.get::<_, i64>(4)?,
                     ))
                 },
             )
@@ -98,13 +99,20 @@ impl VcsDocument {
             .map_err(|e| e.to_string())?
             .ok_or_else(|| "document row is missing".to_string())?;
 
+        let next_seq: i64 = self
+            .conn
+            .query_row("SELECT COALESCE(MAX(seq), 0) + 1 FROM commits", [], |r| {
+                r.get(0)
+            })
+            .map_err(|e| e.to_string())?;
         let parse = |s: &str| serde_json::from_str::<Value>(s).unwrap_or(Value::Null);
         Ok(OpenSnapshot {
             doc_id: self.id.clone(),
             path: self.path.as_ref().map(|p| p.to_string_lossy().to_string()),
-            initial_commit: self.initial_commit.clone(),
-            current_commit: row.3,
-            checkpoint_commit: row.4,
+            initial_commit: self.initial_commit.to_string(),
+            current_commit: row.3.to_string(),
+            checkpoint_commit: row.4.to_string(),
+            next_seq,
             source: parse(&row.0),
             target: parse(&row.1),
             chats: parse(&row.2),
@@ -117,12 +125,13 @@ impl VcsDocument {
     }
 
     pub fn update_attrs(&self, id: &str, attrs: UpdateAttrs) -> Result<(), String> {
+        let seq = parse_seq(id)?;
         let conn = &self.conn;
         let (label, current_cluster, file_saved, selection_set) = conn
             .query_row(
                 "SELECT label, current_cluster, file_saved, selection_set
-                 FROM commits WHERE id = ?1",
-                params![id],
+                 FROM commits WHERE seq = ?1",
+                params![seq],
                 |r| {
                     Ok((
                         r.get::<_, Option<String>>(0)?,
@@ -139,13 +148,13 @@ impl VcsDocument {
         conn.execute(
             "UPDATE commits SET label = ?1, current_cluster = ?2,
                                 file_saved = ?3, selection_set = ?4
-             WHERE id = ?5",
+             WHERE seq = ?5",
             params![
                 attrs.label.or(label),
                 attrs.current_cluster.or(current_cluster),
                 i64::from(attrs.file_saved.unwrap_or(file_saved != 0)),
                 i64::from(attrs.selection_set.unwrap_or(selection_set != 0)),
-                id
+                seq
             ],
         )
         .map_err(|e| e.to_string())?;
@@ -153,11 +162,12 @@ impl VcsDocument {
     }
 
     pub fn set_current(&self, id: &str) -> Result<(), String> {
+        let seq = parse_seq(id)?;
         let exists: i64 = self
             .conn
             .query_row(
-                "SELECT COUNT(*) FROM commits WHERE id = ?1",
-                params![id],
+                "SELECT COUNT(*) FROM commits WHERE seq = ?1",
+                params![seq],
                 |r| r.get(0),
             )
             .map_err(|e| e.to_string())?;
@@ -167,7 +177,7 @@ impl VcsDocument {
         self.conn
             .execute(
                 "UPDATE document SET current_commit = ?1, updated_at = ?2",
-                params![id, now_ms()],
+                params![seq, now_ms()],
             )
             .map_err(|e| e.to_string())?;
         Ok(())
@@ -180,6 +190,7 @@ impl VcsDocument {
         target: &Value,
         chats: &Value,
     ) -> Result<(), String> {
+        let seq = parse_seq(current_commit)?;
         self.conn
             .execute(
                 "UPDATE document SET
@@ -189,7 +200,7 @@ impl VcsDocument {
                     serde_json::to_string(source).unwrap_or_else(|_| "null".into()),
                     serde_json::to_string(target).unwrap_or_else(|_| "null".into()),
                     serde_json::to_string(chats).unwrap_or_else(|_| "[]".into()),
-                    current_commit,
+                    seq,
                     now_ms()
                 ],
             )
@@ -242,7 +253,7 @@ fn open_existing(path: &str) -> Result<VcsDocument, String> {
     if !document_exists(&conn).map_err(|e| e.to_string())? {
         return Err("not an orouet document".into());
     }
-    let initial: String = conn
+    let initial: i64 = conn
         .query_row("SELECT initial_commit FROM document LIMIT 1", [], |r| {
             r.get(0)
         })
@@ -258,21 +269,25 @@ fn open_existing(path: &str) -> Result<VcsDocument, String> {
 pub(super) fn import_document_into(
     conn: &Connection,
     document: &ImportDocument,
-) -> Result<(String, String), String> {
+) -> Result<(String, i64), String> {
     let initial = document.initial_commit.as_str();
     let timestamp = now_ms();
-    insert_root(conn, initial, timestamp).map_err(|e| e.to_string())?;
+    let root = insert_root(conn, timestamp).map_err(|e| e.to_string())?;
+
+    let mut seqs: HashMap<&str, i64> = HashMap::new();
+    seqs.insert(initial, root);
+    let mut next = root + 1;
+    for commit in &document.commits {
+        if commit.id == initial {
+            continue;
+        }
+        seqs.insert(commit.id.as_str(), next);
+        next += 1;
+    }
 
     // The frontend has already deduplicated ids and repaired unknown parents.
     // Validate the payload so a malformed import fails loudly instead of
     // silently producing a disconnected graph.
-    let known: std::collections::HashSet<&str> = document
-        .commits
-        .iter()
-        .map(|c| c.id.as_str())
-        .chain(std::iter::once(initial))
-        .collect();
-
     for commit in &document.commits {
         if commit.id == initial {
             continue;
@@ -283,12 +298,11 @@ pub(super) fn import_document_into(
                 commit.id, commit.kind
             ));
         }
-        if !known.contains(commit.parent.as_str()) {
-            return Err(format!(
-                "commit {} has unknown parent {}",
-                commit.id, commit.parent
-            ));
-        }
+        let seq = seqs[commit.id.as_str()];
+        let parent = seqs
+            .get(commit.parent.as_str())
+            .copied()
+            .ok_or_else(|| format!("commit {} has unknown parent {}", commit.id, commit.parent))?;
         let source_steps = commit
             .source
             .as_ref()
@@ -304,13 +318,13 @@ pub(super) fn import_document_into(
 
         conn.execute(
             "INSERT INTO commits
-                (id, kind, parent_id, timestamp, label, current_cluster,
+                (seq, kind, parent_id, timestamp, label, current_cluster,
                  file_saved, selection_set, source_steps, target_steps)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             params![
-                commit.id,
+                seq,
                 commit.kind,
-                commit.parent,
+                parent,
                 commit.attrs.timestamp,
                 commit.attrs.label,
                 commit.attrs.current_cluster,
@@ -323,24 +337,11 @@ pub(super) fn import_document_into(
         .map_err(|e| e.to_string())?;
     }
 
-    // The frontend normally supplies a valid current commit; keep a small
-    // fallback so opening an imported document never fails on this alone.
-    let current: String = conn
-        .query_row(
-            "SELECT id FROM commits WHERE id = ?1",
-            params![&document.current_commit],
-            |r| r.get(0),
-        )
-        .optional()
-        .map_err(|e| e.to_string())?
-        .unwrap_or_else(|| {
-            conn.query_row(
-                "SELECT id FROM commits ORDER BY seq DESC LIMIT 1",
-                [],
-                |r| r.get(0),
-            )
-            .unwrap_or_else(|_| initial.to_string())
-        });
+    let current = seqs
+        .get(document.current_commit.as_str())
+        .copied()
+        .or_else(|| seqs.values().max().copied())
+        .unwrap_or(root);
 
     let doc_id = new_id();
     conn.execute(
@@ -350,7 +351,7 @@ pub(super) fn import_document_into(
          VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6, ?7, ?7)",
         params![
             doc_id,
-            initial,
+            root,
             current,
             serde_json::to_string(&document.source).unwrap_or_else(|_| "null".into()),
             serde_json::to_string(&document.target).unwrap_or_else(|_| "null".into()),
@@ -360,17 +361,19 @@ pub(super) fn import_document_into(
     )
     .map_err(|e| e.to_string())?;
 
-    Ok((doc_id, initial.to_string()))
+    Ok((doc_id, root))
 }
 
 pub(super) fn append_commit_into(
     conn: &Connection,
     commit: NewCommit,
 ) -> Result<VcsCommit, String> {
+    let seq = parse_seq(&commit.id)?;
+    let parent = parse_seq(&commit.parent)?;
     let parent_exists: bool = conn
         .query_row(
-            "SELECT EXISTS(SELECT 1 FROM commits WHERE id = ?1)",
-            params![commit.parent],
+            "SELECT EXISTS(SELECT 1 FROM commits WHERE seq = ?1)",
+            params![parent],
             |r| r.get(0),
         )
         .map_err(|e| e.to_string())?;
@@ -393,12 +396,12 @@ pub(super) fn append_commit_into(
 
     conn.execute(
         "INSERT INTO commits
-            (id, kind, parent_id, timestamp, label, current_cluster,
+            (seq, kind, parent_id, timestamp, label, current_cluster,
              file_saved, selection_set, source_steps, target_steps)
          VALUES (?1, 'delta', ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         params![
-            commit.id,
-            commit.parent,
+            seq,
+            parent,
             commit.attrs.timestamp,
             commit.attrs.label,
             commit.attrs.current_cluster,
@@ -411,21 +414,18 @@ pub(super) fn append_commit_into(
     .map_err(|e| e.to_string())?;
     conn.execute(
         "UPDATE document SET current_commit = ?1, updated_at = ?2",
-        params![commit.id, now_ms()],
+        params![seq, now_ms()],
     )
     .map_err(|e| e.to_string())?;
 
-    let seq: i64 = conn
-        .query_row(
-            "SELECT seq FROM commits WHERE id = ?1",
-            params![commit.id],
-            |r| r.get(0),
-        )
-        .map_err(|e| e.to_string())?;
     Ok(VcsCommit::Delta {
-        id: commit.id,
-        parent: commit.parent,
+        id: seq.to_string(),
+        parent: parent.to_string(),
         attrs: commit.attrs,
         seq,
     })
+}
+
+fn parse_seq(id: &str) -> Result<i64, String> {
+    id.parse().map_err(|_| format!("invalid commit id {id}"))
 }

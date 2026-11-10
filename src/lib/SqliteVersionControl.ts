@@ -18,6 +18,7 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
     #forwardEdges = new Map<Id<Commit>, Id<Commit>[]>();
     #sorted: Id<Commit>[] = [];
     #latest: Id<Commit>;
+    #nextSeq = 1;
     #queue: Promise<void> = Promise.resolve();
     #error: unknown;
 
@@ -36,6 +37,11 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
         }
 
         this.#latest = this.#sorted.at(-1) ?? this.initialCommit;
+        this.#nextSeq = snapshot.nextSeq;
+    }
+
+    nextCommitId() {
+        return String(this.#nextSeq++) as Id<Commit>;
     }
 
     get latestCommit() {
@@ -83,13 +89,15 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
     append(commit: VcsNewCommit): Id<Commit> {
         const id = commit.id as Id<Commit>;
         const parent = commit.parent as Id<Commit>;
+        const seq = Number(id);
         const summary: VcsCommit = {
             type: 'delta',
             id,
             parent,
             attrs: { ...commit.attrs } as VcsCommitAttrs,
-            seq: this.#sorted.length + 1,
+            seq,
         };
+        this.#nextSeq = Math.max(this.#nextSeq, seq + 1);
 
         this.#summaries.set(id, summary);
         this.#sorted.push(id);

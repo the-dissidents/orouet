@@ -6,11 +6,11 @@ use super::document::{append_commit_into, import_document_into};
 use super::model::{CommitAttrs, ImportCommit, ImportDocument, NewCommit, VcsCommit};
 use super::path::plan_path;
 
-fn add_delta(conn: &Connection, id: &str, parent: &str) {
+fn add_delta(conn: &Connection, seq: i64, parent: i64) {
     conn.execute(
-        "INSERT INTO commits (id, kind, parent_id, timestamp)
+        "INSERT INTO commits (seq, kind, parent_id, timestamp)
              VALUES (?1, 'delta', ?2, 0)",
-        params![id, parent],
+        params![seq, parent],
     )
     .unwrap();
 }
@@ -19,43 +19,43 @@ fn add_delta(conn: &Connection, id: &str, parent: &str) {
 fn schema_and_paths() {
     let conn = Connection::open_in_memory().unwrap();
     ensure_schema(&conn).unwrap();
-    insert_root(&conn, "initial", 0).unwrap();
-    add_delta(&conn, "c1", "initial");
-    add_delta(&conn, "c2", "c1");
-    add_delta(&conn, "b1", "initial");
+    insert_root(&conn, 0).unwrap();
+    add_delta(&conn, 2, 1);
+    add_delta(&conn, 3, 2);
+    add_delta(&conn, 4, 1);
 
     let summaries = load_summaries(&conn).unwrap();
     assert_eq!(summaries.len(), 4);
     assert!(matches!(summaries[0], VcsCommit::Root { .. }));
 
-    let back = plan_path(&conn, "c2", "c1").unwrap();
+    let back = plan_path(&conn, "3", "2").unwrap();
     assert_eq!(
         back.iter()
             .map(|s| (s.id.as_str(), s.direction.as_str()))
             .collect::<Vec<_>>(),
-        vec![("c2", "backward")]
+        vec![("3", "backward")]
     );
 
-    let forward = plan_path(&conn, "c1", "c2").unwrap();
+    let forward = plan_path(&conn, "2", "3").unwrap();
     assert_eq!(
         forward
             .iter()
             .map(|s| (s.id.as_str(), s.direction.as_str()))
             .collect::<Vec<_>>(),
-        vec![("c2", "forward")]
+        vec![("3", "forward")]
     );
 
-    let branch = plan_path(&conn, "c2", "b1").unwrap();
+    let branch = plan_path(&conn, "3", "4").unwrap();
     assert_eq!(
         branch
             .iter()
             .map(|s| (s.id.as_str(), s.direction.as_str()))
             .collect::<Vec<_>>(),
-        vec![("c2", "backward"), ("c1", "backward"), ("b1", "forward")]
+        vec![("3", "backward"), ("2", "backward"), ("4", "forward")]
     );
 
-    assert!(plan_path(&conn, "c2", "c2").unwrap().is_empty());
-    assert!(plan_path(&conn, "missing", "c1").is_err());
+    assert!(plan_path(&conn, "3", "3").unwrap().is_empty());
+    assert!(plan_path(&conn, "missing", "2").is_err());
 }
 
 #[test]
@@ -88,22 +88,22 @@ fn import_bulk_inserts_and_indexes() {
 
     let (doc_id, initial) = import_document_into(&conn, &document).unwrap();
     assert!(!doc_id.is_empty());
-    assert_eq!(initial, "initial");
+    assert_eq!(initial, 1);
 
-    let current: String = conn
+    let current: i64 = conn
         .query_row("SELECT current_commit FROM document", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(current, "c2");
+    assert_eq!(current, 3);
 
     let summaries = load_summaries(&conn).unwrap();
     assert_eq!(summaries.len(), 4);
 
-    let path = plan_path(&conn, "c2", "b1").unwrap();
+    let path = plan_path(&conn, "3", "4").unwrap();
     assert_eq!(
         path.iter()
             .map(|s| (s.id.as_str(), s.direction.as_str()))
             .collect::<Vec<_>>(),
-        vec![("c2", "backward"), ("c1", "backward"), ("b1", "forward")]
+        vec![("3", "backward"), ("2", "backward"), ("4", "forward")]
     );
 }
 
@@ -134,11 +134,11 @@ fn import_rejects_unknown_parent() {
 fn append_updates_current() {
     let conn = Connection::open_in_memory().unwrap();
     ensure_schema(&conn).unwrap();
-    insert_root(&conn, "initial", 0).unwrap();
+    let initial = insert_root(&conn, 0).unwrap();
     insert_document(
         &conn,
         "doc",
-        "initial",
+        initial,
         &Value::Null,
         &Value::Null,
         &Value::Array(vec![]),
@@ -147,8 +147,8 @@ fn append_updates_current() {
     .unwrap();
 
     let first = NewCommit {
-        id: "c1".into(),
-        parent: "initial".into(),
+        id: "2".into(),
+        parent: "1".into(),
         attrs: CommitAttrs {
             timestamp: 1,
             ..Default::default()
@@ -157,11 +157,11 @@ fn append_updates_current() {
         target: None,
     };
     let summary = append_commit_into(&conn, first).unwrap();
-    assert!(matches!(summary, VcsCommit::Delta { id, .. } if id == "c1"));
+    assert!(matches!(summary, VcsCommit::Delta { id, .. } if id == "2"));
 
     let second = NewCommit {
-        id: "c2".into(),
-        parent: "c1".into(),
+        id: "3".into(),
+        parent: "2".into(),
         attrs: CommitAttrs {
             timestamp: 2,
             ..Default::default()
@@ -170,19 +170,19 @@ fn append_updates_current() {
         target: Some(serde_json::json!({ "steps": [], "invertedSteps": [] })),
     };
     let summary = append_commit_into(&conn, second).unwrap();
-    assert!(matches!(summary, VcsCommit::Delta { id, .. } if id == "c2"));
+    assert!(matches!(summary, VcsCommit::Delta { id, .. } if id == "3"));
 
-    let current: String = conn
+    let current: i64 = conn
         .query_row("SELECT current_commit FROM document", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(current, "c2");
+    assert_eq!(current, 3);
 }
 
 #[test]
 fn commit_serializes_as_tagged_union() {
     let commit = VcsCommit::Delta {
-        id: "c1".into(),
-        parent: "initial".into(),
+        id: "2".into(),
+        parent: "1".into(),
         attrs: CommitAttrs {
             timestamp: 1,
             ..Default::default()
@@ -192,7 +192,7 @@ fn commit_serializes_as_tagged_union() {
     let value = serde_json::to_value(commit).unwrap();
 
     assert_eq!(value["type"], "delta");
-    assert_eq!(value["id"], "c1");
-    assert_eq!(value["parent"], "initial");
+    assert_eq!(value["id"], "2");
+    assert_eq!(value["parent"], "1");
     assert_eq!(value["seq"], 2);
 }

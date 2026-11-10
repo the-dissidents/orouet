@@ -132,6 +132,7 @@ export const VcsSnapshot = z.object({
     initialCommit: Id<Commit>(),
     currentCommit: Id<Commit>(),
     checkpointCommit: Id<Commit>(),
+    nextSeq: z.number(),
     source: Text,
     target: Text,
     chats: z.array(SerializedChatSession),

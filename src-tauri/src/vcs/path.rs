@@ -11,17 +11,17 @@ pub(super) fn plan_path(
     to: &str,
 ) -> Result<Vec<PathSegment>, String> {
     let mut stmt = conn
-        .prepare("SELECT id, parent_id FROM commits")
+        .prepare("SELECT seq, parent_id FROM commits")
         .map_err(|e| e.to_string())?;
     let mut parents: HashMap<String, Option<String>> = HashMap::new();
     let rows = stmt
         .query_map([], |r| {
-            Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?))
+            Ok((r.get::<_, i64>(0)?, r.get::<_, Option<i64>>(1)?))
         })
         .map_err(|e| e.to_string())?;
     for row in rows {
         let (id, parent) = row.map_err(|e| e.to_string())?;
-        parents.insert(id, parent);
+        parents.insert(id.to_string(), parent.map(|p| p.to_string()));
     }
     drop(stmt);
 
@@ -76,10 +76,11 @@ pub(super) fn plan_path(
     let mut result = Vec::with_capacity(backward.len() + forward_rev.len());
     for (direction, ids) in [("backward", backward), ("forward", forward_rev)] {
         for id in ids {
+            let seq: i64 = id.parse().map_err(|_| format!("invalid commit id {id}"))?;
             let (source, target): (Option<String>, Option<String>) = conn
                 .query_row(
-                    "SELECT source_steps, target_steps FROM commits WHERE id = ?1",
-                    params![id],
+                    "SELECT source_steps, target_steps FROM commits WHERE seq = ?1",
+                    params![seq],
                     |r| Ok((r.get(0)?, r.get(1)?)),
                 )
                 .map_err(|e| e.to_string())?;

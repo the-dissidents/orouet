@@ -219,7 +219,7 @@ export class DocumentContext {
     ) {
         Debug.assert(!!(trs.source?.steps.length || trs.target?.steps.length));
 
-        const _id = opts?.cid ?? id<DeltaCommit>();
+        const _id = opts?.cid ?? this.#vc.nextCommitId() as Id<DeltaCommit>;
         if (trs.source) {
             const newTr = new Transform(trs.target?.doc ?? this.target.content);
             balanceTargetClusters(trs.source.doc as Doc, newTr);

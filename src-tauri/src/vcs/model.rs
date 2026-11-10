@@ -105,6 +105,7 @@ pub struct OpenSnapshot {
     pub initial_commit: String,
     pub current_commit: String,
     pub checkpoint_commit: String,
+    pub next_seq: i64,
     pub source: Value,
     pub target: Value,
     pub chats: Value,
