@@ -93,7 +93,7 @@ export class GraphLayoutCache {
                 this.#updateBoundary(change.id);
                 const commit = this.#vc.get(change.id);
                 // The parent's delay/cluster boundary depends on this commit.
-                if (commit?.type === 'delta') this.#updateBoundary(commit.parent);
+                if (commit.type === 'delta') this.#updateBoundary(commit.parent);
                 break;
             }
             default:
@@ -117,7 +117,7 @@ export class GraphLayoutCache {
 
             path.push(p);
             const commit = this.#vc.get(p);
-            Debug.assert(!!commit && commit.type === 'delta');
+            Debug.assert(commit.type === 'delta');
             p = commit.parent;
         }
 

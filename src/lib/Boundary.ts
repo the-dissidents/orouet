@@ -21,7 +21,7 @@ export function isBoundary(
     if (current === vc.initialCommit) return true;
 
     const from = vc.get(current);
-    if (!from)
+    if (from.type == 'root')
         return direction == 'forward';
 
     if (condition.fileSaved && from.attrs.fileSaved) return true;
@@ -38,7 +38,7 @@ export function isBoundary(
     }
     if (nexts.length !== 1 || !vc.isDelta(nexts[0])) return true;
 
-    const next = vc.get(nexts[0])!;
+    const next = vc.get(nexts[0]);
     // if (next.where !== from.where) return true;
     if (condition.selectionSet && next.attrs.selectionSet) return true;
 

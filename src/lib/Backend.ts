@@ -119,7 +119,7 @@ export interface ReadonlyVersionControl {
 
     addAttr(attr: Partial<VcsCommitAttrs>): boolean;
 
-    get<C extends Commit>(id: Id<C>): C | undefined;
+    get<C extends Commit>(id: Id<C>): C;
     forwardLinks(id: Id<Commit>): Id<Commit>[];
 
     has(id: Id<Commit>): boolean;

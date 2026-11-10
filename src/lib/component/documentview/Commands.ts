@@ -86,7 +86,7 @@ export const undo: (dc: DocumentContext) => Command = (dc) => () => {
     let id = dc.currentCommitId;
     do {
         const c = dc.versionControl.get(id);
-        if (!c || c.type != 'delta') break;
+        if (c.type != 'delta') break;
         id = c.parent;
     } while (!isBoundary(dc.versionControl, id, 'backward', historyBoundary));
     void dc.revertTo(id).catch((e) => console.warn('undo failed', e));

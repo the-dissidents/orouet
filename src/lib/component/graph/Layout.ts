@@ -97,7 +97,7 @@ export function graphLayout(
         if (id === vc.initialCommit || !isVisible(id)) continue;
         const commit = vc.get(id);
         // Merge commits are not supported yet
-        if (!commit || commit.type !== 'delta') continue;
+        if (commit.type !== 'delta') continue;
 
         const parent = visibleAncestor(commit.parent);
         const children = visibleChildren.get(parent) ?? [];
@@ -182,7 +182,7 @@ export function graphLayout(
             if (child.topmostY < topmostY) topmostY = child.topmostY;
 
         const node: Node = {
-            commit: vc.get(id)!, x: 0, y, maxX: 0,
+            commit: vc.get(id), x: 0, y, maxX: 0,
             widths, dense, topmostY, deltaX: 0, children,
         };
         nodeMap.set(id, node);

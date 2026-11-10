@@ -7,7 +7,7 @@
 </script>
 
 <script lang="ts">
-  import { formatAbsoluteDate, formatFullDate } from "$lib/details/DateFormat";
+  import { formatDateTimeList, formatFullDate } from "$lib/details/DateFormat";
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { graphLayout, type EdgeType, type GraphLayout } from "./Layout";
   import { GraphLayoutCache } from "./Cache";
@@ -26,7 +26,7 @@
     context: DocumentContext,
   } = $props();
 
-  let boundaryReactive = $state($boundary);
+  let boundaryReactive = $state(boundary.get());
 
   // Prevent the layout graph from being deeply reactive since it's only updated a a whole
   let layout = $state.raw<GraphLayout>({ nodes: [], edges: [] });
@@ -62,7 +62,6 @@
   });
 
   const unsubscribeBoundary = boundary.subscribe((v) => {
-    layoutCache.setCondition(v);
     boundaryReactive = v;
     scheduleRelayout();
   });
@@ -73,7 +72,9 @@
   const RADIUS = 5;
   const PADDING = 25;
 
-  let svgHeight = $derived(layout.nodes.length * Y_STEP + PADDING * 2);
+  const svgHeight = $derived(layout.nodes.length * Y_STEP + PADDING * 2);
+  const dates = $derived(formatDateTimeList(
+    layout.nodes.map((x) => new Date(x.commit.attrs.timestamp))))
 
   function generatePath(type: EdgeType, x1: number, y1: number, x2: number, y2: number): string {
     const startX = x1 * X_STEP + PADDING;
@@ -149,22 +150,22 @@
       </marker>
     </defs>
 
-    {#each layout.nodes as node (node.commit.id)}
+    {#each layout.nodes as node, i (node.commit.id)}
     {@const commit = node.commit}
       <foreignObject width="100%" height={Y_STEP}
           x='0' y={(node.y-0.5) * Y_STEP + PADDING}>
         <button tabindex="0" onclick={() => onClickRow(commit.id, commit)}>
           <span class="label" style:padding-left='{(node.maxX + 1) * X_STEP + RADIUS + PADDING}px'>
-            {#if commit}
-              {formatAbsoluteDate(new Date(commit.attrs.timestamp))}
+            {#if commit.type == 'root'}
+              {$_('graph.initial-state')}
+            {:else}
+              {dates[i]}
               {#if commit.attrs.label}
                 <span class="label">{commit.attrs.label}</span>
               {/if}
               {#if commit.attrs.fileSaved}
                 <span class="remarks">{$_('boundary.fileSaved')}</span>
               {/if}
-            {:else}
-              {$_('graph.initial-state')}
             {/if}
           </span>
         </button>

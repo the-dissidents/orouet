@@ -1,6 +1,7 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
 import type { Id } from "./Schema";
-import { VcsBackend, type Commit, type DeltaCommit, type ReadonlyVersionControl, type VcsCommit, type VcsCommitAttrs, type VcsNewCommit, type VcsSnapshot, type VersionControlChange } from "./Backend";
+import { RootCommit, VcsBackend, type Commit, type DeltaCommit, type ReadonlyVersionControl, type VcsCommit, type VcsCommitAttrs, type VcsNewCommit, type VcsSnapshot, type VersionControlChange } from "./Backend";
+import { Debug } from "./details/Util";
 
 /**
  * Frontend view of a Rust/SQLite-backed version control.
@@ -56,10 +57,10 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
         return Math.max(0, this.#sorted.length - 1);
     }
 
-    get<C extends Commit>(id: Id<C>): C | undefined {
-        // The initial state has no commit object, matching the previous model.
-        if (id === this.initialCommit) return undefined;
-        return this.#summaries.get(id) as unknown as C | undefined;
+    get<C extends Commit>(id: Id<C>) {
+        const c = this.#summaries.get(id);
+        Debug.assert(!!c);
+        return this.#summaries.get(id) as C;
     }
 
     forwardLinks(id: Id<Commit>): Id<Commit>[] {
@@ -68,6 +69,10 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
 
     has(id: Id<Commit>): boolean {
         return id === this.initialCommit || this.#summaries.has(id);
+    }
+
+    isRoot(id: Id<Commit>): id is Id<RootCommit> {
+        return this.#summaries.get(id)?.type === 'root';
     }
 
     isDelta(id: Id<Commit>): id is Id<DeltaCommit> {

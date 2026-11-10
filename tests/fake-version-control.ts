@@ -1,6 +1,5 @@
 import { id, type Id } from "$lib/Schema";
-import type { Commit, DeltaCommit, ReadonlyVersionControl, VersionControlChange } from "$lib/Backend";
-import type { EventHost } from "@the_dissidents/svelte-ui";
+import type { Commit, DeltaCommit, ReadonlyVersionControl, RootCommit } from "$lib/Backend";
 
 export type FakeAttrs = {
     timestamp: number,
@@ -42,8 +41,13 @@ export class FakeVersionControl implements ReadonlyVersionControl {
         return this.#sorted;
     }
 
-    get<C extends Commit>(id: Id<C>): C | undefined {
-        return this.#commits.get(id) as unknown as C | undefined;
+    get<C extends Commit>(id: Id<C>): C {
+        if (id === this.initialCommit) return {
+            type: 'root', id,
+            attrs: { timestamp: 0 },
+            seq: 0
+        } satisfies RootCommit as unknown as C;
+        return this.#commits.get(id)! as C;
     }
 
     forwardLinks(id: Id<Commit>): Id<Commit>[] {

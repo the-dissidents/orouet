@@ -39,7 +39,7 @@ export function referenceGraphLayout(
         let p = commit.parent;
         while (p !== c.currentDiffCommit && p !== c.currentCommitId) {
             const from = vc.get(p);
-            if (!from || from.type !== 'delta') break;
+            if (from.type !== 'delta') break;
             if (isBoundary(vc, p, 'forward', b)) break;
             skipped.add(p);
             p = from.parent;
@@ -59,7 +59,7 @@ export function referenceGraphLayout(
     let y = 0;
     for (const id of commits) {
         if (skipped.has(id)) continue;
-        if (id !== vc.initialCommit && !vc.isDelta(id)) continue;
+        if (!vc.isDelta(id)) continue;
 
         const children = getChildren(id).sort((a, b) => a.topmostY - b.topmostY);
         const widths: Record<number, number> = { [y]: 0 };
@@ -86,7 +86,7 @@ export function referenceGraphLayout(
         });
 
         const topmostY = Math.min(y, ...children.map((x) => x.topmostY));
-        const node: Node = { id, x: 0, y, maxX: 0, widths, topmostY, deltaX: 0 };
+        const node: Node = { commit: vc.get(id), x: 0, y, maxX: 0, widths, topmostY, deltaX: 0 };
         nodeMap.set(id, node);
         nodes.push(node);
         y++;
@@ -99,7 +99,7 @@ export function referenceGraphLayout(
         node.x = currentX;
 
         for (const child of getChildren(id)) {
-            resolveX(child.id, currentX + child.deltaX);
+            resolveX(child.commit.id, currentX + child.deltaX);
             edges.push({ from: node, to: child, type: 'children' });
         }
     }
