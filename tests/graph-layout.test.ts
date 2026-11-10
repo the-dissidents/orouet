@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { graphLayout, type GraphLayout, type GraphLayoutContext } from "$lib/component/graph/Layout";
 import type { Id } from "$lib/Schema";
-import type { Commit, ReadonlyVersionControl } from "$lib/VersionControl.svelte";
+import type { Commit, ReadonlyVersionControl } from "$lib/Backend";
 import { FakeVersionControl, linearChain } from "./fake-version-control";
 import { GraphLayoutCache } from "$lib/component/graph/Cache";
 import type { BoundaryCondition } from "$lib/Boundary";

@@ -12,9 +12,8 @@ vi.mock("$lib/Backend", () => ({
     VcsBackend: mocks,
 }));
 
-import type { Commit } from "$lib/VersionControl.svelte";
+import type { Commit, VcsSnapshot } from "$lib/Backend";
 import type { Id } from "$lib/Schema";
-import type { VcsSnapshot } from "$lib/Backend";
 import { SqliteVersionControl } from "$lib/SqliteVersionControl";
 
 const id = <T>(value: string) => value as Id<T>;
@@ -22,19 +21,19 @@ const id = <T>(value: string) => value as Id<T>;
 function snapshot(): VcsSnapshot {
     return {
         docId: 'doc',
-        initialCommit: 'initial',
-        currentCommit: 'c1',
-        checkpointCommit: 'c1',
+        initialCommit: id<Commit>('initial'),
+        currentCommit: id<Commit>('c1'),
+        checkpointCommit: id<Commit>('c1'),
         source: null as never,
         target: null as never,
         chats: [],
         summaries: [
             {
-                id: 'initial', type: 'root', seq: 1,
+                id: id<Commit>('initial'), type: 'root', seq: 1,
                 attrs: { timestamp: 0 },
             },
             {
-                id: 'c1', parent: 'initial', type: 'delta', seq: 2,
+                id: id<Commit>('c1'), parent: id<Commit>('initial'), type: 'delta', seq: 2,
                 attrs: { timestamp: 1 },
             },
         ],

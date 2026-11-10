@@ -1,5 +1,5 @@
-import type { Id } from "$lib/Schema";
-import type { Commit, DeltaCommit, ReadonlyVersionControl, VersionControlChange } from "$lib/VersionControl.svelte";
+import { id, type Id } from "$lib/Schema";
+import type { Commit, DeltaCommit, ReadonlyVersionControl, VersionControlChange } from "$lib/Backend";
 import type { EventHost } from "@the_dissidents/svelte-ui";
 
 export type FakeAttrs = {
@@ -30,7 +30,7 @@ export class FakeVersionControl implements ReadonlyVersionControl {
     #forward = new Map<Id<Commit>, Id<Commit>[]>();
 
     constructor(initial = 'initial') {
-        this.initialCommit = initial as Id<Commit>;
+        this.initialCommit = id(initial);
         this.#sorted = [this.initialCommit];
     }
 

@@ -1,6 +1,6 @@
 import { Debug } from "$lib/details/Util";
 import { Doc, PaneSchema } from "$lib/Schema";
-import type { Docs } from "$lib/VersionControl.svelte";
+import type { Docs } from "$lib/Backend";
 import { DOMSerializer } from "prosemirror-model";
 
 const serializer = DOMSerializer.fromSchema(PaneSchema);

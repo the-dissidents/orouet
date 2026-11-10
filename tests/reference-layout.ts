@@ -7,7 +7,7 @@ import type {
 } from "$lib/component/graph/Layout";
 import type { Id } from "$lib/Schema";
 import { Debug } from "$lib/details/Util";
-import type { Commit } from "$lib/VersionControl.svelte";
+import type { Commit } from "$lib/Backend";
 
 type Node = PositionedNode & {
     widths: Record<number, number>,

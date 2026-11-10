@@ -3,7 +3,7 @@ import type { BoundaryCondition } from "$lib/Boundary";
 import { GraphLayoutCache } from "$lib/component/graph/Cache";
 import { graphLayout, type GraphLayout } from "$lib/component/graph/Layout";
 import type { Id } from "$lib/Schema";
-import type { Commit } from "$lib/VersionControl.svelte";
+import type { Commit } from "$lib/Backend";
 import { FakeVersionControl } from "./fake-version-control";
 import { referenceGraphLayout } from "./reference-layout";
 

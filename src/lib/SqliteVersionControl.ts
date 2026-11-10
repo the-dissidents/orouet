@@ -1,56 +1,12 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
-import type { Id, Cluster } from "./Schema";
-import type {
-    Commit,
-    DeltaCommit,
-    ReadonlyVersionControl,
-    Steps,
-    VersionControlChange,
-} from "./VersionControl.svelte";
-import {
-    VcsBackend,
-    type StepsJson,
-    type VcsCommitAttrs,
-    type VcsCommitSummary,
-    type VcsPathSegment,
-    type VcsSnapshot,
-} from "./Backend";
-
-export type CommitSummary = {
-    id: Id<Commit>;
-    parent?: Id<Commit>;
-    type: 'root' | 'delta' | 'merge';
-    attrs: {
-        timestamp: number;
-        label?: string;
-        currentCluster?: Id<Cluster>;
-        fileSaved?: boolean;
-        selectionSet?: boolean;
-    };
-    seq: number;
-};
+import type { Id } from "./Schema";
+import { VcsBackend, type Commit, type DeltaCommit, type ReadonlyVersionControl, type Steps, type StepsJson, type VcsCommitAttrs, type VcsCommitSummary, type VcsSnapshot, type VersionControlChange } from "./Backend";
 
 function encodeSteps(steps?: Steps): StepsJson | undefined {
     return steps ? {
         steps: steps.steps.map((s) => s.toJSON()),
         invertedSteps: steps.invertedSteps.map((s) => s.toJSON()),
     } : undefined;
-}
-
-function fromWire(s: VcsCommitSummary): CommitSummary {
-    return {
-        id: s.id as Id<Commit>,
-        parent: s.parent as Id<Commit> | undefined,
-        type: s.type,
-        attrs: {
-            timestamp: s.attrs.timestamp,
-            label: s.attrs.label,
-            currentCluster: s.attrs.currentCluster as Id<Cluster> | undefined,
-            fileSaved: s.attrs.fileSaved,
-            selectionSet: s.attrs.selectionSet,
-        },
-        seq: s.seq,
-    };
 }
 
 /**
@@ -65,7 +21,7 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
     readonly initialCommit: Id<Commit>;
     readonly docId: string;
 
-    #summaries = new Map<Id<Commit>, CommitSummary>();
+    #summaries = new Map<Id<Commit>, VcsCommitSummary>();
     #forwardEdges = new Map<Id<Commit>, Id<Commit>[]>();
     #sorted: Id<Commit>[] = [];
     #latest: Id<Commit>;
@@ -74,10 +30,9 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
 
     constructor(snapshot: VcsSnapshot) {
         this.docId = snapshot.docId;
-        this.initialCommit = snapshot.initialCommit as Id<Commit>;
+        this.initialCommit = snapshot.initialCommit;
 
-        for (const raw of snapshot.summaries) {
-            const summary = fromWire(raw);
+        for (const summary of snapshot.summaries) {
             this.#summaries.set(summary.id, summary);
             this.#sorted.push(summary.id);
             if (summary.parent) {
@@ -120,7 +75,7 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
         return this.#summaries.get(id)?.type === 'delta';
     }
 
-    addAttr(attr: Partial<CommitSummary['attrs']>): boolean {
+    addAttr(attr: Partial<VcsCommitAttrs>): boolean {
         if (this.#latest === this.initialCommit) return false;
         const latest = this.#summaries.get(this.#latest);
         if (!latest) return false;
@@ -137,7 +92,7 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
             throw new Error('merge commits are not supported yet');
         }
         const parent = commit.parent;
-        const summary: CommitSummary = {
+        const summary: VcsCommitSummary = {
             id: commit.id,
             parent,
             type: commit.type,
@@ -197,5 +152,3 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
             });
     }
 }
-
-export type { VcsPathSegment };

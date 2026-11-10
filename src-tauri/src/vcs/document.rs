@@ -1,9 +1,8 @@
 #![allow(clippy::missing_errors_doc)]
 
-use std::path::PathBuf;
-
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::Value;
+use std::path::PathBuf;
 
 use super::db::{
     document_exists, ensure_schema, insert_document, insert_root, load_summaries, new_id, now_ms,
@@ -71,8 +70,6 @@ impl VcsDocument {
     }
 
     /// Import normalized legacy history into an in-memory SQLite document.
-    /// The frontend owns the legacy JSON interpretation and repair rules; this
-    /// only performs the bulk insert and derived-column updates.
     pub fn import(document: &ImportDocument) -> Result<Self, String> {
         let conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
         ensure_schema(&conn).map_err(|e| e.to_string())?;

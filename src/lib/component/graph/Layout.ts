@@ -1,7 +1,7 @@
 import { type BoundaryCondition } from "$lib/Boundary";
 import { Debug } from "$lib/details/Util";
 import type { Id } from "$lib/Schema";
-import type { Commit, ReadonlyVersionControl } from "$lib/VersionControl.svelte";
+import type { Commit, ReadonlyVersionControl } from "$lib/Backend";
 import { GraphLayoutCache } from "./Cache";
 
 export type PositionedNode = {

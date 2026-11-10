@@ -25,14 +25,14 @@ pub(super) fn plan_path(
     }
     drop(stmt);
 
-    if from == to {
-        return Ok(Vec::new());
-    }
     if !parents.contains_key(from) {
         return Err(format!("commit {from} does not exist"));
     }
     if !parents.contains_key(to) {
         return Err(format!("commit {to} does not exist"));
+    }
+    if from == to {
+        return Ok(Vec::new());
     }
 
     let parent_of = |id: &str| -> Option<String> { parents.get(id).and_then(Option::clone) };

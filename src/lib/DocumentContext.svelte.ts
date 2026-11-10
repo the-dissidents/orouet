@@ -1,12 +1,11 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
 import { Debug, range } from "./details/Util";
 import { Doc, Id, id, makeBlock, makeCluster, makeDoc, PaneSchema, type Block, type Cluster } from "./Schema";
-import { Commit, SerializedVersionControl, type DeltaCommit, type Docs, type Steps, type Transforms } from "./VersionControl.svelte";
+import { SerializedVersionControl, VcsBackend, type Commit, type DeltaCommit, type Docs, type Steps, type Transforms, type VcsSnapshot } from "./Backend";
 import { Step, Transform } from "prosemirror-transform";
 import { DefaultOptions } from "./TextOptions";
 import * as z from "zod/v4-mini";
 import { ChatSession, SerializedChatSession } from "./llm/ChatSession.svelte";
-import { VcsBackend, type VcsSnapshot } from "./Backend";
 import { normalizeLegacyImport, type LegacyDocument } from "./LegacyImport";
 import { SqliteVersionControl } from "./SqliteVersionControl";
 import { LocaleId, Text } from "./TextSchema";
@@ -169,10 +168,8 @@ export class DocumentContext {
         const chats = snapshot.chats.map((x) => ChatSession.deserialize(x));
         const vc = new SqliteVersionControl(snapshot);
         const ctx = new DocumentContext(
-            source,
-            target,
-            vc,
-            snapshot.currentCommit as Id<Commit>,
+            source, target, vc,
+            snapshot.currentCommit,
             chats,
         );
         ctx.#path = snapshot.path ?? undefined;
@@ -181,8 +178,8 @@ export class DocumentContext {
         // only the commits between checkpoint and current.
         if (snapshot.checkpointCommit !== snapshot.currentCommit) {
             const trs = await ctx.#pathTransform(
-                snapshot.checkpointCommit as Id<Commit>,
-                snapshot.currentCommit as Id<Commit>,
+                snapshot.checkpointCommit,
+                snapshot.currentCommit,
             );
             if (trs) {
                 ctx.source.content = trs.source.doc as Doc;

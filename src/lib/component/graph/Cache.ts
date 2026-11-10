@@ -5,7 +5,7 @@ import type {
     Commit,
     ReadonlyVersionControl,
     VersionControlChange,
-} from "$lib/VersionControl.svelte";
+} from "$lib/Backend";
 
 /** Stable key for a boundary condition, independent of property order. */
 function conditionKey(b: BoundaryCondition) {

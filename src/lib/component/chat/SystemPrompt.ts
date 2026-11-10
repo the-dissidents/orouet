@@ -3,7 +3,7 @@ import { getInterlacedRepresentation } from "$lib/component/chat/DocRepresentati
 import { getLocale } from "$lib/I18n";
 import { ClusterKinds } from "$lib/Schema";
 import { Transform } from "prosemirror-transform";
-import type { Transforms } from "$lib/VersionControl.svelte";
+import type { Transforms } from "$lib/Backend";
 import { replaceClusterCommand } from "./commands/ReplaceClusters";
 
 function localeCode(id: LocaleId) {

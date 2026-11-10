@@ -11,7 +11,7 @@
   import type { DocumentContext } from "$lib/DocumentContext.svelte";
   import { graphLayout, type EdgeType, type GraphLayout } from "./Layout";
   import { GraphLayoutCache } from "./Cache";
-  import type { Commit } from "$lib/VersionControl.svelte";
+  import type { Commit } from "$lib/Backend";
   import { Collapsible, unbindEvents } from "@the_dissidents/svelte-ui";
   import BoundarySelect from "./BoundarySelect.svelte";
   import { Memorized } from "$lib/details/Memorized.svelte";

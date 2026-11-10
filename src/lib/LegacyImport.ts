@@ -4,15 +4,12 @@ import type {
     VcsImportCommit,
     VcsImportDocument,
 } from "./Backend";
+import { id } from "./Schema";
 import type { TextJSON } from "./TextSchema";
 import type { SerializedChatSession } from "./llm/ChatSchema";
 
-/**
- * Loose shape of a version-1 `.orz` document. The frontend intentionally
- * interprets this legacy JSON directly instead of asking Rust to walk it: the
- * format is temporary, import is rare, and repair rules are easier to test in
- * TypeScript.
- */
+// Loose shape of a version-1 `.orz` document
+
 export type LegacyCommit = {
     type: 'delta' | 'merge';
     id: string;
@@ -77,8 +74,8 @@ export function normalizeLegacyImport(source: LegacyDocument): NormalizedLegacyI
         }
 
         return {
-            id: commit.id,
-            parent,
+            id: id(commit.id),
+            parent: id(parent),
             kind: commit.type === 'merge' ? 'merge' : 'delta',
             attrs: {
                 ...commit.attrs,
@@ -97,8 +94,8 @@ export function normalizeLegacyImport(source: LegacyDocument): NormalizedLegacyI
 
     return {
         document: {
-            initialCommit: initial,
-            currentCommit,
+            initialCommit: id(initial),
+            currentCommit: id(currentCommit),
             source: source.source as TextJSON,
             target: source.target as TextJSON,
             chats: (source.chats ?? []) as SerializedChatSession[],
