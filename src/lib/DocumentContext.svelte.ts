@@ -1,33 +1,21 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
 import { Debug, range } from "./details/Util";
-import { Doc, Id, id, makeBlock, makeCluster, makeDoc, PaneSchema, type Block, type Cluster } from "./Schema";
-import { SerializedVersionControl, VcsBackend, type Commit, type DeltaCommit, type Docs, type Steps, type Transforms, type VcsSnapshot } from "./Backend";
+import { Doc, Id, id, makeBlock, makeCluster, makeDoc, PaneSchema, type Cluster } from "./Schema";
+import { VcsBackend, type Commit, type DeltaCommit, type Docs, type StepsJson, type Transforms, type VcsSnapshot } from "./Backend";
 import { Step, Transform } from "prosemirror-transform";
 import { DefaultOptions } from "./TextOptions";
-import * as z from "zod/v4-mini";
-import { ChatSession, SerializedChatSession } from "./llm/ChatSession.svelte";
-import { normalizeLegacyImport, type LegacyDocument } from "./LegacyImport";
+import { ChatSession } from "./llm/ChatSession.svelte";
+import { normalizeLegacyImport } from "./LegacyImport";
 import { SqliteVersionControl } from "./SqliteVersionControl";
 import { LocaleId, Text } from "./TextSchema";
 
 export { LocaleId, Text };
 
-const SerializedDocumentContext = z.object({
-    version: z.literal(1),
-    source: Text,
-    target: Text,
-    currentCommit: Id<Commit>(),
-    vc: SerializedVersionControl,
-    chats: z.array(SerializedChatSession),
-});
-
-export type SerializedDocumentContextJSON = z.input<typeof SerializedDocumentContext>;
-
-function transformToSteps(tr?: Transform): Steps | undefined {
+function transformToSteps(tr?: Transform): StepsJson | undefined {
     return tr ? {
-        steps: tr.steps,
+        steps: tr.steps.map((s) => s.toJSON()),
         invertedSteps: tr.steps.map(
-            (s, i) => s.invert(tr!.docs[i])
+            (s, i) => s.invert(tr!.docs[i]).toJSON()
         ).reverse()
     } : undefined;
 }
@@ -153,11 +141,8 @@ export class DocumentContext {
         return await DocumentContext.createDemo(clusters);
     }
 
-    static async importLegacy(s: SerializedDocumentContextJSON) {
-        // Validate with the existing schema, then normalize/repair the legacy
-        // JSON here before sending a typed bulk-import payload to Rust.
-        z.decode(SerializedDocumentContext, s);
-        const { document, warnings } = normalizeLegacyImport(s as unknown as LegacyDocument);
+    static async importLegacy(source: unknown) {
+        const { document, warnings } = normalizeLegacyImport(source);
         for (const warning of warnings) console.warn(warning);
         return await DocumentContext.#fromSnapshot(await VcsBackend.importLegacy(document));
     }
@@ -253,7 +238,6 @@ export class DocumentContext {
         const timestamp = Math.max(Date.now(), this.#lastTimestamp + 1);
         this.#lastTimestamp = timestamp;
         this.#vc.append({
-            type: 'delta',
             id: _id,
             attrs: {
                 timestamp,

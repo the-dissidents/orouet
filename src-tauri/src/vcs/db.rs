@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use rusqlite::{params, Connection};
 use serde_json::Value;
 
-use super::model::{CommitAttrs, CommitSummary};
+use super::model::{CommitAttrs, VcsCommit};
 
 pub(super) fn now_ms() -> i64 {
     SystemTime::now()
@@ -96,28 +96,36 @@ pub(super) fn insert_document(
     Ok(())
 }
 
-fn summary_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CommitSummary> {
-    Ok(CommitSummary {
-        seq: row.get("seq")?,
-        id: row.get("id")?,
-        kind: row.get("kind")?,
-        parent: row.get("parent_id")?,
-        attrs: CommitAttrs {
-            timestamp: row.get("timestamp")?,
-            label: row.get("label")?,
-            current_cluster: row.get("current_cluster")?,
-            file_saved: row.get::<_, i64>("file_saved")? != 0,
-            selection_set: row.get::<_, i64>("selection_set")? != 0,
-        },
-    })
+fn commit_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<VcsCommit> {
+    let id: String = row.get("id")?;
+    let kind: String = row.get("kind")?;
+    let seq: i64 = row.get("seq")?;
+    let attrs = CommitAttrs {
+        timestamp: row.get("timestamp")?,
+        label: row.get("label")?,
+        current_cluster: row.get("current_cluster")?,
+        file_saved: row.get::<_, i64>("file_saved")? != 0,
+        selection_set: row.get::<_, i64>("selection_set")? != 0,
+    };
+    match kind.as_str() {
+        "root" => Ok(VcsCommit::Root { id, attrs, seq }),
+        "delta" => Ok(VcsCommit::Delta {
+            id,
+            parent: row.get("parent_id")?,
+            attrs,
+            seq,
+        }),
+        "merge" => Ok(VcsCommit::Merge { id, attrs, seq }),
+        _ => Err(rusqlite::Error::InvalidQuery),
+    }
 }
 
-pub(super) fn load_summaries(conn: &Connection) -> rusqlite::Result<Vec<CommitSummary>> {
+pub(super) fn load_summaries(conn: &Connection) -> rusqlite::Result<Vec<VcsCommit>> {
     let mut stmt = conn.prepare(
         "SELECT seq, id, kind, parent_id, timestamp, label, current_cluster,
                 file_saved, selection_set
          FROM commits ORDER BY seq ASC",
     )?;
-    let rows = stmt.query_map([], summary_from_row)?;
+    let rows = stmt.query_map([], commit_from_row)?;
     rows.collect()
 }

@@ -47,3 +47,9 @@
 # Reporting
 
 Put your notes and reports etc in `documents/`. However, when consulting that folder, which you normally doesn't need to, keep in mind that the contents may well be outdated.
+
+# Miscellaneous
+
+Sometimes the user modifies things between turns. If you notice, don't wonder, just silently reread the affected files. If (and only if) the modification is relevant to what you're doing, it might be useful to interpret that as a hint of what direction to take.
+
+Don't automatically commit by default, but sometimes you'll be asked to do so.

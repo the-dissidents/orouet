@@ -17,15 +17,24 @@ pub struct CommitAttrs {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CommitSummary {
-    pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parent: Option<String>,
-    #[serde(rename = "type")]
-    pub kind: String,
-    pub attrs: CommitAttrs,
-    pub seq: i64,
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum VcsCommit {
+    Root {
+        id: String,
+        attrs: CommitAttrs,
+        seq: i64,
+    },
+    Delta {
+        id: String,
+        parent: String,
+        attrs: CommitAttrs,
+        seq: i64,
+    },
+    Merge {
+        id: String,
+        attrs: CommitAttrs,
+        seq: i64,
+    },
 }
 
 #[derive(Deserialize, Debug)]
@@ -99,5 +108,5 @@ pub struct OpenSnapshot {
     pub source: Value,
     pub target: Value,
     pub chats: Value,
-    pub summaries: Vec<CommitSummary>,
+    pub summaries: Vec<VcsCommit>,
 }

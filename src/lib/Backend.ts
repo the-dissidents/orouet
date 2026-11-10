@@ -1,9 +1,9 @@
 import * as z from "zod/v4-mini";
 import { Text } from "./TextSchema";
-import { Id, PaneSchema, type Cluster, type Doc } from "./Schema";
+import { Id, type Cluster, type Doc } from "./Schema";
 import { SerializedChatSession } from "./llm/ChatSchema";
 import type { EventHost } from "@the_dissidents/svelte-ui";
-import { Step, type Transform } from "prosemirror-transform";
+import type { Transform } from "prosemirror-transform";
 import { invoke } from "@tauri-apps/api/core";
 import { getPassword, setPassword, deletePassword } from "tauri-plugin-keyring-api";
 
@@ -17,18 +17,20 @@ export const Backend = {
     },
 }
 
-const StepJson = z.looseObject({
+export const StepJson = z.looseObject({
     stepType: z.string(),
 });
 
-const StepsJsonSchema = z.object({
+export type StepJson = z.infer<typeof StepJson>;
+
+export const StepsJson = z.object({
     steps: z.array(StepJson),
     invertedSteps: z.array(StepJson),
 });
 
-export type StepsJson = z.infer<typeof StepsJsonSchema>;
+export type StepsJson = z.infer<typeof StepsJson>;
 
-const VcsCommitAttrsSchema = z.object({
+export const VcsCommitAttrs = z.object({
     timestamp: z.number(),
     label: z.optional(z.string()),
     currentCluster: z.optional(Id<Cluster>()),
@@ -36,73 +38,62 @@ const VcsCommitAttrsSchema = z.object({
     selectionSet: z.optional(z.boolean()),
 });
 
-export type VcsCommitAttrs = z.infer<typeof VcsCommitAttrsSchema>;
+export type VcsCommitAttrs = z.infer<typeof VcsCommitAttrs>;
 
-const VcsCommitSummarySchema = z.object({
-    id: Id<Commit>(),
-    parent: z.optional(Id<Commit>()),
-    type: z.enum(['root', 'delta', 'merge']),
-    attrs: VcsCommitAttrsSchema,
-    seq: z.number(),
-});
+// we can't use z.infer<> here because of the circular reference to Commit
 
-export type VcsCommitSummary = z.infer<typeof VcsCommitSummarySchema>;
-
-const ZStep = z.codec(z.unknown(), z.instanceof(Step), {
-    decode: (v, ctx) => {
-        try {
-            return Step.fromJSON(PaneSchema, v);
-        } catch (e: any) {
-            ctx.issues.push({
-                code: 'invalid_format',
-                format: 'ProseMirror Step',
-                input: `...`,
-                message: e.message
-            });
-            return z.NEVER;
-        }
-    },
-    encode: (v) => v.toJSON()
-});
-
-const ZSteps = z.object({
-    steps: z.array(ZStep),
-    invertedSteps: z.array(ZStep),
-});
-
-export type Steps = z.infer<typeof ZSteps>;
-
-const DeltaCommitSchema = z.object({
-    attrs: VcsCommitAttrsSchema,
-    type: z.literal('delta'),
-    id: Id<DeltaCommit>(),
-    source: z.optional(ZSteps),
-    target: z.optional(ZSteps),
-    parent: Id<Commit>(),
-});
-
-const MergeCommitSchema = z.object({
-    attrs: VcsCommitAttrsSchema,
-    type: z.literal('merge'),
-    id: Id<MergeCommit>(),
-});
+export type RootCommit = {
+    type: 'root';
+    id: Id<Commit>;
+    attrs: VcsCommitAttrs;
+    seq: number;
+};
 
 export type DeltaCommit = {
-    attrs: VcsCommitAttrs;
     type: 'delta';
-    id: Id<DeltaCommit>;
-    source?: Steps;
-    target?: Steps;
+    id: Id<Commit>;
     parent: Id<Commit>;
+    attrs: VcsCommitAttrs;
+    seq: number;
 };
 
 export type MergeCommit = {
-    attrs: VcsCommitAttrs;
     type: 'merge';
-    id: Id<MergeCommit>;
+    id: Id<Commit>;
+    attrs: VcsCommitAttrs;
+    seq: number;
 };
 
-export type Commit = MergeCommit | DeltaCommit;
+export type Commit = RootCommit | DeltaCommit | MergeCommit;
+export type VcsCommit = Commit;
+
+export const RootCommit = z.object({
+    type: z.literal('root'),
+    id: Id<Commit>(),
+    attrs: VcsCommitAttrs,
+    seq: z.number(),
+});
+
+export const DeltaCommit = z.object({
+    type: z.literal('delta'),
+    id: Id<Commit>(),
+    parent: Id<Commit>(),
+    attrs: VcsCommitAttrs,
+    seq: z.number(),
+});
+
+export const MergeCommit = z.object({
+    type: z.literal('merge'),
+    id: Id<Commit>(),
+    attrs: VcsCommitAttrs,
+    seq: z.number(),
+});
+
+export const VcsCommit = z.discriminatedUnion('type', [
+    RootCommit,
+    DeltaCommit,
+    MergeCommit,
+]);
 
 export type Docs = {
     source: Doc;
@@ -135,15 +126,7 @@ export interface ReadonlyVersionControl {
     isDelta(id: Id<Commit>): id is Id<DeltaCommit>;
 }
 
-export const SerializedVersionControl = z.object({
-    version: z.literal(1),
-    initialCommit: Id<Commit>(),
-    commits: z.array(z.union([MergeCommitSchema, DeltaCommitSchema])),
-});
-
-export type SerializedVersionControl = z.infer<typeof SerializedVersionControl>;
-
-const VcsSnapshot = z.object({
+export const VcsSnapshot = z.object({
     docId: z.string(),
     path: z.optional(z.nullable(z.string())),
     initialCommit: Id<Commit>(),
@@ -152,44 +135,42 @@ const VcsSnapshot = z.object({
     source: Text,
     target: Text,
     chats: z.array(SerializedChatSession),
-    summaries: z.array(VcsCommitSummarySchema),
+    summaries: z.array(VcsCommit),
 });
 
 export type VcsSnapshot = z.infer<typeof VcsSnapshot>;
 
-const VcsPathSegment = z.object({
+export const VcsPathSegment = z.object({
     id: z.string(),
     direction: z.enum(['forward', 'backward']),
-    source: z.optional(StepsJsonSchema),
-    target: z.optional(StepsJsonSchema),
+    source: z.optional(StepsJson),
+    target: z.optional(StepsJson),
 });
 
 export type VcsPathSegment = z.infer<typeof VcsPathSegment>;
 
-const VcsPathSegments = z.array(VcsPathSegment);
-
-const VcsNewCommitSchema = z.object({
+export const VcsNewCommit = z.object({
     id: Id<Commit>(),
     parent: Id<Commit>(),
-    attrs: VcsCommitAttrsSchema,
-    source: z.optional(StepsJsonSchema),
-    target: z.optional(StepsJsonSchema),
+    attrs: VcsCommitAttrs,
+    source: z.optional(StepsJson),
+    target: z.optional(StepsJson),
 });
 
-export type VcsNewCommit = z.input<typeof VcsNewCommitSchema>;
+export type VcsNewCommit = z.input<typeof VcsNewCommit>;
 
-const VcsImportCommit = z.object({
+export const VcsImportCommit = z.object({
     id: Id<Commit>(),
     parent: Id<Commit>(),
     kind: z.enum(['delta', 'merge']),
-    attrs: VcsCommitAttrsSchema,
-    source: z.optional(StepsJsonSchema),
-    target: z.optional(StepsJsonSchema),
+    attrs: VcsCommitAttrs,
+    source: z.optional(StepsJson),
+    target: z.optional(StepsJson),
 });
 
 export type VcsImportCommit = z.input<typeof VcsImportCommit>;
 
-const VcsImportDocument = z.object({
+export const VcsImportDocument = z.object({
     initialCommit: Id<Commit>(),
     currentCommit: Id<Commit>(),
     source: Text,
@@ -225,7 +206,7 @@ export const VcsBackend = {
         const decoded = z.decode(VcsImportDocument, document);
         const data = await invoke<z.input<typeof VcsSnapshot>>('vcs_import', {
             document: {
-                ...document,
+                ...decoded,
                 source: z.encode(Text, decoded.source),
                 target: z.encode(Text, decoded.target),
             },
@@ -234,8 +215,8 @@ export const VcsBackend = {
     },
 
     async append(docId: string, commit: VcsNewCommit) {
-        const data = await invoke<z.input<typeof VcsCommitSummarySchema>>('vcs_append', {docId, commit});
-        return z.decode(VcsCommitSummarySchema, data);
+        const data = await invoke<z.input<typeof VcsCommit>>('vcs_append', {docId, commit});
+        return z.decode(VcsCommit, data);
     },
 
     async updateAttrs(
@@ -265,8 +246,8 @@ export const VcsBackend = {
     },
 
     async planPath(docId: string, from: string, to: string) {
-        const data = await invoke<z.input<typeof VcsPathSegments>>('vcs_plan_path', {docId, from, to});
-        return z.decode(VcsPathSegments, data);
+        const data = await invoke<z.input<typeof VcsPathSegment>[]>('vcs_plan_path', {docId, from, to});
+        return z.decode(z.array(VcsPathSegment), data);
     },
 
     async count(docId: string) {

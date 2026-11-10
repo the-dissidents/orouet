@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use super::db::{ensure_schema, insert_document, insert_root, load_summaries};
 use super::document::{append_commit_into, import_document_into};
-use super::model::{CommitAttrs, ImportCommit, ImportDocument, NewCommit};
+use super::model::{CommitAttrs, ImportCommit, ImportDocument, NewCommit, VcsCommit};
 use super::path::plan_path;
 
 fn add_delta(conn: &Connection, id: &str, parent: &str) {
@@ -26,7 +26,7 @@ fn schema_and_paths() {
 
     let summaries = load_summaries(&conn).unwrap();
     assert_eq!(summaries.len(), 4);
-    assert_eq!(summaries[0].kind, "root");
+    assert!(matches!(summaries[0], VcsCommit::Root { .. }));
 
     let back = plan_path(&conn, "c2", "c1").unwrap();
     assert_eq!(
@@ -157,7 +157,7 @@ fn append_updates_current() {
         target: None,
     };
     let summary = append_commit_into(&conn, first).unwrap();
-    assert_eq!(summary.id, "c1");
+    assert!(matches!(summary, VcsCommit::Delta { id, .. } if id == "c1"));
 
     let second = NewCommit {
         id: "c2".into(),
@@ -170,10 +170,29 @@ fn append_updates_current() {
         target: Some(serde_json::json!({ "steps": [], "invertedSteps": [] })),
     };
     let summary = append_commit_into(&conn, second).unwrap();
-    assert_eq!(summary.id, "c2");
+    assert!(matches!(summary, VcsCommit::Delta { id, .. } if id == "c2"));
 
     let current: String = conn
         .query_row("SELECT current_commit FROM document", [], |r| r.get(0))
         .unwrap();
     assert_eq!(current, "c2");
+}
+
+#[test]
+fn commit_serializes_as_tagged_union() {
+    let commit = VcsCommit::Delta {
+        id: "c1".into(),
+        parent: "initial".into(),
+        attrs: CommitAttrs {
+            timestamp: 1,
+            ..Default::default()
+        },
+        seq: 2,
+    };
+    let value = serde_json::to_value(commit).unwrap();
+
+    assert_eq!(value["type"], "delta");
+    assert_eq!(value["id"], "c1");
+    assert_eq!(value["parent"], "initial");
+    assert_eq!(value["seq"], 2);
 }

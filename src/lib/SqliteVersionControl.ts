@@ -1,13 +1,6 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
 import type { Id } from "./Schema";
-import { VcsBackend, type Commit, type DeltaCommit, type ReadonlyVersionControl, type Steps, type StepsJson, type VcsCommitAttrs, type VcsCommitSummary, type VcsSnapshot, type VersionControlChange } from "./Backend";
-
-function encodeSteps(steps?: Steps): StepsJson | undefined {
-    return steps ? {
-        steps: steps.steps.map((s) => s.toJSON()),
-        invertedSteps: steps.invertedSteps.map((s) => s.toJSON()),
-    } : undefined;
-}
+import { VcsBackend, type Commit, type DeltaCommit, type ReadonlyVersionControl, type VcsCommit, type VcsCommitAttrs, type VcsNewCommit, type VcsSnapshot, type VersionControlChange } from "./Backend";
 
 /**
  * Frontend view of a Rust/SQLite-backed version control.
@@ -21,7 +14,7 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
     readonly initialCommit: Id<Commit>;
     readonly docId: string;
 
-    #summaries = new Map<Id<Commit>, VcsCommitSummary>();
+    #summaries = new Map<Id<Commit>, VcsCommit>();
     #forwardEdges = new Map<Id<Commit>, Id<Commit>[]>();
     #sorted: Id<Commit>[] = [];
     #latest: Id<Commit>;
@@ -35,7 +28,7 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
         for (const summary of snapshot.summaries) {
             this.#summaries.set(summary.id, summary);
             this.#sorted.push(summary.id);
-            if (summary.parent) {
+            if (summary.type === 'delta') {
                 const links = this.#forwardEdges.get(summary.parent) ?? [];
                 links.push(summary.id);
                 this.#forwardEdges.set(summary.parent, links);
@@ -87,42 +80,27 @@ export class SqliteVersionControl implements ReadonlyVersionControl {
         return true;
     }
 
-    append(commit: Commit): Id<Commit> {
-        if (commit.type !== 'delta') {
-            throw new Error('merge commits are not supported yet');
-        }
-        const parent = commit.parent;
-        const summary: VcsCommitSummary = {
-            id: commit.id,
+    append(commit: VcsNewCommit): Id<Commit> {
+        const id = commit.id as Id<Commit>;
+        const parent = commit.parent as Id<Commit>;
+        const summary: VcsCommit = {
+            type: 'delta',
+            id,
             parent,
-            type: commit.type,
-            attrs: { ...commit.attrs },
+            attrs: { ...commit.attrs } as VcsCommitAttrs,
             seq: this.#sorted.length + 1,
         };
 
-        this.#summaries.set(summary.id, summary);
-        this.#sorted.push(summary.id);
-        if (parent) {
-            const links = this.#forwardEdges.get(parent) ?? [];
-            links.push(summary.id);
-            this.#forwardEdges.set(parent, links);
-        }
-        this.#latest = summary.id;
+        this.#summaries.set(id, summary);
+        this.#sorted.push(id);
+        const links = this.#forwardEdges.get(parent) ?? [];
+        links.push(id);
+        this.#forwardEdges.set(parent, links);
+        this.#latest = id;
 
-        this.onChanged.dispatch({
-            type: 'add',
-            id: summary.id,
-            parent,
-        });
-
-        this.#enqueue(() => VcsBackend.append(this.docId, {
-            id: commit.id,
-            parent: parent!,
-            attrs: commit.attrs,
-            source: encodeSteps(commit.type === 'delta' ? commit.source : undefined),
-            target: encodeSteps(commit.type === 'delta' ? commit.target : undefined),
-        }));
-        return summary.id;
+        this.onChanged.dispatch({ type: 'add', id, parent });
+        this.#enqueue(() => VcsBackend.append(this.docId, commit));
+        return id;
     }
 
     setCurrent(id: Id<Commit>) {

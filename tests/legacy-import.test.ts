@@ -1,13 +1,22 @@
 import { describe, expect, it } from "vitest";
+import { makeDoc } from "$lib/Schema";
+import { DefaultOptions, type TextOptions } from "$lib/TextOptions";
+import { normalizeLegacyImport } from "$lib/LegacyImport";
 
-import { normalizeLegacyImport, type LegacyCommit, type LegacyDocument } from "$lib/LegacyImport";
+function text(options: TextOptions) {
+    return {
+        content: makeDoc([]).toJSON(),
+        language: ['en', null, null],
+        options,
+    };
+}
 
 function commit(
     id: string,
     parent: string | undefined,
     type: 'delta' | 'merge' = 'delta',
     timestamp = 0,
-): LegacyCommit {
+) {
     return {
         type,
         id,
@@ -17,13 +26,14 @@ function commit(
     };
 }
 
-function document(commits: LegacyCommit[], currentCommit: string): LegacyDocument {
+function document(commits: ReturnType<typeof commit>[], currentCommit: string) {
     return {
+        version: 1,
         currentCommit,
-        source: { content: 'source' },
-        target: { content: 'target' },
+        source: text(DefaultOptions.en),
+        target: text(DefaultOptions.zh),
         chats: [],
-        vc: { initialCommit: 'initial', commits },
+        vc: { version: 1, initialCommit: 'initial', commits },
     };
 }
 
@@ -44,8 +54,6 @@ describe("normalizeLegacyImport", () => {
         expect(result.commits.map((c) => c.parent)).toEqual(['initial', 'c1', 'initial', 'initial']);
         expect(result.commits.map((c) => c.kind)).toEqual(['delta', 'delta', 'delta', 'merge']);
         expect(result.currentCommit).toBe('merge');
-        expect(result.source).toEqual({ content: 'source' });
-        expect(result.target).toEqual({ content: 'target' });
         expect(warnings).toEqual(expect.arrayContaining([
             'dropping duplicate commit c1',
             're-parenting commit orphan from missing to initial',

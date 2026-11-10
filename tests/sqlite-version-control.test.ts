@@ -12,7 +12,7 @@ vi.mock("$lib/Backend", () => ({
     VcsBackend: mocks,
 }));
 
-import type { Commit, VcsSnapshot } from "$lib/Backend";
+import type { Commit, VcsNewCommit, VcsSnapshot } from "$lib/Backend";
 import type { Id } from "$lib/Schema";
 import { SqliteVersionControl } from "$lib/SqliteVersionControl";
 
@@ -40,8 +40,7 @@ function snapshot(): VcsSnapshot {
     };
 }
 
-const commit = (idValue: string, parent: string, timestamp: number): Commit => ({
-    type: 'delta',
+const commit = (idValue: string, parent: string, timestamp: number): VcsNewCommit => ({
     id: id(idValue),
     parent: id(parent),
     attrs: { timestamp },
@@ -88,8 +87,6 @@ describe("SqliteVersionControl", () => {
             id: 'c2',
             parent: 'c1',
             attrs: { timestamp: 2 },
-            source: undefined,
-            target: undefined,
         });
     });
 

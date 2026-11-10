@@ -7,16 +7,10 @@ use std::path::PathBuf;
 use super::db::{
     document_exists, ensure_schema, insert_document, insert_root, load_summaries, new_id, now_ms,
 };
-use super::model::{
-    CommitSummary, ImportDocument, NewCommit, OpenSnapshot, PathSegment, UpdateAttrs,
-};
+use super::model::{ImportDocument, NewCommit, OpenSnapshot, PathSegment, UpdateAttrs, VcsCommit};
 use super::path::plan_path;
 
 /// A single version-controlled document backed by SQLite.
-///
-/// This type deliberately has no Tauri dependency: it can be opened, queried
-/// and written from tests, workers or a future CLI. The IPC layer lives in
-/// `commands.rs`.
 pub struct VcsDocument {
     id: String,
     path: Option<PathBuf>,
@@ -118,7 +112,7 @@ impl VcsDocument {
         })
     }
 
-    pub fn append(&self, commit: NewCommit) -> Result<CommitSummary, String> {
+    pub fn append(&self, commit: NewCommit) -> Result<VcsCommit, String> {
         append_commit_into(&self.conn, commit)
     }
 
@@ -372,7 +366,7 @@ pub(super) fn import_document_into(
 pub(super) fn append_commit_into(
     conn: &Connection,
     commit: NewCommit,
-) -> Result<CommitSummary, String> {
+) -> Result<VcsCommit, String> {
     let parent_exists: bool = conn
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM commits WHERE id = ?1)",
@@ -428,10 +422,9 @@ pub(super) fn append_commit_into(
             |r| r.get(0),
         )
         .map_err(|e| e.to_string())?;
-    Ok(CommitSummary {
+    Ok(VcsCommit::Delta {
         id: commit.id,
-        parent: Some(commit.parent),
-        kind: "delta".into(),
+        parent: commit.parent,
         attrs: commit.attrs,
         seq,
     })

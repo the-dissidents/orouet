@@ -6,9 +6,7 @@ use serde_json::Value;
 use tauri::State;
 
 use super::document::VcsDocument;
-use super::model::{
-    CommitSummary, ImportDocument, NewCommit, OpenSnapshot, PathSegment, UpdateAttrs,
-};
+use super::model::{ImportDocument, NewCommit, OpenSnapshot, PathSegment, UpdateAttrs, VcsCommit};
 
 /// IPC-side state for the single currently-open document.
 pub struct VcsState {
@@ -80,7 +78,7 @@ pub fn vcs_append(
     state: State<'_, VcsState>,
     doc_id: &str,
     commit: NewCommit,
-) -> Result<CommitSummary, String> {
+) -> Result<VcsCommit, String> {
     let guard = take_open(&state, doc_id)?;
     let doc = guard
         .as_ref()

@@ -1,59 +1,71 @@
-import type {
-    StepsJson,
-    VcsCommitAttrs,
-    VcsImportCommit,
-    VcsImportDocument,
-} from "./Backend";
-import { id } from "./Schema";
-import type { TextJSON } from "./TextSchema";
-import type { SerializedChatSession } from "./llm/ChatSchema";
+import * as z from "zod/v4-mini";
+import { Id, PaneSchema } from "./Schema";
+import { Text } from "./TextSchema";
+import { Step } from "prosemirror-transform";
+import { SerializedChatSession } from "./llm/ChatSchema";
+import { StepsJson, VcsCommitAttrs, type Commit, type VcsImportCommit, type VcsImportDocument } from "./Backend";
 
-// Loose shape of a version-1 `.orz` document
+// validate legacy step JSON without keeping Step instances around
+const LegacySteps = z.codec(z.unknown(), StepsJson, {
+    decode: (v, ctx) => {
+        try {
+            const steps = z.decode(StepsJson, v as z.input<typeof StepsJson>);
+            for (const raw of [...steps.steps, ...steps.invertedSteps])
+                Step.fromJSON(PaneSchema, raw);
+            return steps;
+        } catch (e: any) {
+            ctx.issues.push({
+                code: 'invalid_format',
+                format: 'ProseMirror Step',
+                input: `...`,
+                message: e.message,
+            });
+            return z.NEVER;
+        }
+    },
+    encode: (v) => v,
+});
 
-export type LegacyCommit = {
-    type: 'delta' | 'merge';
-    id: string;
-    parent?: string;
-    attrs: VcsCommitAttrs;
-    source?: StepsJson;
-    target?: StepsJson;
-};
+export const LegacyCommit = z.object({
+    type: z.enum(['delta', 'merge']),
+    id: Id<Commit>(),
+    parent: z.optional(Id<Commit>()),
+    attrs: VcsCommitAttrs,
+    source: z.optional(LegacySteps),
+    target: z.optional(LegacySteps),
+});
 
-export type LegacyDocument = {
-    currentCommit: string;
-    source: unknown;
-    target: unknown;
-    chats?: unknown;
-    vc: {
-        initialCommit: string;
-        commits: LegacyCommit[];
-    };
-};
+export type LegacyCommit = z.infer<typeof LegacyCommit>;
+
+export const LegacyDocument = z.object({
+    version: z.literal(1),
+    source: Text,
+    target: Text,
+    currentCommit: Id<Commit>(),
+    vc: z.object({
+        version: z.literal(1),
+        initialCommit: Id<Commit>(),
+        commits: z.array(LegacyCommit),
+    }),
+    chats: z.array(SerializedChatSession),
+});
+
+export type LegacyDocument = z.infer<typeof LegacyDocument>;
 
 export type NormalizedLegacyImport = {
     document: VcsImportDocument;
     warnings: string[];
 };
 
-/**
- * Convert a legacy archive into the typed bulk-import payload consumed by
- * Rust. This owns the old deserialization repair rules:
- *
- * - drop duplicate commit ids;
- * - re-parent commits whose parent is unknown to the initial commit;
- * - fall back to the latest commit when `currentCommit` is missing.
- */
-export function normalizeLegacyImport(source: LegacyDocument): NormalizedLegacyImport {
-    const initial = source.vc.initialCommit;
+/** Convert a legacy archive to the typed bulk-import payload, applying old repair rules. */
+export function normalizeLegacyImport(source: unknown): NormalizedLegacyImport {
+    const document = z.decode(LegacyDocument, source as z.input<typeof LegacyDocument>);
+    const initial = document.vc.initialCommit;
     const warnings: string[] = [];
 
     const kept: LegacyCommit[] = [];
     const ids = new Set<string>();
-    for (const commit of source.vc.commits ?? []) {
-        if (!commit || typeof commit.id !== 'string') {
-            warnings.push('dropping commit without an id');
-            continue;
-        }
+    for (const commit of document.vc.commits) {
         if (commit.id === initial) continue;
         if (ids.has(commit.id)) {
             warnings.push(`dropping duplicate commit ${commit.id}`);
@@ -74,19 +86,16 @@ export function normalizeLegacyImport(source: LegacyDocument): NormalizedLegacyI
         }
 
         return {
-            id: id(commit.id),
-            parent: id(parent),
-            kind: commit.type === 'merge' ? 'merge' : 'delta',
-            attrs: {
-                ...commit.attrs,
-                timestamp: commit.attrs?.timestamp ?? 0,
-            },
+            id: commit.id,
+            parent,
+            kind: commit.type,
+            attrs: commit.attrs,
             source: commit.source,
             target: commit.target,
         };
     });
 
-    let currentCommit = source.currentCommit;
+    let currentCommit = document.currentCommit;
     if (currentCommit !== initial && !known.has(currentCommit)) {
         currentCommit = commits.at(-1)?.id ?? initial;
         warnings.push(`current commit is missing; using ${currentCommit}`);
@@ -94,11 +103,11 @@ export function normalizeLegacyImport(source: LegacyDocument): NormalizedLegacyI
 
     return {
         document: {
-            initialCommit: id(initial),
-            currentCommit: id(currentCommit),
-            source: source.source as TextJSON,
-            target: source.target as TextJSON,
-            chats: (source.chats ?? []) as SerializedChatSession[],
+            initialCommit: initial,
+            currentCommit,
+            source: z.encode(Text, document.source),
+            target: z.encode(Text, document.target),
+            chats: document.chats,
             commits,
         },
         warnings,
