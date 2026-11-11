@@ -17,9 +17,9 @@ function mulberry32(seed: number) {
 }
 
 const simplify = (layout: GraphLayout) => ({
-    nodes: layout.nodes.map(({ id, x, y, maxX }) => ({ id, x, y, maxX })),
+    nodes: layout.nodes.map(({ commit, x, y, maxX }) => ({ id: commit.id, x, y, maxX })),
     edges: layout.edges
-        .map(({ from, to, type }) => [from.id, to.id, type] as const)
+        .map(({ from, to, type }) => [from.commit.id, to.commit.id, type] as const)
         .sort((a, b) =>
             a[0].localeCompare(b[0])
             || a[1].localeCompare(b[1])

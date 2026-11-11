@@ -73,8 +73,6 @@ export function formatDateTimeList(
     dates: Date[],
     options: DateFormatOptions = {}
 ): string[] {
-    console.log(dates);
-
     const {
         recentDays = 7,
         now = new Date()

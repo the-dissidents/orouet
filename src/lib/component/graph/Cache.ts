@@ -1,11 +1,8 @@
 import { isBoundary, type BoundaryCondition } from "$lib/Boundary";
 import { Debug } from "$lib/details/Util";
 import type { Id } from "$lib/Schema";
-import type {
-    Commit,
-    ReadonlyVersionControl,
-    VersionControlChange,
-} from "$lib/Backend";
+import type { Commit } from "$lib/Backend";
+import type { ReadonlyVersionControl, VersionControlChange } from "$lib/VersionControl";
 
 /** Stable key for a boundary condition, independent of property order. */
 function conditionKey(b: BoundaryCondition) {

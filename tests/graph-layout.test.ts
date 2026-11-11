@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { graphLayout, type GraphLayout, type GraphLayoutContext } from "$lib/component/graph/Layout";
 import type { Id } from "$lib/Schema";
-import type { Commit, ReadonlyVersionControl } from "$lib/Backend";
+import type { Commit } from "$lib/Backend";
+import type { ReadonlyVersionControl } from "$lib/VersionControl";
 import { FakeVersionControl, linearChain } from "./fake-version-control";
 import { GraphLayoutCache } from "$lib/component/graph/Cache";
 import type { BoundaryCondition } from "$lib/Boundary";
@@ -13,9 +14,9 @@ function expectSameMembers(a: unknown[], b: unknown[]) {
 }
 
 const id = (value: string) => value as Id<Commit>;
-const ids = (layout: GraphLayout) => layout.nodes.map((node) => node.id);
+const ids = (layout: GraphLayout) => layout.nodes.map((node) => node.commit.id);
 const edges = (layout: GraphLayout) => layout.edges.map((edge) => [
-    edge.from.id, edge.to.id, edge.type,
+    edge.from.commit.id, edge.to.commit.id, edge.type,
 ] as const);
 
 function getLayout(
@@ -109,7 +110,7 @@ describe("graphLayout", () => {
         vc.add('b', vc.initialCommit, { timestamp: 1 });
 
         const layout = getLayout(vc);
-        const byId = new Map(layout.nodes.map((node) => [node.id, node]));
+        const byId = new Map(layout.nodes.map((node) => [node.commit.id, node]));
         expect(ids(layout)).toEqual(['b', 'a', vc.initialCommit]);
         expect(byId.get(id('b'))).toMatchObject({ x: 0, y: 0 });
         expect(byId.get(id('a'))).toMatchObject({ x: 1, y: 1 });

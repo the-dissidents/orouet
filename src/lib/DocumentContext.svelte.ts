@@ -6,7 +6,7 @@ import { Step, Transform } from "prosemirror-transform";
 import { DefaultOptions } from "./TextOptions";
 import { ChatSession } from "./llm/ChatSession.svelte";
 import { normalizeLegacyImport } from "./LegacyImport";
-import { SqliteVersionControl } from "./SqliteVersionControl";
+import { SqliteVersionControl } from "./VersionControl";
 import { LocaleId, Text } from "./TextSchema";
 
 export { LocaleId, Text };

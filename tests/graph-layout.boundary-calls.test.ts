@@ -52,7 +52,7 @@ describe("graphLayout boundary resolution", () => {
 
         // Nothing changed, so no boundary needs to be recomputed.
         expect(isBoundaryMock.mock.calls.length).toBe(0);
-        expect(second.nodes.map((node) => node.id))
-            .toEqual(first.nodes.map((node) => node.id));
+        expect(second.nodes.map((node) => node.commit.id))
+            .toEqual(first.nodes.map((node) => node.commit.id));
     });
 });

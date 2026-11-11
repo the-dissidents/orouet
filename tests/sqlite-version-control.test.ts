@@ -14,7 +14,7 @@ vi.mock("$lib/Backend", () => ({
 
 import type { Commit, VcsNewCommit, VcsSnapshot } from "$lib/Backend";
 import type { Id } from "$lib/Schema";
-import { SqliteVersionControl } from "$lib/SqliteVersionControl";
+import { SqliteVersionControl } from "$lib/VersionControl";
 
 const id = <T>(value: string) => value as Id<T>;
 
@@ -60,7 +60,7 @@ describe("SqliteVersionControl", () => {
 
         expect(vc.sortedCommits).toEqual(['1', '2']);
         expect(vc.commitCount).toBe(1);
-        expect(vc.get(vc.initialCommit)).toBeUndefined();
+        expect(vc.get(vc.initialCommit).type).toBe('root');
         expect(vc.get(id<Commit>('2'))).toMatchObject({
             type: 'delta',
             parent: '1',

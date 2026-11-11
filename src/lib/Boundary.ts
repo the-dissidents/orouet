@@ -1,5 +1,6 @@
 import type { Id } from "$lib/Schema";
-import type { Commit, ReadonlyVersionControl } from "$lib/Backend";
+import type { Commit } from "$lib/Backend";
+import type { ReadonlyVersionControl } from "./VersionControl";
 import * as z from "zod/v4-mini";
 
 export const BoundaryCondition = z.object({

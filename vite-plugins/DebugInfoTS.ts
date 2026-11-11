@@ -39,7 +39,7 @@ const plugin = declare(() => {
               funcName = func.node.key.name;
             }
           } else if ('id' in func.node) {
-            funcName = func.node.id?.name ?? '?';
+            funcName = func.node.commit.id?.name ?? '?';
           }
 
           node.arguments.push(

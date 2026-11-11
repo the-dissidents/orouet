@@ -6,9 +6,10 @@
 ### Typescript imports
 - One line per `import` statement, e.g. `import type { Commit, DeltaCommit, ReadonlyVersionControl, Steps, VersionControlChange } from "./VersionControl.svelte";`. Don't pretty-print. One rarely actually reads inside them.
 - Organize imports roughly in the following order:
-  - basic helpers/utilities, including I18n and `zod`, whether 3rd-party or not;
-  - other source files in project, grouped by folder, preferring `$lib` etc over too many `..`s, and files closer to the current directory towards the end;
-  - 3rd party imports.
+  - helpers/utilities, including I18n and `zod`, whether 3rd-party or not;
+  - other non-component source files in project, grouped by folder, preferring `$lib` etc over too many `..`s, and files closer to the current directory towards the end;
+  - 3rd party imports that are related to the logic;
+  - Svelte components, including 3rd-party ones.
 - For files with many lines of import you can add blank lines between groups, but don't do this excessively.
 
 ### Linting

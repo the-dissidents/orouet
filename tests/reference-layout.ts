@@ -59,7 +59,7 @@ export function referenceGraphLayout(
     let y = 0;
     for (const id of commits) {
         if (skipped.has(id)) continue;
-        if (!vc.isDelta(id)) continue;
+        if (!vc.isDelta(id) && !vc.isRoot(id)) continue;
 
         const children = getChildren(id).sort((a, b) => a.topmostY - b.topmostY);
         const widths: Record<number, number> = { [y]: 0 };
@@ -86,7 +86,7 @@ export function referenceGraphLayout(
         });
 
         const topmostY = Math.min(y, ...children.map((x) => x.topmostY));
-        const node: Node = { commit: vc.get(id), x: 0, y, maxX: 0, widths, topmostY, deltaX: 0 };
+        const node: Node = { commit: vc.get<Commit>(id), x: 0, y, maxX: 0, widths, topmostY, deltaX: 0 };
         nodeMap.set(id, node);
         nodes.push(node);
         y++;

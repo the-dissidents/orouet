@@ -1,5 +1,7 @@
 import { id, type Id } from "$lib/Schema";
-import type { Commit, DeltaCommit, ReadonlyVersionControl, RootCommit } from "$lib/Backend";
+import type { Commit, DeltaCommit, RootCommit } from "$lib/Backend";
+import type { ReadonlyVersionControl } from "$lib/VersionControl";
+import { Debug } from "$lib/details/Util";
 
 export type FakeAttrs = {
     timestamp: number,
@@ -47,7 +49,9 @@ export class FakeVersionControl implements ReadonlyVersionControl {
             attrs: { timestamp: 0 },
             seq: 0
         } satisfies RootCommit as unknown as C;
-        return this.#commits.get(id)! as C;
+        const c = this.#commits.get(id);
+        Debug.assert(!!c);
+        return c as C;
     }
 
     forwardLinks(id: Id<Commit>): Id<Commit>[] {
@@ -60,6 +64,10 @@ export class FakeVersionControl implements ReadonlyVersionControl {
 
     isDelta(id: Id<Commit>): id is Id<DeltaCommit> {
         return this.#commits.get(id)?.type === 'delta';
+    }
+
+    isRoot(id: Id<Commit>): id is Id<RootCommit> {
+        return id === this.initialCommit;
     }
 
     addAttr(attr: Partial<FakeAttrs> = {}): boolean {

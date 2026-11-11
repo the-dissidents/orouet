@@ -23,7 +23,7 @@ export default function debugInfoSvelte(): Plugin {
             next({ ...state });
           },
           FunctionDeclaration(node, { state, next }) {
-            const name = node.id?.name ?? '?';
+            const name = node.commit.id?.name ?? '?';
             state.funcNames.push(name);
             next({ ...state });
             state.funcNames.pop();

@@ -1,7 +1,29 @@
 import { EventHost } from "@the_dissidents/svelte-ui";
 import type { Id } from "./Schema";
-import { RootCommit, VcsBackend, type Commit, type DeltaCommit, type ReadonlyVersionControl, type VcsCommit, type VcsCommitAttrs, type VcsNewCommit, type VcsSnapshot, type VersionControlChange } from "./Backend";
+import { RootCommit, VcsBackend, type Commit, type DeltaCommit, type VcsCommit, type VcsCommitAttrs, type VcsNewCommit, type VcsSnapshot } from "./Backend";
 import { Debug } from "./details/Util";
+
+export type VersionControlChange =
+    | { type: 'add'; id: Id<Commit>; parent?: Id<Commit>; }
+    | { type: 'attrs'; id: Id<Commit>; };
+
+export interface ReadonlyVersionControl {
+    readonly initialCommit: Id<Commit>;
+    readonly latestCommit: Id<Commit>;
+    readonly sortedCommits: readonly Id<Commit>[];
+
+    /** Fired after commits are added or commit attributes change. */
+    readonly onChanged: EventHost<[change: VersionControlChange]>;
+
+    addAttr(attr: Partial<VcsCommitAttrs>): boolean;
+
+    get<C extends Commit>(id: Id<C>): C;
+    forwardLinks(id: Id<Commit>): Id<Commit>[];
+
+    has(id: Id<Commit>): boolean;
+    isDelta(id: Id<Commit>): id is Id<DeltaCommit>;
+    isRoot(id: Id<Commit>): id is Id<RootCommit>;
+}
 
 /**
  * Frontend view of a Rust/SQLite-backed version control.

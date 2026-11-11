@@ -2,7 +2,6 @@ import * as z from "zod/v4-mini";
 import { Text } from "./TextSchema";
 import { Id, type Cluster, type Doc } from "./Schema";
 import { SerializedChatSession } from "./llm/ChatSchema";
-import type { EventHost } from "@the_dissidents/svelte-ui";
 import type { Transform } from "prosemirror-transform";
 import { invoke } from "@tauri-apps/api/core";
 import { getPassword, setPassword, deletePassword } from "tauri-plugin-keyring-api";
@@ -104,27 +103,6 @@ export type Transforms = {
     source: Transform;
     target: Transform;
 };
-
-export type VersionControlChange =
-    | { type: 'add'; id: Id<Commit>; parent?: Id<Commit> }
-    | { type: 'attrs'; id: Id<Commit> };
-
-export interface ReadonlyVersionControl {
-    readonly initialCommit: Id<Commit>;
-    readonly latestCommit: Id<Commit>;
-    readonly sortedCommits: readonly Id<Commit>[];
-
-    /** Fired after commits are added or commit attributes change. */
-    readonly onChanged: EventHost<[change: VersionControlChange]>;
-
-    addAttr(attr: Partial<VcsCommitAttrs>): boolean;
-
-    get<C extends Commit>(id: Id<C>): C;
-    forwardLinks(id: Id<Commit>): Id<Commit>[];
-
-    has(id: Id<Commit>): boolean;
-    isDelta(id: Id<Commit>): id is Id<DeltaCommit>;
-}
 
 export const VcsSnapshot = z.object({
     docId: z.string(),
